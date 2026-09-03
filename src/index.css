@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #F8FAFC;
+  --app-text: #0F172A;
+  --sidebar-teal: #134E4A;
+}
+
+body {
+  background-color: #F8FAFC;
+  color: #0F172A;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark body {
+  background-color: #020617;
+  color: #F8FAFC;
+}
+
+/* Custom scrollbar for high density layout */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(19, 78, 74, 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(19, 78, 74, 0.4);
+}
