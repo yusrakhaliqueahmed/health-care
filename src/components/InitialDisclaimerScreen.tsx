@@ -1,20 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'motion/react';
-import {
-  ShieldAlert,
-  Stethoscope,
-  CheckCircle2,
-  PhoneCall,
-  ArrowRight,
-  Globe,
-  AlertTriangle,
-  HeartPulse,
-} from 'lucide-react';
+import { Stethoscope, ArrowRight, ShieldCheck, Volume2 } from 'lucide-react';
 import { SupportedLanguage } from '../types';
-import { TRANSLATIONS } from '../services/i18n';
-import { AudioPlayerControls } from './AudioPlayerControls';
 import { LanguageSelector } from './LanguageSelector';
-import { GlobalFooter } from './GlobalFooter';
+import { voiceManager } from '../services/voice';
 
 interface InitialDisclaimerScreenProps {
   currentLanguage: SupportedLanguage;
@@ -27,174 +16,119 @@ export const InitialDisclaimerScreen: React.FC<InitialDisclaimerScreenProps> = (
   onLanguageChange,
   onAcknowledge,
 }) => {
-  const [agreedToTerms, setAgreedToTerms] = useState(true);
-  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
-
-  const disclaimerHeadline =
+  const headline =
     currentLanguage === 'ur'
-      ? 'براہ کرم اس ایپ کو استعمال کرنے سے پہلے ڈاکٹر سے مشورہ کریں۔'
-      : currentLanguage === 'sd'
-      ? 'مهرباني ڪري هن ايپ کي استعمال ڪرڻ کان اڳ ڊاڪٽر سان صلاح ڪريو.'
-      : currentLanguage === 'ps'
-      ? 'مهرباني وکړئ د دې اېپ کارولو دمخه له ډاکټر سره مشوره وکړئ.'
-      : currentLanguage === 'bal'
-      ? 'مہربانی کں ایں ایپ ئِ کارمرز کنگا پیش ڈاکٹر ءَ چہ سوج بکن اِت۔'
-      : currentLanguage === 'pa'
-      ? 'مہربانی کر کے ایس ایپ نوں ورتن توں پہلاں ڈاکٹر نال مشورہ کرو۔'
-      : currentLanguage === 'skr'
-      ? 'مہربانی کر کے ایں ایپ کوں استعمال کرنڑ توں پہلے ڈاکٹر نال صلاح کرو۔'
-      : 'Please consult a doctor before using this app.';
+      ? 'اہم پیغام'
+      : currentLanguage === 'roman'
+      ? 'Ahem Paigham'
+      : 'Important Message';
 
-  const detailedNotice =
+  const badgeText =
     currentLanguage === 'ur'
-      ? 'صحت ساتھی ایک مصنوعی ذہانت (AI) پر مبنی معلوماتی اور رہنمائی کا پلیٹ فارم ہے۔ یہ کسی باقاعدہ پی ایم ڈی سی (PMDC) لائسنس یافتہ ڈاکٹر، کلینیکل تشخیص یا ہنگامی علاج کا متبادل نہیں ہے۔ کسی بھی بیماری یا دوا کے استعمال سے پہلے مستند ڈاکٹر سے رجوع کریں۔ ہنگامی صورتحال میں فوری طور پر 1122 کال کریں۔'
-      : 'SehatSaathi Pro provides automated AI-assisted health triage, medicine safety checks, and clinical guidance for informational purposes only. It is NOT a substitute for formal diagnosis, emergency care, or in-person consultation with a qualified PMDC-licensed physician. In life-threatening emergencies, dial Rescue 1122 immediately.';
+      ? 'ڈاکٹر کی تصدیق لازمی ہے'
+      : currentLanguage === 'roman'
+      ? 'DOCTOR VERIFICATION REQUIRED'
+      : 'DOCTOR VERIFICATION REQUIRED';
+
+  const message =
+    currentLanguage === 'ur'
+      ? 'یہ ایپ آپ کی رہنمائی کے لیے ہے، لیکن یہ کسی اصل ڈاکٹر کا متبادل نہیں ہے۔ کوئی بھی دوا لینے یا علاج شروع کرنے سے پہلے ہمیشہ مستند ڈاکٹر سے مشورہ کریں۔'
+      : currentLanguage === 'roman'
+      ? 'Yeh app aapki rehnumai ke liye hai, lekin yeh kisi asli doctor ka mutabadil nahi hai. Koi bhi dawa lene ya ilaaj shuru karne se pehle hamesha licensed doctor se mashwara karein.'
+      : 'This app is here to help guide you, but it does not replace a real doctor. Always consult a licensed doctor before taking any medicine or starting any treatment.';
+
+  const buttonText =
+    currentLanguage === 'ur'
+      ? 'میں سمجھ گیا، جاری رکھیں'
+      : currentLanguage === 'roman'
+      ? 'Main Samajh Gaya, Aage Barhein'
+      : 'I Understand, Continue';
+
+  const handleSpeak = () => {
+    voiceManager.speak(message, currentLanguage);
+  };
 
   return (
     <div
-      id="initial-pre-launch-disclaimer"
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/85 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6"
+      id="initial-disclaimer-screen"
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#f4f7f6] dark:bg-[#071a16] flex flex-col justify-between p-4 sm:p-6 select-none"
     >
-      <div className="flex-1 flex items-center justify-center py-4">
+      {/* Top Bar with Language Selector */}
+      <div className="w-full max-w-4xl mx-auto flex items-center justify-between z-10 pt-2">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping" />
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+            SehatSaathi Care
+          </span>
+        </div>
+        <LanguageSelector
+          currentLanguage={currentLanguage}
+          onLanguageChange={onLanguageChange}
+        />
+      </div>
+
+      {/* Center Card */}
+      <div className="flex-1 flex items-center justify-center py-6">
         <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.98 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-teal-200/80 dark:border-slate-800 overflow-hidden text-slate-800 dark:text-slate-100"
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 text-center flex flex-col items-center"
         >
-          {/* Top Accent Gradient Header */}
-          <div className="h-3 bg-gradient-to-r from-amber-500 via-rose-500 to-teal-600" />
-
-          <div className="p-6 sm:p-8 space-y-6">
-            {/* Top Bar: Brand, Badge & Language Selector */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-teal-600 text-white flex items-center justify-center shadow-md shadow-teal-600/20">
-                  <HeartPulse className="w-6 h-6" />
-                </div>
-                <div>
-                  <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
-                    SehatSaathi <span className="text-teal-600 dark:text-teal-400">Pro</span>
-                  </span>
-                  <span className="block text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Pakistan Digital Health Network
-                  </span>
-                </div>
-              </div>
-
-              {/* Language Selector for the Disclaimer */}
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-teal-600 dark:text-teal-400 hidden sm:block" />
-                <LanguageSelector
-                  currentLanguage={currentLanguage}
-                  onLanguageChange={onLanguageChange}
-                />
-              </div>
-            </div>
-
-            {/* Primary Disclaimer Banner Box */}
-            <div className="p-5 sm:p-6 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700/60 flex items-start gap-4">
-              <div className="p-3 bg-amber-500 text-white rounded-2xl shrink-0 shadow-sm mt-0.5">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div className="space-y-1.5">
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 text-xs font-bold uppercase tracking-wider">
-                  Mandatory Medical Advisory • Step 1
-                </span>
-                <h2 className="text-lg sm:text-xl font-extrabold text-amber-950 dark:text-amber-100 leading-snug">
-                  {disclaimerHeadline}
-                </h2>
-              </div>
-            </div>
-
-            {/* Core Descriptive Text */}
-            <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
-              <p className="text-sm sm:text-base text-slate-700 dark:text-slate-200 leading-relaxed">
-                {detailedNotice}
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-                <div className="flex items-start gap-2">
-                  <Stethoscope className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                  <span>Always verify preliminary AI assessments with a PMDC registered doctor.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <ShieldAlert className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                  <span>Do not disregard emergency symptoms or delay treatment.</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Audio Accessibility Player */}
-            <div className="p-3.5 rounded-2xl bg-teal-50/70 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60">
-              <AudioPlayerControls
-                currentLanguage={currentLanguage}
-                textToSpeak={`${disclaimerHeadline}. ${detailedNotice}`}
-              />
-            </div>
-
-            {/* Emergency Fast Access */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-red-600 text-white shadow-xs shrink-0">
-                  <PhoneCall className="w-4 h-4 animate-pulse" />
-                </div>
-                <div className="text-xs">
-                  <span className="font-bold text-rose-950 dark:text-rose-200 block">
-                    Critical Emergency?
-                  </span>
-                  <span className="text-rose-800 dark:text-rose-300">
-                    Rescue 1122 Ambulance is free across Pakistan.
-                  </span>
-                </div>
-              </div>
-              <a
-                href="tel:1122"
-                className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs text-center transition-colors shrink-0"
-              >
-                Call 1122
-              </a>
-            </div>
-
-            {/* User Acknowledgment Checkbox */}
-            <label className="flex items-start gap-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                id="disclaimer-terms-checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded-sm text-teal-600 focus:ring-teal-500 border-slate-300 dark:border-slate-600 cursor-pointer"
-              />
-              <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-normal">
-                {currentLanguage === 'ur'
-                  ? 'میں تسلیم کرتا ہوں کہ یہ ایپ صرف معلوماتی رہنمائی کے لیے ہے اور میں علاج سے پہلے ڈاکٹر سے مشورہ کروں گا۔'
-                  : 'I understand that this app is an assistive guide and I agree to consult a doctor before taking any medical action.'}
-              </span>
-            </label>
-
-            {/* Proceed / Continue Button */}
-            <button
-              type="button"
-              id="initial-disclaimer-proceed-btn"
-              disabled={!agreedToTerms}
-              onClick={onAcknowledge}
-              className="w-full flex items-center justify-center gap-2.5 py-4 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-base shadow-lg shadow-teal-600/25 transition-all cursor-pointer min-h-[50px]"
-            >
-              <CheckCircle2 className="w-5 h-5 text-white" />
-              <span>
-                {currentLanguage === 'ur'
-                  ? 'میں سمجھ گیا / جاری رکھیں'
-                  : 'I Understand — Continue'}
-              </span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+          {/* Top Circular Stethoscope Badge */}
+          <div className="w-16 h-16 rounded-full bg-teal-50 dark:bg-teal-950/60 border-2 border-teal-100 dark:border-teal-800 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-4 shadow-xs">
+            <Stethoscope className="w-8 h-8 stroke-[1.8]" />
           </div>
+
+          {/* Badge Pill */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/80 border border-teal-200/70 dark:border-teal-800/80 text-[11px] font-bold text-teal-700 dark:text-teal-300 tracking-wider uppercase mb-3">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{badgeText}</span>
+          </div>
+
+          {/* Headline */}
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-3">
+            {headline}
+          </h2>
+
+          {/* Message Text */}
+          <p className="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed max-w-md mb-6">
+            {message}
+          </p>
+
+          {/* Audio Listen Option */}
+          <button
+            type="button"
+            onClick={handleSpeak}
+            className="inline-flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 font-semibold mb-6 hover:underline cursor-pointer"
+          >
+            <Volume2 className="w-4 h-4" />
+            <span>
+              {currentLanguage === 'ur'
+                ? 'آواز میں سنیں'
+                : currentLanguage === 'roman'
+                ? 'Awaaz mein sunein'
+                : 'Listen to message'}
+            </span>
+          </button>
+
+          {/* Primary Action Button */}
+          <button
+            type="button"
+            id="disclaimer-continue-btn"
+            onClick={onAcknowledge}
+            className="w-full py-3.5 px-6 rounded-xl sm:rounded-2xl bg-[#0f766e] hover:bg-[#0d6d66] active:scale-[0.99] text-white font-semibold text-base shadow-md shadow-teal-700/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+          >
+            <span>{buttonText}</span>
+            <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+          </button>
         </motion.div>
       </div>
 
-      {/* Global Shared Footer */}
-      <GlobalFooter className="bg-transparent border-t-0 py-2 text-slate-400" />
+      {/* Footer info */}
+      <div className="text-center text-xs text-slate-400 pb-2">
+        Pakistan Digital Health Network • PMDC Licensed Supervision
+      </div>
     </div>
   );
 };

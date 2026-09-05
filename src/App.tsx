@@ -26,6 +26,7 @@ import { TeleconsultBookingModal } from './components/TeleconsultBookingModal';
 import { DisclaimerModal } from './components/DisclaimerModal';
 import { SplashScreen } from './components/SplashScreen';
 import { InitialDisclaimerScreen } from './components/InitialDisclaimerScreen';
+import { LoginFormScreen } from './components/LoginFormScreen';
 import { LoginModal } from './components/LoginModal';
 import {
   PhoneCall,
@@ -35,11 +36,14 @@ import {
   VolumeX,
   Stethoscope,
   Info,
+  Linkedin,
+  Globe,
 } from 'lucide-react';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState<boolean>(true);
   const [hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer] = useState<boolean>(false);
-  const [showSplash, setShowSplash] = useState(false);
+  const [hasLoggedIn, setHasLoggedIn] = useState<boolean>(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
@@ -47,7 +51,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Dynamic user account management (pulls dynamically, supports switching to any user e.g. Farooq)
+  // Dynamic user account management (defaulted to Yusra Khalique Shaikh from video)
   const [currentUser, setCurrentUser] = useState<UserAccount>(() => {
     const saved = localStorage.getItem('sehat_saathi_current_user');
     if (saved) {
@@ -59,8 +63,8 @@ export default function App() {
     }
     return {
       id: 'usr-1',
-      name: 'Farooq',
-      email: 'farooq@sehatsaathi.pk',
+      name: 'Yusra Khalique Shaikh',
+      email: 'yusrakhalique193@gmail.com',
       phone: '+92 300 1234567',
       isLoggedIn: true,
     };
@@ -118,6 +122,7 @@ export default function App() {
       isLoggedIn: false,
     };
     setCurrentUser(guestUser);
+    setHasLoggedIn(false);
     try {
       localStorage.setItem('sehat_saathi_current_user', JSON.stringify(guestUser));
     } catch {
@@ -210,8 +215,16 @@ export default function App() {
         isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'
       }`}
     >
-      {/* Mandatory Disclaimer Gate: Appears first before website starts */}
-      {!hasAcknowledgedDisclaimer && (
+      {/* 1. Splash Screen: Appears first on launch */}
+      {showSplash && (
+        <SplashScreen
+          currentLanguage={currentLanguage}
+          onFinish={() => setShowSplash(false)}
+        />
+      )}
+
+      {/* 2. Doctor Verification Required / Important Message Screen */}
+      {!showSplash && !hasAcknowledgedDisclaimer && (
         <InitialDisclaimerScreen
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
@@ -219,11 +232,17 @@ export default function App() {
         />
       )}
 
-      {/* Splash Screen if active */}
-      {showSplash && hasAcknowledgedDisclaimer && (
-        <SplashScreen
+      {/* 3. Welcome Back / Login Screen */}
+      {!showSplash && hasAcknowledgedDisclaimer && !hasLoggedIn && (
+        <LoginFormScreen
           currentLanguage={currentLanguage}
-          onFinish={() => setShowSplash(false)}
+          onLanguageChange={setCurrentLanguage}
+          initialUserName={currentUser.name}
+          initialEmail={currentUser.email}
+          onLoginSuccess={(user) => {
+            handleLogin(user);
+            setHasLoggedIn(true);
+          }}
         />
       )}
 
@@ -276,9 +295,10 @@ export default function App() {
       />
 
       {/* High Density Main Content Container */}
-      <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto max-h-screen">
+      <main className="flex-1 flex flex-col min-h-screen p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto">
         <HighDensityHeader
           currentLanguage={currentLanguage}
+          activeTab={activeTab}
           activeProfile={patientProfiles[0]}
           currentUser={currentUser}
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
@@ -287,7 +307,6 @@ export default function App() {
           onNavigate={setActiveTab}
           voiceAutoPlay={voiceAutoPlay}
           onToggleVoiceAutoPlay={toggleVoiceAutoPlay}
-          currentLocationName="Multan, Pakistan"
           onSelectLanguage={setCurrentLanguage}
         />
 
@@ -296,8 +315,12 @@ export default function App() {
             <HeroLanding
               currentLanguage={currentLanguage}
               pendingDoctorReviewsCount={pendingCases.length}
+              currentUser={currentUser}
+              patientProfiles={patientProfiles}
               onNavigate={setActiveTab}
               onEmergencyCall={() => setActiveTab('emergency')}
+              onOpenDisclaimer={() => setShowDisclaimer(true)}
+              onReplaySplash={() => setShowSplash(true)}
             />
           )}
 
@@ -358,34 +381,66 @@ export default function App() {
           )}
         </div>
 
-        {/* High Density Footer */}
-        <footer className="mt-8 py-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold gap-3">
-          <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
-            <button
-              type="button"
-              onClick={() => setActiveTab('doctor_portal')}
-              className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors cursor-pointer"
-            >
-              PMDC Verified: 2,400+ Doctors ({pendingCases.length} in Queue)
-            </button>
-            <span>•</span>
-            <span>Privacy: HIPAA Encrypted</span>
-            <span>•</span>
-            <span>7 Languages: Urdu • English • Sindhi • Pashto • Balochi • Punjabi • Saraiki</span>
-          </div>
+        {/* Pinned Bottom Footer Container */}
+        <div id="app-bottom-footer-container" className="mt-auto pt-10 shrink-0">
+          {/* High Density Footer */}
+          <footer className="py-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold gap-3">
+            <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
+              <button
+                type="button"
+                onClick={() => setActiveTab('doctor_portal')}
+                className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors cursor-pointer"
+              >
+                PMDC Verified: 2,400+ Doctors ({pendingCases.length} in Queue)
+              </button>
+              <span>•</span>
+              <span>Privacy: HIPAA Encrypted</span>
+              <span>•</span>
+              <span>7 Languages: Urdu • English • Sindhi • Pashto • Balochi • Punjabi • Saraiki</span>
+            </div>
 
-          <div className="flex items-center gap-2 text-rose-500 font-semibold">
-            <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping shrink-0" />
-            <span>Note: AI is assistive, always verify with a doctor</span>
-          </div>
-        </footer>
+            <div className="flex items-center gap-2 text-rose-500 font-semibold">
+              <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping shrink-0" />
+              <span>Note: AI is assistive, always verify with a doctor</span>
+            </div>
+          </footer>
 
-        {/* Minimal Bottom Footer Line */}
-        <div
-          id="designer-attribution-footer"
-          className="mt-3 pt-2 pb-1 border-t border-slate-200/40 dark:border-slate-800/40 text-center text-xs text-slate-400 dark:text-slate-500 font-medium tracking-wide select-none"
-        >
-          Design by Yusra Khalique Ahmed
+          {/* Minimal Bottom Footer Line */}
+          <div
+            id="designer-attribution-footer"
+            className="mt-3 mb-2 pt-3 pb-2 flex flex-col items-center justify-center border-t border-slate-200/60 dark:border-slate-800/60 text-center select-none group"
+          >
+            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full backdrop-blur-md backdrop-saturate-150 bg-gradient-to-r from-white/70 via-teal-50/40 to-white/70 dark:from-slate-900/60 dark:via-teal-950/30 dark:to-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 shadow-[0_4px_16px_-2px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_16px_-2px_rgba(0,0,0,0.2)] transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:brightness-105 group-hover:border-teal-500/50 dark:group-hover:border-teal-400/50 group-hover:shadow-[0_0_18px_rgba(20,184,166,0.25)] dark:group-hover:shadow-[0_0_20px_rgba(45,212,191,0.22)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 group-hover:bg-teal-400 transition-colors shrink-0" />
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100 tracking-wide transition-colors whitespace-nowrap">
+                Design by <span className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">Yusra Khalique Ahmed</span>
+              </p>
+
+              {/* Minimalist interactive profile icons appearing on hover */}
+              <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-300/60 dark:border-slate-700/60 opacity-0 group-hover:opacity-100 max-w-0 group-hover:max-w-[70px] overflow-hidden transition-all duration-300 ease-out">
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 rounded-md text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  title="LinkedIn Profile"
+                  aria-label="LinkedIn Profile"
+                >
+                  <Linkedin className="w-3.5 h-3.5" />
+                </a>
+                <a
+                  href="https://github.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1 rounded-md text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
+                  title="Design Portfolio"
+                  aria-label="Design Portfolio"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 

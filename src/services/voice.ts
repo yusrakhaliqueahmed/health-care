@@ -104,9 +104,22 @@ class VoiceService {
 
     // Try finding best matching voice available on system
     const voices = this.synth.getVoices?.() || [];
-    const matchedVoice = voices.find((v) =>
-      v.lang.toLowerCase().startsWith(bcp47.slice(0, 2).toLowerCase())
-    );
+    let matchedVoice: SpeechSynthesisVoice | undefined;
+
+    if (lang === 'roman') {
+      // Roman Urdu: prioritize Urdu or Hindi voice for natural phonetics, or South Asian English / standard English
+      matchedVoice =
+        voices.find((v) => v.lang.toLowerCase().startsWith('ur')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('hi')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('en-pk')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('en-in')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('en'));
+    } else {
+      matchedVoice =
+        voices.find((v) => v.lang.toLowerCase().startsWith(bcp47.slice(0, 2).toLowerCase())) ||
+        (bcp47.startsWith('ur') ? voices.find((v) => v.lang.toLowerCase().startsWith('hi')) : undefined);
+    }
+
     if (matchedVoice) {
       utterance.voice = matchedVoice;
     }

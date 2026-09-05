@@ -298,15 +298,15 @@ export const INITIAL_PHARMACIES: Pharmacy[] = [
 export const INITIAL_PROFILES: PatientProfile[] = [
   {
     id: 'prof-1',
-    name: 'Muhammad Farooq',
+    name: 'Yusra Khalique Shaikh',
     relation: 'Self',
     ageGroup: 'adult',
-    exactAge: 42,
-    gender: 'male',
+    exactAge: 24,
+    gender: 'female',
     bloodGroup: 'B+',
-    conditions: 'Mild Hypertension (Blood Pressure)',
-    medications: 'Tab Lowplat 75mg daily',
-    allergies: 'Penicillin (Skin Rash)',
+    conditions: 'No chronic illness',
+    medications: 'None',
+    allergies: 'None',
     emergencyContact: '+92-300-1234567',
   },
   {

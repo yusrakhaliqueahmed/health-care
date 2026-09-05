@@ -35,60 +35,40 @@ const SYMPTOM_GUIDANCE_PROMPTS = [
     id: 'fever',
     labels: {
       en: 'Fever and body aches',
+      roman: 'Tez bukhar aur jism mein dard',
       ur: 'تیز بخار اور جسم میں درد',
-      sd: 'تيز بخار ۽ بدن ۾ سور',
-      ps: 'لوړه تبه او د بدن درد',
-      bal: 'گرمیں تب ءُ جان دردی',
-      pa: 'تیز بخار تے پنڈے وچ پیڑ',
-      skr: 'تیز تاپ (بخار) تے جسم وچ درد',
     },
   },
   {
     id: 'cough',
     labels: {
       en: 'Dry cough and sore throat',
+      roman: 'Khushk khansi aur gale mein dard',
       ur: 'خشک کھانسی اور گلے میں درد',
-      sd: 'خشڪ کنگھ ۽ ڳلي ۾ سور',
-      ps: 'وچه ټوخی او د ستوني درد',
-      bal: 'ھشکیں کُلگ ءُ گٹ دردی',
-      pa: 'خشک کھنگھ تے گلے دی سوزش',
-      skr: 'کھنگھ تے سنگھ دا درد',
     },
   },
   {
     id: 'headache',
     labels: {
       en: 'Severe headache and fatigue',
+      roman: 'Shadeed sar dard aur susti ya thakawat',
       ur: 'شدید سر درد اور سستی و تھکاوٹ',
-      sd: 'سخت مٿي جو سور ۽ ٿڪ',
-      ps: 'سخت سر درد او ستړیا',
-      bal: 'سرا سکیں دردی ءُ تھکاوٹ',
-      pa: 'شدید سر پیڑ تے تھکاوٹ',
-      skr: 'سر وچ سخت درد تے تھکاوٹ',
     },
   },
   {
     id: 'stomach',
     labels: {
       en: 'Stomach pain and nausea',
+      roman: 'Pait mein dard aur matli',
       ur: 'پیٹ میں درد اور متلی',
-      sd: 'پيٽ ۾ سور ۽ الٽي جھڙي ڪيفيت',
-      ps: 'د نس درد او التهاب',
-      bal: 'لاپ دردی ءُ دل کَچ',
-      pa: 'ڈھڈھ پیڑ تے متلی',
-      skr: 'ڈھڈھ وچ درد تے متلی',
     },
   },
   {
     id: 'chest',
     labels: {
       en: 'Chest tightness and shortness of breath',
+      roman: 'Seenay mein dabao aur saans mein takleef',
       ur: 'سینے میں دباؤ اور سانس لینے میں تنگی',
-      sd: 'ڇاتيءَ ۾ دٻاءُ ۽ ساهه کڻڻ ۾ تڪليف',
-      ps: 'په سینې فشار او د ساه لنډي',
-      bal: 'سینگ دردی ءُ ساہ بند بوھگ',
-      pa: 'چھاتی تے دباؤ تے ساہ دی تنگی',
-      skr: 'چھاتی تے دباؤ تے ساہ دی تنگی',
     },
   },
 ];
@@ -132,12 +112,8 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
   useEffect(() => {
     const welcomeByLang: Record<SupportedLanguage, string> = {
       en: "Hello, I am SehatSaathi Pro. I am here to help you evaluate your symptoms and prepare a clinical file for your doctor. Who is this consultation for, and what symptoms are you experiencing?",
+      roman: "Assalam-o-Alaikum, main SehatSaathi Pro hoon. Main aapki alamaat ko samajhnay aur doctor ke liye case file tayar karnay mein madad karoon ga. Yeh mashwara kis ke liye hai aur aapko kya takleef ya alamaat hain?",
       ur: "السلام علیکم، میں صحت ساتھی پرو ہوں۔ میں آپ کی علامات کو سمجھنے اور ڈاکٹر کے لیے رپورٹ تیار کرنے میں مدد کروں گا۔ آپ کو کیا تکلیف یا علامات ہیں؟",
-      sd: "اسلام عليڪم، مان صحت ساٿي پرو آهيان. مان توهان جي بيماري سمجهڻ ۾ مدد ڪندس. توهان کي ڪهڙي تڪليف آهي؟",
-      ps: "سلام، زه صحت ملګری پرو یم. زه دلته یم ترڅو ستاسو نښې وڅیړم او د ډاکټر لپاره لارښوونه چمتو کړم. تاسو څه تکلیف لرئ؟",
-      bal: "سلام، من صحت سنگت پرو آں۔ من شمارا نادراھی چارگ ءُ ڈاکٹر واستہ رپورٹ جوڑ کنگ ءَ کمک کناں۔ شمارا چے رنج است انت؟",
-      pa: "السلام علیکم، میں صحت ساتھی پرو ہاں۔ میں تہاڈی تکلیف سمجن تے ڈاکٹر لئی کیس تیار کرن لئی حاضر ہاں۔ تہاڈے نال کی مسئلہ اے؟",
-      skr: "السلام علیکم، میں صحت سنگی پرو ہاں۔ میں تہاڈی بیماری کوں سمجھݨ تے ڈاکٹر واسطے کیس بݨاوݨ وچ مدد کریساں۔ تیکوں کیا تکلیف ہے؟",
     };
 
     const initialMsg: ChatMessage = {
@@ -267,16 +243,8 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
         replyText =
           currentLanguage === 'ur'
             ? 'سرور سے رابطہ عارضی طور پر سست ہے۔ اگر آپ کو سینے میں درد یا سانس کی تکلیف ہے تو فوری طور پر 1122 پر کال کریں۔'
-            : currentLanguage === 'sd'
-            ? 'سرور سان رابطو سست آهي. جيڪڏهن ڇاتيءَ ۾ سور يا ساهه جي تڪليف آهي ته فوري طور 1122 تي ڪال ڪريو.'
-            : currentLanguage === 'ps'
-            ? 'د سرور اړیکه لږ ورو ده. که تاسو د سینې درد یا د ساه لنډي لرئ، سمدستي 1122 ته زنګ ووهئ.'
-            : currentLanguage === 'bal'
-            ? 'سرور ئِ رابطہ ڈک اِنت۔ اگاں سینگ دردی یا ساہ بند بوھگ است گڑا 1122 ءَ کال بکن اِت۔'
-            : currentLanguage === 'pa'
-            ? 'سرور نال رابطہ عارضی طور تے کٹیا گیا اے۔ جے چھاتی وچ پیڑ یا ساہ دی تنگی اے تے فوراً 1122 تے کال کرو۔'
-            : currentLanguage === 'skr'
-            ? 'سرور نال رابطہ سست ہے۔ جے چھاتی وچ درد یا ساہ رکݨ دی شکایت ہے تاں فوراً 1122 تے کال کرو۔'
+            : currentLanguage === 'roman'
+            ? 'Server se rabta arzi tor par sust hai. Agar seenay mein shadeed dard ya saans mein takleef hai to foran 1122 par call karein.'
             : 'Temporary connectivity delay. If you are experiencing severe chest pain, shortness of breath, or emergency symptoms, call Rescue 1122 immediately.';
         urgency = 'RED';
       }
@@ -312,31 +280,11 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
 1. پرسکون ماحول میں آرام کریں اور وافر مقدار میں پانی یا او آر ایس استعمال کریں۔
 2. اگر سر درد یا عام بخار ہے تو پیراسیٹامول مددگار ہو سکتی ہے۔
 3. ایمرجنسی انتباہ: اگر سینے میں درد یا سانس لینے میں شدید دشواری ہو تو فوراً 1122 پر کال کریں۔`;
-      } else if (currentLanguage === 'sd') {
-        fallbackText = `توهان جون علامتون نوٽ ڪيون ويون آهن: "${textToSend}".
-1. پرسڪون ماحول ۾ آرام ڪريو ۽ پاڻي يا او آر ايس وڌيڪ استعمال ڪريو.
-2. پيراسيٽامول طبي لحاظ کان فائديمند ٿي سگهي ٿي.
-3. جيڪڏهن ڇاتيءَ ۾ سور يا ساهه جي تڪليف هجي ته فوري 1122 تي ڪال ڪريو.`;
-      } else if (currentLanguage === 'ps') {
-        fallbackText = `ستاسو نښې ثبت شوې: "${textToSend}".
-1. په ارام چاپیریال کې استراحت وکړئ او ډیرې اوبه وڅښئ.
-2. پاراسیټامول د تبې او درد په کمولو کې مرسته کولی شي.
-3. بیړنۍ خبرداری: که د سینې سخت درد یا د ساه لنډي وي، سمدستي 1122 ته زنګ ووهئ.`;
-      } else if (currentLanguage === 'bal') {
-        fallbackText = `شمارا نادراھی ھال نوٽ بوت: "${textToSend}".
-1. وشیں جاہ ءَ آرام بکن اِت ءُ آپ پی اِت۔
-2. پیراسیٹامول درد ءَ کم کنت۔
-3. سکیـں ھال: اگاں سینگ دردی یا ساہ بند بوھگ است گڑا 1122 ءَ کال بکن اِت۔`;
-      } else if (currentLanguage === 'pa') {
-        fallbackText = `تہاڈی علامات نوٹ کر لئیاں گئیاں نیں: "${textToSend}"۔
-1. پرسکون کمرے وچ آرام کرو تے پانی دا استعمال رکھو۔
-2. پیراسیٹامول درد گھٹ کرن لئی لئی جا سکدی اے۔
-3. ایمرجنسی صورت وچ فوراً 1122 تے کال کرو۔`;
-      } else if (currentLanguage === 'skr') {
-        fallbackText = `تہاڈی بیماری دیاں علامات لکھ گھدیاں ہن: "${textToSend}"۔
-1. ٹھڈے کمرے وچ آرام کرو تے پاݨی دا استعمال ودھاوو۔
-2. پیراسیٹامول درد کوں گھٹ کریندی ہے۔
-3. چھاتی وچ درد یا ساہ رکݨ تے فوراً 1122 تے رابطہ کرو۔`;
+      } else if (currentLanguage === 'roman') {
+        fallbackText = `Aapki alamaat note kar li gayi hain: "${textToSend}".
+1. Pur-sukoon mahol mein aaram karein aur paani ya ORS ka istemaal karein.
+2. Mamooli dard ya bukhar ke liye Paracetamol mufeed ho sakti hai (umar aur allergies check karein).
+3. Emergency Alert: Agar seenay mein shadeed dard ya saans mein takleef ho to foran 1122 par call karein.`;
       }
 
       const errorMsg: ChatMessage = {
@@ -526,16 +474,8 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
             <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
               {currentLanguage === 'ur'
                 ? 'عام علامات اور فوری رہنمائی (آواز اور تحریر):'
-                : currentLanguage === 'sd'
-                ? 'عام علامتون ۽ فوري رهنمائي (آواز ۽ لکڻي):'
-                : currentLanguage === 'ps'
-                ? 'عامې نښې او فوري لارښوونه (غږ او لیکنه):'
-                : currentLanguage === 'bal'
-                ? 'عامیں نادراھی ءُ راہبند (توار ءُ نبشتہ):'
-                : currentLanguage === 'pa'
-                ? 'عام علامات تے فوری راہنمائی (آواز تے تحریر):'
-                : currentLanguage === 'skr'
-                ? 'عام بیماریاں تے فوری صلاح (آواز تے تحریر):'
+                : currentLanguage === 'roman'
+                ? 'Aam Alamaat aur Fori Rehnumai (Voice & Text):'
                 : 'Common Symptom Inquiries (Voice & Written Text):'}
             </span>
           </div>

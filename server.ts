@@ -1,14 +1,10 @@
 import express from "express";
 import path from "path";
-import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const PORT = 3000;
 
@@ -71,12 +67,8 @@ async function generateContentWithFallback(
 
 const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
+  roman: "Roman Urdu (Urdu in English alphabet)",
   ur: "Urdu (اردو)",
-  sd: "Sindhi (سنڌي)",
-  ps: "Pashto (پښتو)",
-  bal: "Balochi (بلوچی)",
-  pa: "Punjabi (پنجابی / Shahmukhi)",
-  skr: "Saraiki (سرائیکی)",
 };
 
 function getClinicalChatFallback(
@@ -123,16 +115,8 @@ function getClinicalChatFallback(
     urgency = "RED";
     if (langKey.startsWith("ur")) {
       guidance = "اہم انتباہ (RED EMERGENCY): سینے میں شدید درد، سانس لینے میں تنگی یا بے ہوشی سنگین ایمرجنسی علامات ہیں۔ براہِ کرم فوراً آرام کریں اور ایمرجنسی میں ریسکیو 1122 پر کال کریں یا قریبی ایمرجنسی ہسپتال تشریف لے جائیں۔ یہ مصنوعی ذہانت کی ابتدائی راہنمائی ہے، ڈاکٹر سے فوری معائنہ لازمی ہے۔";
-    } else if (langKey.startsWith("sd")) {
-      guidance = "اهم خبرداري (RED EMERGENCY): ڇاتيءَ ۾ سخت سور، ساهه کڻڻ ۾ ڏکيائي يا بيهوشي هنگامي علامتون آهن. مهرباني ڪري فوري طور تي ريسڪيو 1122 تي ڪال ڪريو يا ويجهي اسپتال وڃو. هي طبي رهنمائي آهي، فوري ڊاڪٽر ڏيکاريو.";
-    } else if (langKey.startsWith("ps")) {
-      guidance = "مهم خبرداری (RED EMERGENCY): په سینې کې سخت درد او د ساه لنډي جدي نښې دي. مهرباني وکړئ سمدستي ریسکیو 1122 ته زنګ ووهئ یا نږدې روغتون ته لاړ شئ. دا د هوښیار سیسټم لارښوونه ده، د ډاکټر لیدل بیړني دي.";
-    } else if (langKey.startsWith("bal")) {
-      guidance = "سکیـں ھال (RED EMERGENCY): سینگ دردی ءُ ساہ بند بوھگ مزنیں خطرہ اِنت۔ زوت ریسکیو 1122 ءَ کال بکن اِت یا نادراھجاہ ءَ روگ لوٹیت۔ اے ڈاکٹر ئِ بدلہ نہ اِنت۔";
-    } else if (langKey.startsWith("pa")) {
-      guidance = "اہم وارننگ (RED EMERGENCY): چھاتی وچ تیز پیڑ یا ساہ گھٹن سنگین ایمرجنسی اے۔ فوراً ریسکیو 1122 تے کال کرو یا قریبی ہسپتال پہنچو۔ ڈاکٹر نال فوری رابطہ کرو۔";
-    } else if (langKey.startsWith("skr")) {
-      guidance = "اہم خبردار (RED EMERGENCY): چھاتی وچ سخت درد یا ساہ رکݨ خطرے دی علامت ہے۔ فوراً 1122 تے کال کرو یا نیڑے ہسپتال ونڄو۔ ڈاکٹر کولوں چیک کرواوݨ ضروری ہے۔";
+    } else if (langKey.startsWith("roman")) {
+      guidance = "AHEM ITTILA (RED EMERGENCY): Seenay mein shadeed dard, saans lene mein takleef ya behoshi ahem emergency alamaat hain. Barah-e-karam foran aaram karein aur emergency mein Rescue 1122 par call karein ya qareebi hospital tashreef le jayein. Yeh AI ki ibtidai rehnumai hai, doctor se fori checkup lazmi hai.";
     } else {
       guidance = "CRITICAL ALERT (RED EMERGENCY): Severe chest pain, shortness of breath, sudden weakness, or loss of consciousness require immediate emergency care. Please sit down comfortably, remain calm, and immediately call Rescue 1122 or head to the nearest hospital emergency department.";
     }
@@ -144,36 +128,12 @@ function getClinicalChatFallback(
 2. پانی یا او آر ایس (ORS) کا زیادہ استعمال کریں کیونکہ پانی کی کمی سر درد کی عام وجہ ہے۔
 3. اگر درد تناؤ کا ہو تو بالغوں کے لیے پیراسیٹامول (Paracetamol 500mg) مناسب سمجھی جاتی ہے۔
 4. ریڈ فلیگ: اگر اچانک شدید دھماکے جیسا درد ہو تو فوراً ڈاکٹر سے رجوع کریں۔`;
-    } else if (langKey.startsWith("sd")) {
-      guidance = `مٿي جي سور لاءِ طبي مشورو (GREEN):
-1. ٿڌي ۽ پرسڪون ڪمري ۾ آرام ڪريو.
-2. گهڻو پاڻي يا او آر ايس (ORS) پيو.
-3. بالغن لاءِ پيراسيٽامول طبي لحاظ کان فائديمند ٿي سگهي ٿي.
-4. جيڪڏهن سور وڌي ته فوري ڊاڪٽر سان رجوع ڪريو.`;
-    } else if (langKey.startsWith("ps")) {
-      guidance = `د سر درد لپاره لومړنۍ طبي لارښوونه (GREEN):
-1. په ارامه او تیاره خونه کې آرام وکړئ.
-2. ډیرې اوبه یا او آر ایس وڅښئ.
-3. د اړتیا په وخت کې د پاراسیټامول مناسبه کارونه مرسته کوي.
-4. که درد ډیر سخت شي نو ډاکټر ته مراجعه وکړئ.`;
-    } else if (langKey.startsWith("bal")) {
-      guidance = `سرا دردی واستہ راہبند (GREEN):
-1. وشیں ءُ آرامیں جاہ ءَ واب کپ اِت۔
-2. آپ ءُ او آر ایس گیش پی اِت۔
-3. پیراسیٹامول ئِ ورگ درد ءَ کم کنت۔
-4. درد گیش بوت گڑا ڈاکٹر ءَ پیش دار اِت۔`;
-    } else if (langKey.startsWith("pa")) {
-      guidance = `سر پیڑ لئی گھریلو تے ابتدائی امداد (GREEN):
-1. پرسکون کمرے وچ کچھ دیر آرام کرو۔
-2. پانی تے نمکول ودھ پئو۔
-3. پیراسیٹامول گولی درد گھٹ کرن وچ مدد دیندی اے۔
-4. جے پیڑ نہ ہٹے تے ڈاکٹر کول جاؤ۔`;
-    } else if (langKey.startsWith("skr")) {
-      guidance = `سر درد واسطے ابتدائی صلاح (GREEN):
-1. ٹھڈے تے پرسکون کمرے وچ آرام کرو۔
-2. پاݨی دا استعمال ودھاوو۔
-3. پیراسیٹامول گولی درد کوں گھٹ کریندی ہے۔
-4. تکلیف ودھے تاں ڈاکٹر کولوں چیک کرواوو۔`;
+    } else if (langKey.startsWith("roman")) {
+      guidance = `Sar dard ke liye ibtidai tibbi rehnumai (GREEN):
+1. Pur-sukoon aur halki roshni walay thanday kamray mein 20-30 minute aaram karein.
+2. Paani ya ORS ka zyada istemaal karein kyun ke paani ki kami sar dard ki aam wajah hai.
+3. Agar dard stress ya thakawat ka ho toh baray afrad Paracetamol (500mg) le saktay hain.
+4. Red Flag Warning: Agar achanak shadeed dhamakay jaisa dard ho toh foran doctor se rujoo karein.`;
     } else {
       guidance = `Clinical Assessment for Headache (Urgency: GREEN):
 1. Rest in a quiet, dark, and well-ventilated room with minimal screen exposure.
@@ -189,36 +149,12 @@ function getClinicalChatFallback(
 2. ماتھے پر گیلے کپڑے کی ہلکی پٹیاں رکھیں اور وافر پانی پئیں۔
 3. پیراسیٹامول مناسب خوراک میں استعمال کی جا سکتی ہے۔
 4. اگر بخار 102°F سے زیادہ ہو یا 3 دن سے زائد رہے تو ڈاکٹر سے رجوع کریں۔`;
-    } else if (langKey.startsWith("sd")) {
-      guidance = `بخار لاءِ طبي هدايتون (YELLOW):
-1. ٿرماميٽر سان بخار جو گرمي پد چيڪ ڪريو.
-2. مٿي تي آلي ڪپڙي جون پٽيون رکو ۽ پاڻي گهڻو پيو.
-3. مناسب پيراسيٽامول وٺو.
-4. جيڪڏهن 3 ڏينهن کان وڌيڪ رهي ته ڊاڪٽر وٽ وڃو.`;
-    } else if (langKey.startsWith("ps")) {
-      guidance = `د تبې لپاره لومړنۍ لارښوونې (YELLOW):
-1. د تبې کچه په ترمامیتر سره اندازه کړئ.
-2. په تندي لنده ټوټه کیږدئ او مایعات ډیر وڅښئ.
-3. پاراسیټامول د تبې په کمولو کې مرسته کوي.
-4. که تبه اوږده شي نو ډاکټر سره اړیکه ونیسئ.`;
-    } else if (langKey.startsWith("bal")) {
-      guidance = `تب ئِ چارگ ءُ درمل (YELLOW):
-1. وتی تب ءَ تھرمامیٹر ءَ چار اِت۔
-2. پیشانی ءَ آپ بند پٹی ایر کن اِت ءُ آپ پی اِت۔
-3. پیراسیٹامول مناسب مقدار ءَ کارمرز بکن اِت۔
-4. تب سئے روچ ءَ گیش بوت گڑا ڈاکٹر ءَ روگ لوٹیت۔`;
-    } else if (langKey.startsWith("pa")) {
-      guidance = `بخار لئی ہدایات (YELLOW):
-1. تھرمامیٹر نال بخار روز چیک کرو۔
-2. متھے تے ٹھنڈی پٹیاں رکھو تے پانی بوہتا پئو۔
-3. پیراسیٹامول خوراک دے مطابق لئو۔
-4. بخار نہ لتھے تے ڈاکٹر کول جاؤ۔`;
-    } else if (langKey.startsWith("skr")) {
-      guidance = `بخار (تاپ) واسطے صلاح (YELLOW):
-1. تھرمامیٹر نال بخار چیک کرو۔
-2. متھے تے ٹھنڈے پاݨی دی پٹی رکھو۔
-3. پیراسیٹامول مناسب مقدار وچ ورتو۔
-4. تاپ نہ لتھے تاں ڈاکٹر کول ونڄو۔`;
+    } else if (langKey.startsWith("roman")) {
+      guidance = `Bukhar ke liye tibbi rehnumai (YELLOW):
+1. Digital thermometer se bukhar napain aur record karein.
+2. Mathay par geelay kapray ki pattiyaan rakhein aur paani zyada piyein.
+3. Paracetamol munasib miqdaar mein istemaal ki ja sakti hai.
+4. Agar bukhar 102°F se zyada ho ya 3 din se zyada rahay toh foran doctor se rujoo karein.`;
     } else {
       guidance = `Clinical Assessment for Fever (Urgency: YELLOW):
 1. Record your temperature every 4-6 hours with a clean digital thermometer.
@@ -233,26 +169,11 @@ function getClinicalChatFallback(
 1. مکمل آرام کریں اور مناسب مقدار میں پانی استعمال کریں۔
 2. علامات کی نوعیت اور مدت کو نوٹ کریں تاکہ ڈاکٹر کو درست معلومات فراہم کی جا سکیں۔
 3. اگر تکلیف میں اضافہ ہو تو فوری طور پر مستند ڈاکٹر سے رجوع کریں۔`;
-    } else if (langKey.startsWith("sd")) {
-      guidance = `توهان جون علامتون نوٽ ڪيون ويون آهن: "${message}".
-1. مڪمل آرام ڪريو ۽ پاڻي گهڻو پيو.
-2. جيڪڏهن تڪليف وڌي ته فوري ڊاڪٽر سان رجوع ڪريو.`;
-    } else if (langKey.startsWith("ps")) {
-      guidance = `ستاسو نښې ثبت شوې: "${message}".
-1. بشپړ آرام وکړئ او ډیر مایعات وڅښئ.
-2. د ډاکټر سره د لیدو لپاره خپله طبي قضیه چمتو وساتئ.`;
-    } else if (langKey.startsWith("bal")) {
-      guidance = `شمارا نادراھی ھال نوٽ بوت: "${message}".
-1. وش آرام بکن اِت ءُ آپ پی اِت۔
-2. وتی دردی ڈاکٹر ءَ پیش دارگ واستہ ھمے رپورٹ ءَ بچار اِت۔`;
-    } else if (langKey.startsWith("pa")) {
-      guidance = `تہاڈی علامات نوٹ کر لئیاں گئیاں نیں: "${message}"۔
-1. پورا آرام کرو تے پانی دا استعمال رکھو۔
-2. تکلیف ودھن دی صورت وچ ڈاکٹر نال رابطہ کرو۔`;
-    } else if (langKey.startsWith("skr")) {
-      guidance = `تہاڈی بیماری دیاں علامات لکھ گھدیاں ہن: "${message}"۔
-1. پورھا آرام کرو تے پاݨی پِیو۔
-2. تکلیف ودھے تاں ڈاکٹر کوں ضرور ݙیکھاوو۔`;
+    } else if (langKey.startsWith("roman")) {
+      guidance = `Aapki alamaat note kar li gayi hain: "${message}".
+1. Mukammal aaram karein aur munasib miqdaar mein paani piyein.
+2. Alamaat kab shuru huin aur kitni takleef hai, isko note karein taakay doctor ko sahi maloomat mil sakay.
+3. Agar takleef barhay ya 24-48 ghantay mein theek na ho toh mustanad doctor se mashwara karein.`;
     } else {
       guidance = `I have recorded your symptoms: "${message}".
 1. Rest comfortably and ensure adequate hydration.
@@ -295,13 +216,9 @@ async function startServer() {
 You assist users in preparing a structured clinical case file for real licensed doctors.
 TARGET LANGUAGE: ${targetLanguage} (${language}).
 CRITICAL LANGUAGE MANDATE: You MUST respond purely and natively in ${targetLanguage}.
-- If English: Respond in fluent English.
-- If Urdu: Respond in clean Urdu script (اردو).
-- If Sindhi: Respond in proper Sindhi script (سنڌي).
-- If Pashto: Respond in proper Pashto script (پښتو).
-- If Balochi: Respond in proper Balochi script (بلوچی).
-- If Punjabi: Respond in Punjabi (پنجابی / Shahmukhi script or clear Gurmukhi/Shahmukhi as familiar in Pakistan).
-- If Saraiki: Respond in Saraiki script (سرائیکی).
+- If English: Respond in fluent, clear English.
+- If Roman Urdu: Respond in natural, easy-to-read Roman Urdu (Urdu written with English alphabet, e.g. "Aapko bukhar kab se hai? Paani zyada piyein aur aaram karein").
+- If Urdu: Respond in clean, elegant Urdu script (اردو).
 
 PATIENT CONTEXT:
 - Name: ${patientProfile.name || "Patient"}
@@ -419,14 +336,10 @@ BEHAVIOR RULES:
 
       const systemInstruction = `You are the "SehatSaathi Pro Medicine Safety Engine", assisting Pakistani patients and doctors.
 TARGET LANGUAGE: ${language}.
-CRITICAL LANGUAGE MANDATE: You MUST respond in ${language}. DO NOT default to English if the user requested Urdu, Sindhi, Pashto, Balochi, Punjabi, or Saraiki!
+CRITICAL LANGUAGE MANDATE: You MUST respond in ${language}.
+- If English: Professional English.
+- If Roman Urdu: Natural, clear Roman Urdu (Urdu written in English script).
 - If Urdu: Urdu script (اردو).
-- If Sindhi: Sindhi script (سنڌي).
-- If Pashto: Pashto script (پښتو).
-- If Balochi: Balochi script (بلوچی).
-- If Punjabi: Punjabi script (پنجابی).
-- If Saraiki: Saraiki script (سرائیکی).
-- If English: English.
 
 SAFETY CONSTRAINTS:
 1. Age-Aware Calibration:
@@ -525,13 +438,9 @@ SAFETY CONSTRAINTS:
       const systemInstruction = `You are the "SehatSaathi Pro Clinical Imaging & Report Triage Specialist" serving patients and doctors in Pakistan.
 TARGET LANGUAGE: ${language}.
 CRITICAL LANGUAGE MANDATE: You MUST respond purely in ${language}.
+- If English: Professional English.
+- If Roman Urdu: Clean, accessible Roman Urdu (Urdu written in English alphabet).
 - If Urdu: Urdu script (اردو).
-- If Sindhi: Sindhi script (سنڌي).
-- If Pashto: Pashto script (پښتو).
-- If Balochi: Balochi script (بلوچی).
-- If Punjabi: Punjabi script (پنجابی).
-- If Saraiki: Saraiki script (سرائیکی).
-- If English: English.
 
 YOUR MISSION:
 1. Examine the uploaded medical report or X-ray / scan image.

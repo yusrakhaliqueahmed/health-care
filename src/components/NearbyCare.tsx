@@ -9,7 +9,6 @@ import {
   Stethoscope,
   Building2,
   Pill,
-  Navigation,
   PhoneCall,
   Star,
   ShieldCheck,
@@ -39,17 +38,7 @@ export const NearbyCare: React.FC<NearbyCareProps> = ({
   const [activeTab, setActiveTab] = useState<'doctor' | 'hospital' | 'pharmacy'>(initialTab);
   const [selectedCity, setSelectedCity] = useState<string>('All Cities');
   const [searchQuery, setSearchQuery] = useState('');
-  const [useGps, setUseGps] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-
-  // Trigger GPS detection simulation
-  const handleDetectLocation = () => {
-    setUseGps(true);
-    setSelectedCity('Multan'); // Simulating GPS pinpoint in Pakistan
-    if (voiceManager.getAutoPlay()) {
-      voiceManager.speak('Location detected: Nishtar Road, Multan. Showing nearest verified healthcare providers.', currentLanguage);
-    }
-  };
 
   // Filter Doctors
   const filteredDoctors = INITIAL_DOCTORS.filter((doc) => {
@@ -99,19 +88,6 @@ export const NearbyCare: React.FC<NearbyCareProps> = ({
               PMDC verified specialist doctors, 24/7 emergency hospital trauma centers, and delivery pharmacies across Pakistan.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleDetectLocation}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md shrink-0 ${
-              useGps
-                ? 'bg-emerald-600 text-white'
-                : 'bg-white text-teal-900 hover:bg-teal-50'
-            }`}
-          >
-            <Navigation className="w-4 h-4" />
-            <span>{useGps ? 'GPS Active (Multan)' : t.useMyLocation}</span>
-          </button>
         </div>
       </div>
 
