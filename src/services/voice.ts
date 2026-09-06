@@ -16,7 +16,7 @@ class VoiceService {
   private isPaused = false;
   private currentText = '';
   private speed = 1.0;
-  private isAutoPlayEnabled = true;
+  private isAutoPlayEnabled = false;
 
   constructor() {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {

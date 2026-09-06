@@ -51,46 +51,98 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Dynamic user account management (defaulted to Yusra Khalique Shaikh from video)
+  // User account state - only shows what the user actually provided
   const [currentUser, setCurrentUser] = useState<UserAccount>(() => {
     const saved = localStorage.getItem('sehat_saathi_current_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
       } catch {
         // fallback
       }
     }
     return {
-      id: 'usr-1',
-      name: 'Yusra Khalique Shaikh',
-      email: 'yusrakhalique193@gmail.com',
-      phone: '+92 300 1234567',
-      isLoggedIn: true,
+      id: 'usr-guest',
+      name: '',
+      isLoggedIn: false,
     };
   });
 
-  // App State collections - initialized with dynamic user name
+  // App State collections - initialized without fabricated data
   const [patientProfiles, setPatientProfiles] = useState<PatientProfile[]>(() => {
-    const profiles = [...INITIAL_PROFILES];
-    if (profiles[0]) {
-      const saved = localStorage.getItem('sehat_saathi_current_user');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed?.name) profiles[0] = { ...profiles[0], name: parsed.name };
-        } catch {
-          // ignore
-        }
-      } else {
-        profiles[0] = { ...profiles[0], name: 'Farooq' };
+    const saved = localStorage.getItem('sehat_saathi_patient_profiles');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
       }
     }
-    return profiles;
+    return INITIAL_PROFILES;
   });
-  const [pendingCases, setPendingCases] = useState<PatientCase[]>(INITIAL_CASES);
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>(INITIAL_PRESCRIPTIONS);
-  const [reports, setReports] = useState<MedicalReportRecord[]>(INITIAL_REPORTS);
+  const [pendingCases, setPendingCases] = useState<PatientCase[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_cases');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_CASES;
+  });
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_prescriptions');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_PRESCRIPTIONS;
+  });
+  const [reports, setReports] = useState<MedicalReportRecord[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_reports');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_REPORTS;
+  });
+
+  // Persist user-created data locally
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_patient_profiles', JSON.stringify(patientProfiles));
+    } catch {}
+  }, [patientProfiles]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_cases', JSON.stringify(pendingCases));
+    } catch {}
+  }, [pendingCases]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_prescriptions', JSON.stringify(prescriptions));
+    } catch {}
+  }, [prescriptions]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_reports', JSON.stringify(reports));
+    } catch {}
+  }, [reports]);
 
   // Modal states
   const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
@@ -237,8 +289,8 @@ export default function App() {
         <LoginFormScreen
           currentLanguage={currentLanguage}
           onLanguageChange={setCurrentLanguage}
-          initialUserName={currentUser.name}
-          initialEmail={currentUser.email}
+          initialUserName={currentUser?.name || ''}
+          initialEmail={currentUser?.email || ''}
           onLoginSuccess={(user) => {
             handleLogin(user);
             setHasLoggedIn(true);
@@ -317,6 +369,7 @@ export default function App() {
               pendingDoctorReviewsCount={pendingCases.length}
               currentUser={currentUser}
               patientProfiles={patientProfiles}
+              prescriptionsCount={prescriptions.length}
               onNavigate={setActiveTab}
               onEmergencyCall={() => setActiveTab('emergency')}
               onOpenDisclaimer={() => setShowDisclaimer(true)}

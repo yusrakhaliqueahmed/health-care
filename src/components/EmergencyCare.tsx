@@ -24,6 +24,32 @@ interface EmergencyCareProps {
 export const EmergencyCare: React.FC<EmergencyCareProps> = ({ currentLanguage }) => {
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const [copiedSos, setCopiedSos] = useState(false);
+  const [userLocation, setUserLocation] = useState<string>('');
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [gpsCoordinates, setGpsCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setUserLocation('GPS not supported on this device. Please state your exact city and address.');
+      return;
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setGpsCoordinates({ lat, lng });
+        setUserLocation(`Live GPS: https://maps.google.com/?q=${lat.toFixed(5)},${lng.toFixed(5)} (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+        setIsDetectingLocation(false);
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        setUserLocation('GPS permission denied or unavailable. Please specify your city or landmark.');
+        setIsDetectingLocation(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
 
   const redFlags = [
     {
@@ -58,10 +84,49 @@ export const EmergencyCare: React.FC<EmergencyCareProps> = ({ currentLanguage })
     },
   ];
 
-  const sosMessage = `🚨 MEDICAL EMERGENCY ALERT (Via SehatSaathi Pro):
-Patient requires urgent assistance.
-Location: Near Nishtar Road, Multan, Pakistan
-Rescue 1122 contacted. Please check on patient immediately!`;
+  const nationalHelplines = [
+    {
+      name: 'Rescue 1122 (Ambulance & Fire)',
+      number: '1122',
+      desc: 'Free government emergency rescue & ambulance in all provinces',
+      badge: 'Toll-Free 24/7',
+    },
+    {
+      name: 'Edhi Ambulance Service',
+      number: '115',
+      desc: 'Nationwide emergency ambulance network',
+      badge: 'Nationwide 24/7',
+    },
+    {
+      name: 'Chhipa Emergency Ambulance',
+      number: '1020',
+      desc: 'Rapid trauma and emergency response services',
+      badge: '24/7 Hotline',
+    },
+    {
+      name: 'National Poison Control Centre (JPMC)',
+      number: '021-99205058',
+      desc: 'Jinnah Post Graduate Medical Centre clinical toxicology hotline',
+      badge: 'Specialist Toxicology',
+    },
+    {
+      name: 'Mental Health Crisis Helpline (Umang)',
+      number: '0311-7786264',
+      desc: 'Immediate psychological emergency and crisis counseling',
+      badge: 'Confidential Support',
+    },
+    {
+      name: 'Police Emergency Assistance',
+      number: '15',
+      desc: 'Security, trauma scene protection, and highway rescue',
+      badge: 'Emergency 15',
+    },
+  ];
+
+  const sosMessage = `🚨 MEDICAL EMERGENCY ALERT (Via SehatSaathi):
+Patient requires immediate urgent medical assistance.
+${userLocation ? `Location: ${userLocation}` : 'Location: Live patient location pending detection'}
+Rescue 1122 and emergency contacts dispatched. Please send immediate help!`;
 
   const handleCopySos = () => {
     navigator.clipboard.writeText(sosMessage);
@@ -138,28 +203,101 @@ Rescue 1122 contacted. Please check on patient immediately!`;
         </div>
       </div>
 
-      {/* Emergency SOS Share Box */}
+      {/* National Verified Emergency Helplines Directory */}
       <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+            <PhoneCall className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+            <span>National Verified Emergency Helplines</span>
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Official 24/7 medical rescue, ambulance, and poison control hotlines across Pakistan.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-2">
+          {nationalHelplines.map((item, idx) => (
+            <div
+              key={idx}
+              className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
+                    {item.badge}
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-900 dark:text-white font-mono">
+                    {item.number}
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  {item.name}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  {item.desc}
+                </p>
+              </div>
+
+              <a
+                href={`tel:${item.number.replace(/-/g, '')}`}
+                className="mt-4 flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-colors shadow-xs"
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>Call {item.number}</span>
+              </a>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Emergency SOS Share Box with Dynamic GPS Location Detection */}
+      <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">
               Emergency SOS Message to Family & Contacts
             </h3>
             <p className="text-xs text-slate-500">
-              One-click send via WhatsApp, SMS, or copy clipboard
+              Dispatches your actual GPS coordinates or landmark via WhatsApp, SMS, or clipboard
             </p>
           </div>
           <button
             type="button"
             onClick={handleCopySos}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 text-xs font-bold transition-all"
+            className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 text-xs font-bold transition-all cursor-pointer"
           >
             {copiedSos ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
             <span>{copiedSos ? 'Copied!' : 'Copy SOS'}</span>
           </button>
         </div>
 
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 font-mono text-xs text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+        {/* Live GPS Detector Bar */}
+        <div className="p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-teal-600 text-white shrink-0">
+              <MapPin className="w-4 h-4" />
+            </div>
+            <div className="text-xs">
+              <span className="font-bold text-teal-950 dark:text-teal-200 block">
+                {gpsCoordinates ? 'Live Coordinates Locked' : 'Accurate Location Tagging'}
+              </span>
+              <span className="text-teal-700 dark:text-teal-300">
+                {userLocation || 'Attach your live GPS pin so rescue responders reach you without delay.'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={detectLocation}
+            disabled={isDetectingLocation}
+            className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+          >
+            {isDetectingLocation ? 'Detecting GPS...' : gpsCoordinates ? 'Refresh GPS' : 'Detect My Live GPS'}
+          </button>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 font-mono text-xs text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-pre-line">
           {sosMessage}
         </div>
 

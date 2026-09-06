@@ -178,3 +178,23 @@ export interface PatientCase {
   aiSummary: string;
   status: 'pending_review' | 'approved' | 'escalated';
 }
+
+export interface SymptomFormData {
+  chiefComplaint: string;
+  chiefComplaintCategory: string;
+  detailedNotes: string;
+  duration: string;
+  severity: number;
+  progression: 'worsening' | 'constant' | 'improving' | 'fluctuating';
+  associatedSymptoms: string[];
+  triggersOrRelief: string;
+  medicationsTaken: string;
+  redFlags: {
+    chestPain: boolean;
+    breathingDifficulty: boolean;
+    faintingOrConfusion: boolean;
+    unableToKeepFluids: boolean;
+    highFeverInfant: boolean;
+  };
+  photoBase64?: string | null;
+}

@@ -34,6 +34,7 @@ interface HeroLandingProps {
   pendingDoctorReviewsCount?: number;
   currentUser?: UserAccount;
   patientProfiles?: PatientProfile[];
+  prescriptionsCount?: number;
   onNavigate: (tab: NavigationTab) => void;
   onEmergencyCall?: () => void;
   onOpenDisclaimer?: () => void;
@@ -45,6 +46,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
   pendingDoctorReviewsCount = 0,
   currentUser,
   patientProfiles = [],
+  prescriptionsCount = 0,
   onNavigate,
   onEmergencyCall,
   onOpenDisclaimer,
@@ -53,7 +55,23 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const isUrdu = currentLanguage === 'ur';
   const isRoman = currentLanguage === 'roman';
-  const displayName = currentUser?.name || patientProfiles[0]?.name || 'Yusra Khalique Shaikh';
+  const displayName = currentUser?.name || patientProfiles[0]?.name || '';
+
+  // Load genuine user-recorded vitals
+  const [vitalsData] = useState<{
+    heartRate?: string;
+    bloodPressure?: string;
+    bloodSugar?: string;
+    weight?: string;
+  } | null>(() => {
+    try {
+      const saved = localStorage.getItem('sehat_saathi_vitals');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return null;
+  });
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -67,7 +85,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
     }
     const recognizer = createSpeechRecognizer();
     if (!recognizer.isSupported) {
-      alert('Speech recognition is not available in your browser.');
+      setSearchQuery('Speech mic not supported in this browser. Please type symptoms.');
       return;
     }
     setIsListening(true);
@@ -102,17 +120,18 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
         (pos) => {
           const lat = pos.coords.latitude.toFixed(5);
           const lng = pos.coords.longitude.toFixed(5);
-          const msg = `🚨 EMERGENCY MEDICAL SOS - SehatSaathi: Urgent medical assistance needed. Patient: ${displayName}. GPS: ${lat}, ${lng}. Nearest Trauma Center: Nishtar Hospital Multan. Call 1122.`;
+          const msg = `🚨 EMERGENCY MEDICAL SOS - SehatSaathi: Urgent medical assistance needed. Patient: ${displayName || 'Emergency Patient'}. Live GPS Pin: https://maps.google.com/?q=${lat},${lng} (${lat}, ${lng}). Please dispatch Rescue 1122 or head to the nearest emergency trauma center immediately!`;
           navigator.clipboard?.writeText(msg);
           setCopiedSos(true);
           setTimeout(() => setCopiedSos(false), 3000);
         },
         () => {
-          const msg = `🚨 EMERGENCY MEDICAL SOS - SehatSaathi: Urgent assistance required for patient ${displayName}. Please dispatch Rescue 1122.`;
+          const msg = `🚨 EMERGENCY MEDICAL SOS - SehatSaathi: Urgent assistance required for patient: ${displayName || 'Emergency Patient'}. Please call Rescue 1122 or dispatch immediate emergency medical help!`;
           navigator.clipboard?.writeText(msg);
           setCopiedSos(true);
           setTimeout(() => setCopiedSos(false), 3000);
-        }
+        },
+        { timeout: 8000, enableHighAccuracy: true }
       );
     } else if (onEmergencyCall) {
       onEmergencyCall();
@@ -162,11 +181,19 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
 
             <div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
-                {isUrdu
-                  ? `خوش آمدید، ${displayName}`
-                  : isRoman
-                  ? `Khush Amdeed, ${displayName}`
-                  : `How can we help you today, ${displayName.split(' ')[0]}?`}
+                {displayName ? (
+                  isUrdu
+                    ? `خوش آمدید، ${displayName}`
+                    : isRoman
+                    ? `Khush Amdeed, ${displayName}`
+                    : `How can we help you today, ${displayName.split(' ')[0]}?`
+                ) : (
+                  isUrdu
+                    ? 'صحت ساتھی میں خوش آمدید'
+                    : isRoman
+                    ? 'SehatSaathi mein Khush Amdeed'
+                    : 'How can we help you today?'
+                )}
               </h2>
               <p className="text-sm sm:text-base text-teal-100/80 mt-1 max-w-2xl font-normal">
                 {isUrdu
@@ -258,8 +285,8 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 {/* 3D Drag Orbit Hint Overlay */}
                 <div className="absolute bottom-2 inset-x-2 flex items-center justify-between text-[10px] text-teal-200/80 bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-lg pointer-events-none border border-teal-800/50">
                   <span className="flex items-center gap-1">
-                    <Activity className="w-3 h-3 text-rose-400 animate-pulse" />
-                    <span>Sinus: 72 BPM</span>
+                    <Sparkles className="w-3 h-3 text-teal-300" />
+                    <span>3D Interactive Anatomy</span>
                   </span>
                   <span>Drag to rotate in 3D</span>
                 </div>
@@ -450,7 +477,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                   {isUrdu ? 'مریض کی صحت کا خاکہ' : isRoman ? 'Patient Health Snapshot' : 'Patient Health & Vitals'}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {displayName} • {isUrdu ? 'خون گروپ B+' : 'Blood Group B+ • Age 24'}
+                  {displayName || (isUrdu ? 'معزز مریض' : isRoman ? 'Moazziz Mareez' : 'Guest Patient')} • {vitalsData ? (isUrdu ? 'ریکارڈ شدہ وائٹلز' : 'Logged Vitals') : (isUrdu ? 'کوئی وائٹلز درج نہیں ہیں' : isRoman ? 'Koi vitals darj nahi hain' : 'No vitals recorded yet')}
                 </p>
               </div>
             </div>
@@ -471,11 +498,11 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 Heart Rate
               </span>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-baseline gap-1">
-                <span>72</span>
-                <span className="text-xs font-normal text-slate-400">bpm</span>
+                <span>{vitalsData?.heartRate || '—'}</span>
+                {vitalsData?.heartRate && <span className="text-xs font-normal text-slate-400">bpm</span>}
               </div>
-              <span className="inline-block mt-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                ● Normal
+              <span className={`inline-block mt-1 text-[10px] font-semibold ${vitalsData?.heartRate ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                {vitalsData?.heartRate ? '● Recorded' : (isUrdu ? 'درج نہیں' : 'Not recorded')}
               </span>
             </div>
 
@@ -485,26 +512,26 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 Blood Pressure
               </span>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-baseline gap-1">
-                <span>120/80</span>
-                <span className="text-xs font-normal text-slate-400">mmHg</span>
+                <span>{vitalsData?.bloodPressure || '—'}</span>
+                {vitalsData?.bloodPressure && <span className="text-xs font-normal text-slate-400">mmHg</span>}
               </div>
-              <span className="inline-block mt-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                ● Optimal
+              <span className={`inline-block mt-1 text-[10px] font-semibold ${vitalsData?.bloodPressure ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                {vitalsData?.bloodPressure ? '● Recorded' : (isUrdu ? 'درج نہیں' : 'Not recorded')}
               </span>
             </div>
 
-            {/* Wellness Score */}
+            {/* Blood Sugar */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
               <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                Wellness Score
+                Blood Sugar
               </span>
-              <div className="text-xl font-extrabold text-teal-700 dark:text-teal-400 mt-1 flex items-baseline gap-1">
-                <span>87%</span>
-                <span className="text-xs font-normal text-teal-500">+2%</span>
+              <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-baseline gap-1">
+                <span>{vitalsData?.bloodSugar || '—'}</span>
+                {vitalsData?.bloodSugar && <span className="text-xs font-normal text-slate-400">mg/dL</span>}
               </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                <div className="bg-teal-500 h-full w-[87%]" />
-              </div>
+              <span className={`inline-block mt-1 text-[10px] font-semibold ${vitalsData?.bloodSugar ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                {vitalsData?.bloodSugar ? '● Recorded' : (isUrdu ? 'درج نہیں' : 'Not recorded')}
+              </span>
             </div>
 
             {/* Active Prescriptions */}
@@ -513,13 +540,32 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 Verified Rx
               </span>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">
-                1 Active
+                {prescriptionsCount} Active
               </div>
               <span className="inline-block mt-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-                QR Licensed
+                {prescriptionsCount > 0 ? 'QR Licensed' : (isUrdu ? 'کوئی نسخہ نہیں' : 'None yet')}
               </span>
             </div>
           </div>
+
+          {!vitalsData && (
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <span className="text-slate-500 dark:text-slate-400">
+                {isUrdu
+                  ? 'آپ نے ابھی تک اپنا بلڈ پریشر یا شوگر درج نہیں کی ہے۔'
+                  : isRoman
+                  ? 'Aap ne abhi tak apna blood pressure ya sugar record nahi kiya.'
+                  : 'You have not recorded blood pressure, pulse, or sugar readings yet.'}
+              </span>
+              <button
+                type="button"
+                onClick={() => onNavigate('records')}
+                className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer self-start sm:self-auto"
+              >
+                {isUrdu ? 'وائٹلز درج کریں' : isRoman ? 'Vitals Darj Karein' : 'Record Vitals'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right (1 Col): Verified On-Duty Doctor Card */}

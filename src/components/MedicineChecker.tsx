@@ -3,6 +3,7 @@ import { SupportedLanguage, PatientProfile, MedicineCheckResult } from '../types
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager, createSpeechRecognizer } from '../services/voice';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { ClinicalOutputCard } from './ClinicalOutputCard';
 import {
   Pill,
   Camera,
@@ -130,11 +131,6 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
       };
 
       setResult(checkResult);
-
-      // Speak response in chosen language (fixing the English-only bug!)
-      if (voiceManager.getAutoPlay()) {
-        voiceManager.speak(explanationText, currentLanguage);
-      }
     } catch (err) {
       console.error(err);
       setResult({
@@ -420,58 +416,23 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
 
       {/* Result Card */}
       {result && (
-        <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-5 animate-in fade-in duration-300">
-          {/* Status Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Clinical Pharmacology Evaluation
-              </span>
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                {result.medicineName}
-              </h3>
-              <p className="text-xs text-slate-500">
-                Patient Profile: {result.ageGroup}
-              </p>
-            </div>
-
-            <div
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl font-extrabold text-xs tracking-wide ${
-                result.safetyStatus === 'SAFE'
-                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300'
-                  : result.safetyStatus === 'DANGER'
-                  ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200 border border-red-300'
-                  : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300'
-              }`}
-            >
-              {result.safetyStatus === 'SAFE' && <CheckCircle2 className="w-4 h-4" />}
-              {result.safetyStatus === 'DANGER' && <AlertOctagon className="w-4 h-4 animate-bounce" />}
-              {result.safetyStatus === 'CAUTION' && <AlertTriangle className="w-4 h-4" />}
-              <span>
-                STATUS: {result.safetyStatus} FOR {result.ageGroup.toUpperCase()}
-              </span>
-            </div>
-          </div>
-
-          {/* Audio Speech Controls */}
-          <AudioPlayerControls
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <ClinicalOutputCard
+            content={result.explanation}
+            safetyStatus={result.safetyStatus}
+            feature="medicine"
+            medicineName={result.medicineName}
+            patientAgeGroup={result.ageGroup}
             currentLanguage={currentLanguage}
-            textToSpeak={result.explanation}
+            onNavigateToCare={onNavigateToCare}
           />
 
-          {/* Explanation Text */}
-          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <div className="prose dark:prose-invert text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
-              {result.explanation}
-            </div>
-          </div>
-
-          {/* Actions: Find Pharmacy & Find Doctor */}
+          {/* Quick Actions: Find Pharmacy & Find Doctor */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <button
               type="button"
               onClick={() => onNavigateToCare('pharmacy')}
-              className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900 font-bold text-xs sm:text-sm transition-all"
+              className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900 font-bold text-xs sm:text-sm transition-all shadow-xs"
             >
               <ShoppingBag className="w-4 h-4 text-teal-600" />
               <span>Where to Buy (Verified 24/7 Pharmacies)</span>
@@ -480,7 +441,7 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
             <button
               type="button"
               onClick={() => onNavigateToCare('doctor')}
-              className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs sm:text-sm transition-all"
+              className="flex items-center justify-center gap-2 p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs sm:text-sm transition-all shadow-xs"
             >
               <UserCheck className="w-4 h-4 text-teal-600" />
               <span>Which Doctor Prescribes This?</span>

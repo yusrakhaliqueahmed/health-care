@@ -48,7 +48,10 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
   onOpenLogin,
 }) => {
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
-  const displayName = currentUser?.name || activeProfile?.name || 'Yusra Khalique Shaikh';
+  const displayName =
+    currentUser?.name?.trim() ||
+    activeProfile?.name?.trim() ||
+    (currentLanguage === 'ur' ? 'معزز صارف' : currentLanguage === 'roman' ? 'Moazziz Sarif' : 'Guest');
 
   const getTabLabel = (tab?: string) => {
     switch (tab) {

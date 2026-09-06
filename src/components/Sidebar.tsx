@@ -220,14 +220,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex items-center gap-2.5 cursor-pointer"
           >
             <div className="w-9 h-9 rounded-full border border-teal-400/60 bg-teal-800 text-white font-bold flex items-center justify-center shrink-0 text-xs shadow-xs">
-              {(currentUser?.name || activeProfile?.name || 'Y').charAt(0).toUpperCase()}
+              {(currentUser?.name?.trim() || activeProfile?.name?.trim() || 'G').charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-white truncate">
-                {currentUser?.name || activeProfile?.name || 'Yusra Khalique Shaikh'}
+                {currentUser?.name?.trim() || activeProfile?.name?.trim() || (currentLanguage === 'ur' ? 'معزز صارف' : currentLanguage === 'roman' ? 'Moazziz Sarif' : 'Guest Patient')}
               </p>
               <p className="text-[10px] text-teal-300/80 uppercase font-medium tracking-wider truncate">
-                {currentUser?.isLoggedIn ? 'Verified Patient' : 'Patient Account'}
+                {currentUser?.isLoggedIn ? 'Verified Patient' : 'Guest'}
               </p>
             </div>
           </div>

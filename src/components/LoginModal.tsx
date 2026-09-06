@@ -102,7 +102,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({
         id: `usr-${Date.now()}`,
         name: computedName,
         email,
-        phone: '+92 300 1234567',
         isLoggedIn: true,
       };
 

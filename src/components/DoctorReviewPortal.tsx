@@ -28,17 +28,23 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
   const [selectedCaseId, setSelectedCaseId] = useState<string>(pendingCases[0]?.id || '');
   const [doctorNotes, setDoctorNotes] = useState('');
   const [rxMedicines, setRxMedicines] = useState('');
-  const [signedName, setSignedName] = useState('Dr. Ayesha Malik, MBBS, FCPS (PMDC #48291-P)');
+  const [signedName, setSignedName] = useState('Medical Officer on Duty (PMDC Licensed)');
+  const [approvalNotice, setApprovalNotice] = useState<string | null>(null);
 
   const selectedCase = pendingCases.find((c) => c.id === selectedCaseId) || pendingCases[0];
 
   const handleApprove = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCase) return;
-    onApproveCase(selectedCase.id, doctorNotes || 'Approved with standard symptomatic care regimen.', rxMedicines || 'Panadol 500mg (1 tab TDS) for 3 days');
+    onApproveCase(
+      selectedCase.id,
+      doctorNotes || 'Approved with symptomatic care instructions.',
+      rxMedicines || 'Paracetamol 500mg (1 tablet after meals) for 3 days'
+    );
     setDoctorNotes('');
     setRxMedicines('');
-    alert(`Case #${selectedCase.id} approved and officially signed under PMDC licensure.`);
+    setApprovalNotice(`Case #${selectedCase.id} approved and signed.`);
+    setTimeout(() => setApprovalNotice(null), 4000);
   };
 
   return (
@@ -62,6 +68,13 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
           Queue: {pendingCases.length} Cases Pending
         </div>
       </div>
+
+      {approvalNotice && (
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2">
+          <ShieldCheck className="w-5 h-5 text-emerald-600" />
+          <span>{approvalNotice}</span>
+        </div>
+      )}
 
       {pendingCases.length === 0 ? (
         <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">

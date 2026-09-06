@@ -3,6 +3,7 @@ import { SupportedLanguage, MedicalReportRecord, UrgencyLevel } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager } from '../services/voice';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { ClinicalOutputCard } from './ClinicalOutputCard';
 import {
   FileText,
   Camera,
@@ -99,11 +100,6 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
         timestamp: new Date().toLocaleDateString(),
       };
       setAnalysisResult(resObj);
-
-      // Speak aloud in user's active regional language
-      if (voiceManager.getAutoPlay()) {
-        voiceManager.speak(text, currentLanguage);
-      }
     } catch (err) {
       console.error(err);
       setAnalysisResult({
@@ -129,8 +125,8 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
       photoUrl: photoBase64,
       findings: analysisResult.text,
       urgency: analysisResult.urgency,
-      status: 'approved_by_pmdc_doctor',
-      reviewedByDoctor: 'Assigned to PMDC Teleconsult Queue',
+      status: 'preliminary_ai',
+      reviewedByDoctor: 'Pending Review by PMDC Medical Officer',
     };
 
     onSaveToRecords(newRecord);
@@ -336,51 +332,18 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
 
       {/* Analysis Results Display */}
       {analysisResult && (
-        <div className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-lg space-y-5 animate-in fade-in duration-300">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
-                <ShieldCheck className="w-4 h-4" />
-                <span>PMDC Clinical Interpretation</span>
-              </div>
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                Detailed Report Breakdown
-              </h3>
-            </div>
-
-            <div
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
-                analysisResult.urgency === 'RED'
-                  ? 'bg-red-100 dark:bg-red-950 text-red-800 dark:text-red-200'
-                  : analysisResult.urgency === 'GREEN'
-                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
-                  : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200'
-              }`}
-            >
-              {analysisResult.urgency === 'RED' && <AlertTriangle className="w-4 h-4" />}
-              {analysisResult.urgency === 'GREEN' && <CheckCircle className="w-4 h-4" />}
-              <span>
-                Urgency: {analysisResult.urgency}
-              </span>
-            </div>
-          </div>
-
-          {/* Audio Player Controls */}
-          <AudioPlayerControls
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <ClinicalOutputCard
+            content={analysisResult.text}
+            urgency={analysisResult.urgency}
+            feature="report"
+            patientAgeGroup={patientAgeGroup}
             currentLanguage={currentLanguage}
-            textToSpeak={analysisResult.text}
+            timestamp={analysisResult.timestamp}
           />
 
-          {/* Report Findings Text */}
-          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-            <div className="prose dark:prose-invert text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
-              {analysisResult.text}
-            </div>
-          </div>
-
           {/* Save to Records & Consult Actions */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <button
               type="button"
               onClick={handleSaveToEHR}

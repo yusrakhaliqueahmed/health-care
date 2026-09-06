@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SupportedLanguage, PatientProfile, UrgencyLevel, ChatMessage, AgeGroup, UserAccount } from '../types';
+import {
+  SupportedLanguage,
+  PatientProfile,
+  UrgencyLevel,
+  ChatMessage,
+  AgeGroup,
+  UserAccount,
+  SymptomFormData,
+} from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager, createSpeechRecognizer } from '../services/voice';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { SymptomIntakeForm } from './SymptomIntakeForm';
+import { ClinicalOutputCard } from './ClinicalOutputCard';
 import {
   Mic,
   MicOff,
@@ -20,6 +30,13 @@ import {
   RotateCcw,
   Sparkles,
   Volume2,
+  ClipboardList,
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  Activity,
+  FileText,
 } from 'lucide-react';
 
 interface SymptomCheckerProps {
@@ -93,6 +110,11 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     currentUser?.name || patientProfiles[0]?.name || 'Patient'
   );
 
+  // Mode toggle: 'form' (Structured Intake Form) or 'chat' (Conversational AI)
+  const [activeMode, setActiveMode] = useState<'form' | 'chat'>('form');
+  const [submittedFormData, setSubmittedFormData] = useState<SymptomFormData | null>(null);
+  const [isFormDossierExpanded, setIsFormDossierExpanded] = useState(false);
+
   // Chat conversation
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -105,6 +127,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
 
   // Speech Recognition state
   const [isRecording, setIsRecording] = useState(false);
+  const [caseSavedNotification, setCaseSavedNotification] = useState<string | null>(null);
   const speechRecognizer = useRef(createSpeechRecognizer());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -124,10 +147,6 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       urgency: 'GREEN',
     };
     setMessages([initialMsg]);
-
-    if (voiceManager.getAutoPlay()) {
-      voiceManager.speak(initialMsg.content, currentLanguage);
-    }
   }, [currentLanguage]);
 
   // Sync selected profile details
@@ -179,10 +198,15 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
+  const handleSendMessage = async (
+    e?: React.FormEvent,
+    customText?: string,
+    explicitPhoto?: string | null
+  ) => {
     if (e) e.preventDefault();
     const textToSend = (customText !== undefined ? customText : inputText).trim();
-    if (!textToSend && !photoBase64) return;
+    const currentPhoto = explicitPhoto !== undefined ? explicitPhoto : photoBase64;
+    if (!textToSend && !currentPhoto) return;
 
     if (isRecording) {
       speechRecognizer.current.stop();
@@ -194,12 +218,11 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       role: 'user',
       content: textToSend || 'Examining attached symptom image.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      photoUrl: photoBase64 || undefined,
+      photoUrl: currentPhoto || undefined,
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setInputText('');
-    const currentPhoto = photoBase64;
     setPhotoBase64(null);
     setIsLoading(true);
 
@@ -260,11 +283,6 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
-
-      // Dual voice output
-      if (voiceManager.getAutoPlay()) {
-        voiceManager.speak(replyText, currentLanguage);
-      }
     } catch (err: any) {
       console.warn('Chat request completed with fallback:', err);
       clearTimeout(safetyTimeout);
@@ -295,10 +313,6 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
         urgency: 'YELLOW',
       };
       setMessages((prev) => [...prev, errorMsg]);
-
-      if (voiceManager.getAutoPlay()) {
-        voiceManager.speak(fallbackText, currentLanguage);
-      }
     } finally {
       clearTimeout(safetyTimeout);
       setIsLoading(false);
@@ -318,7 +332,86 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       status: 'pending_review',
     };
     onAddCaseForDoctorReview(caseData);
-    alert('Case successfully filed and forwarded to PMDC Doctor Review Queue!');
+    setCaseSavedNotification('Case file successfully prepared and forwarded to PMDC Doctor Review Queue!');
+    setTimeout(() => setCaseSavedNotification(null), 5000);
+  };
+
+  const handleSubmitForm = async (formData: SymptomFormData) => {
+    setSubmittedFormData(formData);
+    setIsFormDossierExpanded(false);
+
+    // Build multilingual structured narrative
+    let narrative = '';
+    if (currentLanguage === 'ur') {
+      const redFlagStatus =
+        formData.redFlags.chestPain ||
+        formData.redFlags.breathingDifficulty ||
+        formData.redFlags.faintingOrConfusion ||
+        formData.redFlags.unableToKeepFluids ||
+        formData.redFlags.highFeverInfant
+          ? '⚠️ ایمرجنسی علامات موجود ہیں (Danger Flags Detected)'
+          : 'کوئی ایمرجنسی علامت نہیں بتائی گئی';
+
+      narrative = [
+        `[مریض کا منظم طبی انٹیک فارم - SehatSaathi Clinical Dossier]`,
+        `• بنیادی علامت (Chief Complaint): ${formData.chiefComplaint}`,
+        formData.detailedNotes ? `• مریض کے اپنے الفاظ میں وضاحت: "${formData.detailedNotes}"` : '',
+        `• کتنے عرصے سے ہے (Duration): ${formData.duration}`,
+        `• تکلیف کی شدت (Severity): ${formData.severity}/10`,
+        `• بیماری کا رخ (Progression): ${formData.progression}`,
+        formData.associatedSymptoms.length > 0 ? `• ساتھ دیگر علامات (Associated Symptoms): ${formData.associatedSymptoms.join(', ')}` : '',
+        formData.triggersOrRelief ? `• کس سے فرق پڑتا ہے / محرکات: ${formData.triggersOrRelief}` : '',
+        formData.medicationsTaken ? `• اب تک لی گئی ادویات: ${formData.medicationsTaken}` : '',
+        `• ایمرجنسی خطرے کی جانچ (Red Flag Screening): ${redFlagStatus}`,
+      ].filter(Boolean).join('\n');
+    } else if (currentLanguage === 'roman') {
+      const redFlagStatus =
+        formData.redFlags.chestPain ||
+        formData.redFlags.breathingDifficulty ||
+        formData.redFlags.faintingOrConfusion ||
+        formData.redFlags.unableToKeepFluids ||
+        formData.redFlags.highFeverInfant
+          ? '⚠️ Khatarnak Emergency Nishaniyan Noted'
+          : 'Koi acute emergency red flags report nahi huay';
+
+      narrative = [
+        `[Mareez Ka Munazzam Intake Form - SehatSaathi Clinical Dossier]`,
+        `• Bunyaadi Alamat (Chief Complaint): ${formData.chiefComplaint}`,
+        formData.detailedNotes ? `• Mareez ki wazahat: "${formData.detailedNotes}"` : '',
+        `• Muddat (Duration): ${formData.duration}`,
+        `• Takleef ki Shiddat (Severity): ${formData.severity}/10`,
+        `• Bemari ka Rukh (Progression): ${formData.progression}`,
+        formData.associatedSymptoms.length > 0 ? `• Saath doosri alamaat: ${formData.associatedSymptoms.join(', ')}` : '',
+        formData.triggersOrRelief ? `• Kis cheez se asar parta hai: ${formData.triggersOrRelief}` : '',
+        formData.medicationsTaken ? `• Pehle se li gayi dawaiyan: ${formData.medicationsTaken}` : '',
+        `• Emergency Red Flag Screening: ${redFlagStatus}`,
+      ].filter(Boolean).join('\n');
+    } else {
+      const redFlagStatus =
+        formData.redFlags.chestPain ||
+        formData.redFlags.breathingDifficulty ||
+        formData.redFlags.faintingOrConfusion ||
+        formData.redFlags.unableToKeepFluids ||
+        formData.redFlags.highFeverInfant
+          ? '⚠️ ACUTE RED FLAGS PRESENT'
+          : 'No acute emergency red flags reported';
+
+      narrative = [
+        `[STRUCTURED CLINICAL INTAKE DOSSIER]`,
+        `• Chief Complaint: ${formData.chiefComplaint} (${formData.chiefComplaintCategory})`,
+        formData.detailedNotes ? `• Patient's Description: "${formData.detailedNotes}"` : '',
+        `• Duration: ${formData.duration}`,
+        `• Severity: ${formData.severity} / 10`,
+        `• Progression: ${formData.progression}`,
+        formData.associatedSymptoms.length > 0 ? `• Associated Symptoms: ${formData.associatedSymptoms.join(', ')}` : '',
+        formData.triggersOrRelief ? `• Triggers / Relieving Factors: ${formData.triggersOrRelief}` : '',
+        formData.medicationsTaken ? `• Prior Medications Taken: ${formData.medicationsTaken}` : '',
+        `• Red Flag Screening: ${redFlagStatus}`,
+      ].filter(Boolean).join('\n');
+    }
+
+    setActiveMode('chat');
+    await handleSendMessage(undefined, narrative, formData.photoBase64);
   };
 
   const handleResetChat = () => {
@@ -326,10 +419,28 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     setMessages([]);
     setInputText('');
     setPhotoBase64(null);
+    setSubmittedFormData(null);
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Case Saved Notification Banner */}
+      {caseSavedNotification && (
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between gap-3 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm font-semibold animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>{caseSavedNotification}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCaseSavedNotification(null)}
+            className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 font-bold px-2 py-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="relative overflow-hidden p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-teal-900 via-teal-800 to-slate-900 text-white shadow-xl">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -358,8 +469,153 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
         </div>
       </div>
 
-      {/* Patient Profile Selection & Age Calibration Bar */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
+      {/* Mode Switcher Tabs: Form vs Chat */}
+      <div className="flex items-center p-1.5 bg-slate-200/80 dark:bg-slate-800 rounded-2xl border border-slate-300/80 dark:border-slate-700 max-w-xl mx-auto shadow-inner">
+        <button
+          id="mode-tab-form"
+          type="button"
+          onClick={() => setActiveMode('form')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeMode === 'form'
+              ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          <span>
+            {currentLanguage === 'ur'
+              ? 'منظم میڈیکل فارم'
+              : currentLanguage === 'roman'
+              ? 'Munazzam Form'
+              : 'Structured Intake Form'}
+          </span>
+          <span className="hidden sm:inline-block text-[10px] px-1.5 py-0.5 rounded-md bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-extrabold uppercase">
+            Recommended
+          </span>
+        </button>
+
+        <button
+          id="mode-tab-chat"
+          type="button"
+          onClick={() => setActiveMode('chat')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeMode === 'chat'
+              ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>
+            {currentLanguage === 'ur'
+              ? 'چیٹ و آواز موڈ'
+              : currentLanguage === 'roman'
+              ? 'AI Chat & Voice'
+              : 'AI Chat & Voice'}
+          </span>
+          {messages.length > 1 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold">
+              {messages.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeMode === 'form' ? (
+        <SymptomIntakeForm
+          currentLanguage={currentLanguage}
+          patientProfiles={patientProfiles}
+          selectedProfileId={selectedProfileId}
+          onSelectProfileId={setSelectedProfileId}
+          ageGroup={ageGroup}
+          onChangeAgeGroup={setAgeGroup}
+          exactAge={exactAge}
+          onChangeExactAge={setExactAge}
+          patientGender={patientGender}
+          onChangeGender={setPatientGender}
+          patientName={patientName}
+          onChangePatientName={setPatientName}
+          onSubmitForm={handleSubmitForm}
+          onEmergencyCall={onEmergencyCall}
+          isSubmitting={isLoading}
+        />
+      ) : (
+        <>
+          {/* Submitted Intake Dossier Summary (if filled) */}
+          {submittedFormData && (
+            <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                      {currentLanguage === 'ur'
+                        ? 'مریض کا جمع کردہ منظم طبی ریکارڈ'
+                        : currentLanguage === 'roman'
+                        ? 'Mareez Ka Jama Shuda Intake Form (Dossier)'
+                        : 'Submitted Patient Clinical Intake Form'}
+                    </h4>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                      {submittedFormData.chiefComplaint} • {submittedFormData.duration} • {submittedFormData.severity}/10 Pain Scale
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMode('form')}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-700 hover:bg-teal-50 text-xs font-semibold cursor-pointer shadow-2xs"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{currentLanguage === 'ur' ? 'فارم ایڈٹ کریں' : 'Edit Form'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsFormDossierExpanded(!isFormDossierExpanded)}
+                    className="p-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                    aria-label="Toggle details"
+                  >
+                    {isFormDossierExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {isFormDossierExpanded && (
+                <div className="pt-3 border-t border-teal-200/70 dark:border-teal-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Chief Complaint</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{submittedFormData.chiefComplaint}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Duration & Severity</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {submittedFormData.duration} • {submittedFormData.severity}/10 ({submittedFormData.progression})
+                    </span>
+                  </div>
+                  {submittedFormData.associatedSymptoms.length > 0 && (
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 sm:col-span-2">
+                      <span className="text-[10px] font-bold uppercase text-slate-500 block">Associated Symptoms</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">{submittedFormData.associatedSymptoms.join(', ')}</span>
+                    </div>
+                  )}
+                  {submittedFormData.detailedNotes && (
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 sm:col-span-2">
+                      <span className="text-[10px] font-bold uppercase text-slate-500 block">Patient's Detailed Notes</span>
+                      <p className="font-medium text-slate-800 dark:text-slate-200 italic">"{submittedFormData.detailedNotes}"</p>
+                    </div>
+                  )}
+                  {(submittedFormData.triggersOrRelief || submittedFormData.medicationsTaken) && (
+                    <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 sm:col-span-2 text-slate-700 dark:text-slate-300">
+                      {submittedFormData.triggersOrRelief && <div><strong>Triggers / Relief:</strong> {submittedFormData.triggersOrRelief}</div>}
+                      {submittedFormData.medicationsTaken && <div><strong>Medications Taken:</strong> {submittedFormData.medicationsTaken}</div>}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Patient Profile Selection & Age Calibration Bar */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-3">
           <label className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
             <User className="w-4 h-4 text-teal-600" />
@@ -535,39 +791,37 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
                 <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
               </div>
 
-              <div
-                className={`max-w-[88%] sm:max-w-[78%] rounded-2xl p-4 text-sm leading-relaxed shadow-xs ${
-                  isUser
-                    ? 'bg-teal-600 text-white rounded-tr-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-700'
-                }`}
-              >
-                {msg.photoUrl && (
-                  <div className="mb-3 rounded-xl overflow-hidden border border-white/20 max-w-xs">
-                    <img
-                      src={msg.photoUrl}
-                      alt="Uploaded Symptom"
-                      className="w-full h-auto object-cover max-h-48"
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                )}
-
-                <div className="whitespace-pre-wrap font-sans text-sm sm:text-base">
-                  {msg.content}
+              {!isUser ? (
+                <div className="w-full max-w-3xl">
+                  <ClinicalOutputCard
+                    content={msg.content}
+                    urgency={currentUrgency}
+                    feature="symptom"
+                    currentLanguage={currentLanguage}
+                    patientName={patientName}
+                    patientAgeGroup={ageGroup}
+                    onEmergencyCall={onEmergencyCall}
+                    timestamp={msg.timestamp}
+                  />
                 </div>
+              ) : (
+                <div className="max-w-[88%] sm:max-w-[78%] rounded-2xl p-4 text-sm leading-relaxed shadow-xs bg-teal-600 text-white rounded-tr-xs">
+                  {msg.photoUrl && (
+                    <div className="mb-3 rounded-xl overflow-hidden border border-white/20 max-w-xs">
+                      <img
+                        src={msg.photoUrl}
+                        alt="Uploaded Symptom"
+                        className="w-full h-auto object-cover max-h-48"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
 
-                {/* Inline Speech controls for AI responses */}
-                {!isUser && (
-                  <div className="mt-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-                    <AudioPlayerControls
-                      currentLanguage={currentLanguage}
-                      textToSpeak={msg.content}
-                      compact
-                    />
+                  <div className="whitespace-pre-wrap font-sans text-sm sm:text-base">
+                    {msg.content}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -671,6 +925,8 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           <Send className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </form>
+        </>
+      )}
     </div>
   );
 };

@@ -16,40 +16,50 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
   currentLanguage,
   onLanguageChange,
   onLoginSuccess,
-  initialUserName = 'Yusra Khalique Shaikh',
-  initialEmail = 'yusrakhalique193@gmail.com',
+  initialUserName = '',
+  initialEmail = '',
 }) => {
+  const [fullName, setFullName] = useState(initialUserName);
   const [email, setEmail] = useState(initialEmail);
-  const [password, setPassword] = useState('••••••••');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [statusNotification, setStatusNotification] = useState<string | null>(null);
 
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     setTimeout(() => {
+      const derivedName = fullName.trim() || (email.trim() ? email.split('@')[0] : 'User');
       const user: UserAccount = {
-        id: 'usr-google-yusra',
-        name: 'Yusra Khalique Shaikh',
-        email: 'yusrakhalique193@gmail.com',
-        phone: '+92 300 1234567',
+        id: `usr-google-${Date.now()}`,
+        name: derivedName,
+        email: email.trim() || 'user@gmail.com',
         isLoggedIn: true,
       };
       onLoginSuccess(user);
     }, 450);
   };
 
+  const handleGuestContinue = () => {
+    const guestUser: UserAccount = {
+      id: `usr-guest-${Date.now()}`,
+      name: currentLanguage === 'ur' ? 'مہمان صارف' : currentLanguage === 'roman' ? 'Mehmaan Sarif' : 'Guest Patient',
+      isLoggedIn: false,
+    };
+    onLoginSuccess(guestUser);
+  };
+
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanEmail = email.trim() || 'yusrakhalique193@gmail.com';
-    const computedName = cleanEmail.includes('@')
+    const cleanEmail = email.trim();
+    const computedName = fullName.trim() || (cleanEmail.includes('@')
       ? cleanEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-      : initialUserName;
+      : 'Patient');
 
     const user: UserAccount = {
       id: `usr-${Date.now()}`,
-      name: computedName || initialUserName,
+      name: computedName,
       email: cleanEmail,
-      phone: '+92 300 1234567',
       isLoggedIn: true,
     };
     onLoginSuccess(user);
@@ -152,8 +162,30 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
             </div>
           </div>
 
+          {/* Status notification banner */}
+          {statusNotification && (
+            <div className="mb-4 p-3 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-800 dark:text-teal-200 text-xs text-center font-medium animate-in fade-in">
+              {statusNotification}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleFormSubmit} className="space-y-4">
+            {/* Full Name (Optional) */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                {currentLanguage === 'ur' ? 'پورا نام (اختیاری)' : currentLanguage === 'roman' ? 'Pura Naam (Ikhtiyari)' : 'Full Name (Optional)'}
+              </label>
+              <input
+                type="text"
+                id="login-name-field"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={currentLanguage === 'ur' ? 'اپنا نام درج کریں' : 'Enter your name'}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-teal-500 transition-all placeholder:text-slate-400"
+              />
+            </div>
+
             {/* Email Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -180,11 +212,12 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
                   href="#forgot"
                   onClick={(e) => {
                     e.preventDefault();
-                    alert(
+                    setStatusNotification(
                       currentLanguage === 'ur'
                         ? 'پاس ورڈ دوبارہ ترتیب دینے کی تفصیلات آپ کی ای میل پر بھیجی گئی ہیں۔'
                         : 'Password reset link has been dispatched to your email.'
                     );
+                    setTimeout(() => setStatusNotification(null), 5000);
                   }}
                   className="text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium"
                 >
@@ -226,6 +259,20 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
                   : 'Log in'}
               </span>
               <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+            </button>
+
+            {/* Continue as Guest Button */}
+            <button
+              type="button"
+              id="continue-as-guest-btn"
+              onClick={handleGuestContinue}
+              className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-xs transition-colors cursor-pointer text-center"
+            >
+              {currentLanguage === 'ur'
+                ? 'مہمان کے طور پر داخل ہوں'
+                : currentLanguage === 'roman'
+                ? 'Mehmaan ke tor par dakhil hon'
+                : 'Continue as Guest'}
             </button>
           </form>
         </motion.div>

@@ -27,11 +27,11 @@ export const TeleconsultBookingModal: React.FC<TeleconsultBookingModalProps> = (
 }) => {
   if (!doctor) return null;
 
-  const [date, setDate] = useState('2025-05-18');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [timeSlot, setTimeSlot] = useState('04:30 PM');
   const [consultType, setConsultType] = useState<'video' | 'voice'>('video');
   const [patientName, setPatientName] = useState('Patient');
-  const [phone, setPhone] = useState('0300-1234567');
+  const [phone, setPhone] = useState('');
   const [isBooked, setIsBooked] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -175,7 +175,9 @@ export const TeleconsultBookingModal: React.FC<TeleconsultBookingModalProps> = (
                   type="text"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  placeholder="03XX-XXXXXXX"
+                  required
+                  className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400"
                 />
               </div>
             </div>
