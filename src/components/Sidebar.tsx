@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { SupportedLanguage, NavigationTab, PatientProfile, UserAccount } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
+import { ClinicalHeartIcon } from './ClinicalHeartIcon';
 import {
-  Heart,
   LayoutDashboard,
   Stethoscope,
   Pill,
@@ -103,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'doctor_portal' as NavigationTab,
-      label: currentLanguage === 'ur' ? 'ڈاکٹر پورٹل' : currentLanguage === 'roman' ? 'Doctor Portal' : 'PMDC Doctor Portal',
+      label: t.navDoctorPortal,
       icon: ShieldCheck,
       count: pendingDoctorReviewsCount,
     },
@@ -133,7 +133,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
           <div className="relative w-10 h-10 rounded-xl bg-teal-950/80 border border-teal-600/40 flex items-center justify-center shadow-md shadow-teal-950/60 group-hover:border-teal-400/80 transition-colors shrink-0">
-            <Heart className="w-5 h-5 text-teal-300 fill-teal-300/30" />
+            <ClinicalHeartIcon className="w-5 h-5 text-teal-300" />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-[#0c2f28] animate-pulse" />
           </div>
           <div>
@@ -227,7 +227,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {currentUser?.name?.trim() || activeProfile?.name?.trim() || (currentLanguage === 'ur' ? 'معزز صارف' : currentLanguage === 'roman' ? 'Moazziz Sarif' : 'Guest Patient')}
               </p>
               <p className="text-[10px] text-teal-300/80 uppercase font-medium tracking-wider truncate">
-                {currentUser?.isLoggedIn ? 'Verified Patient' : 'Guest'}
+                {currentUser?.isLoggedIn
+                  ? (currentLanguage === 'ur' ? 'تصدیق شدہ مریض' : currentLanguage === 'roman' ? 'Tasdeeq Shuda Mareez' : 'Verified Patient')
+                  : (currentLanguage === 'ur' ? 'مہمان صارف' : currentLanguage === 'roman' ? 'Mehmaan' : 'Guest')}
               </p>
             </div>
           </div>
@@ -240,7 +242,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="w-full flex items-center justify-center gap-1.5 py-1 px-2 rounded-lg bg-teal-800/50 hover:bg-teal-700/70 text-[11px] text-teal-200 hover:text-white font-medium transition-colors border border-teal-700/40 cursor-pointer"
             >
               <LogIn className="w-3 h-3" />
-              <span>{currentUser?.isLoggedIn ? 'Manage Profile' : 'Sign In'}</span>
+              <span>
+                {currentUser?.isLoggedIn
+                  ? (currentLanguage === 'ur' ? 'پروفائل کا انتظام' : currentLanguage === 'roman' ? 'Profile Manage Karein' : 'Manage Profile')
+                  : (currentLanguage === 'ur' ? 'لاگ ان کریں' : currentLanguage === 'roman' ? 'Sign In Karein' : 'Sign In')}
+              </span>
             </button>
           )}
         </div>
@@ -316,7 +322,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="flex-1 py-1.5 px-2 bg-teal-950/60 border border-teal-800 hover:bg-teal-800/60 rounded-lg text-[10px] font-semibold text-teal-200 hover:text-white transition-colors flex items-center justify-center gap-1"
           >
             <Info className="w-3 h-3 text-teal-400" />
-            <span className="truncate">Clinical Notice</span>
+            <span className="truncate">{t.safetyGuidelines}</span>
           </button>
         </div>
       </div>

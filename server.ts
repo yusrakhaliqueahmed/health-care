@@ -1,12 +1,11 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
+import fs from "fs";
+import https from "https";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
 dotenv.config();
-
-const PORT = 3000;
 
 // Lazy initialization of Gemini
 let aiClient: GoogleGenAI | null = null;
@@ -415,9 +414,9 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-  // Health check
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", service: "SehatSaathi Pro Backend" });
+  // Health checks for Cloud Run rollout, liveness, and container monitoring
+  app.get(["/health", "/healthz", "/api/health"], (_req, res) => {
+    res.status(200).json({ status: "ok", service: "SehatSaathi Pro Backend", timestamp: new Date().toISOString() });
   });
 
   // AI Symptom Checker & Clinical Conversation
@@ -750,6 +749,431 @@ SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
     }
   });
 
+  // Persistent User Data & Unified Health Records Storage
+  const DATA_DIR = path.join(process.cwd(), "data");
+  const RECORDS_STORE_FILE = path.join(DATA_DIR, "user_records_store.json");
+
+  function ensureDataStoreExists(): Record<string, { profiles: any[]; records: any[]; vitals?: any }> {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      if (!fs.existsSync(RECORDS_STORE_FILE)) {
+        fs.writeFileSync(RECORDS_STORE_FILE, JSON.stringify({}, null, 2), "utf-8");
+        return {};
+      }
+      const raw = fs.readFileSync(RECORDS_STORE_FILE, "utf-8");
+      return JSON.parse(raw) || {};
+    } catch (e) {
+      console.warn("Data store read error, resetting in-memory fallback:", e);
+      return {};
+    }
+  }
+
+  function saveUserDataStore(data: Record<string, any>) {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      fs.writeFileSync(RECORDS_STORE_FILE, JSON.stringify(data, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Data store write error:", e);
+    }
+  }
+
+  function getDefaultUserRecords(userName: string = "Patient"): any[] {
+    return [
+      {
+        id: "SS-REC-88412",
+        referenceNumber: "SS-2026-88412",
+        labCaseNumber: "LB-77491",
+        userId: "default",
+        patientProfileId: "prof-self",
+        patientName: userName,
+        patientAge: "34 Y",
+        patientGender: "male",
+        category: "lab_report",
+        title: "Complete Blood Count (CBC) Panel",
+        panelName: "COMPLETE BLOOD COUNT (CBC)",
+        date: "07-Sep-2026 11:30 AM",
+        status: "doctor_approved",
+        reviewedByDoctor: "Dr. Ayesha Malik",
+        doctorPmdc: "PMDC #48291-P",
+        urgency: "YELLOW",
+        testResults: [
+          {
+            testName: "Hemoglobin (Hb)",
+            result: "10.8",
+            referenceRange: "13.5 - 17.5",
+            unit: "g/dL",
+            isAbnormal: true,
+            notes: "Mild microcytic hypochromic pattern",
+          },
+          {
+            testName: "Total Leukocyte Count (TLC / WBC)",
+            result: "7,800",
+            referenceRange: "4,000 - 11,000",
+            unit: "/uL",
+            isAbnormal: false,
+          },
+          {
+            testName: "Platelets Count",
+            result: "245,000",
+            referenceRange: "150,000 - 450,000",
+            unit: "/uL",
+            isAbnormal: false,
+          },
+          {
+            testName: "Hematocrit (PCV)",
+            result: "33.5",
+            referenceRange: "40.0 - 52.0",
+            unit: "%",
+            isAbnormal: true,
+            notes: "Reduced oxygen-carrying capacity",
+          },
+          {
+            testName: "Mean Corpuscular Volume (MCV)",
+            result: "74.2",
+            referenceRange: "80.0 - 100.0",
+            unit: "fL",
+            isAbnormal: true,
+          },
+          {
+            testName: "Erythrocyte Sedimentation Rate (ESR)",
+            result: "14",
+            referenceRange: "0 - 15",
+            unit: "mm/1st hr",
+            isAbnormal: false,
+          },
+        ],
+        clinicalNotes:
+          "Mild nutritional anemia pattern identified with microcytosis. Attending physician recommends dietary iron enrichment (spinach, dates, lean meats) and oral ferrous bisglycinate with Vitamin C. Repeat CBC in 6 weeks.",
+        doctorComments:
+          "Reviewed and countersigned. Patient advised against taking tea immediately after meals to avoid inhibiting iron absorption.",
+      },
+      {
+        id: "SS-REC-91204",
+        referenceNumber: "SS-2026-91204",
+        labCaseNumber: "LB-82915",
+        userId: "default",
+        patientProfileId: "prof-self",
+        patientName: userName,
+        patientAge: "34 Y",
+        patientGender: "male",
+        category: "medicine",
+        title: "Panadol Extra (Paracetamol + Caffeine) Clinical Verification",
+        panelName: "MEDICINE CHECK RESULT",
+        date: "05-Sep-2026 04:15 PM",
+        status: "doctor_approved",
+        reviewedByDoctor: "Dr. Tariq Jameel",
+        doctorPmdc: "PMDC #31094-S",
+        urgency: "GREEN",
+        testResults: [
+          {
+            testName: "Active Ingredient 1",
+            result: "Paracetamol 500mg",
+            referenceRange: "Standard Analgesic / Antipyretic",
+            unit: "mg",
+            isAbnormal: false,
+          },
+          {
+            testName: "Active Ingredient 2",
+            result: "Caffeine 65mg",
+            referenceRange: "Analgesic Adjuvant (<200mg/dose)",
+            unit: "mg",
+            isAbnormal: false,
+          },
+          {
+            testName: "Max Daily Limit Verification",
+            result: "4,000 mg / 24 Hours",
+            referenceRange: "Safe Upper Limit (Adults)",
+            unit: "mg",
+            isAbnormal: false,
+          },
+          {
+            testName: "Hepatic / Liver Safety Index",
+            result: "Class A (Safe at stated dose)",
+            referenceRange: "Normal LFT Required if Chronic",
+            isAbnormal: false,
+          },
+          {
+            testName: "Pediatric Contraindication Screen",
+            result: "Not Recommended for Children < 12y",
+            referenceRange: "Standard DRAP Warning",
+            isAbnormal: false,
+          },
+        ],
+        clinicalNotes:
+          "Appropriate for acute mild-to-moderate tension headache and fever. Take 1-2 tablets every 6 hours with a full glass of water. Do NOT combine with other over-the-counter paracetamol products (Disprin Extra, Calpol, etc.) to prevent hepatotoxicity.",
+        doctorComments: "Approved for short-term symptomatic relief (maximum 3 consecutive days).",
+      },
+      {
+        id: "SS-REC-67120",
+        referenceNumber: "SS-2026-67120",
+        labCaseNumber: "LB-55193",
+        userId: "default",
+        patientProfileId: "prof-self",
+        patientName: userName,
+        patientAge: "34 Y",
+        patientGender: "male",
+        category: "symptom",
+        title: "Upper Respiratory & Pharyngitis Clinical Triage",
+        panelName: "SYMPTOM SUMMARY",
+        date: "03-Sep-2026 09:20 AM",
+        status: "ai_preliminary",
+        urgency: "GREEN",
+        testResults: [
+          {
+            testName: "Chief Complaint",
+            result: "Sore Throat & Mild Dry Cough x 2 Days",
+            referenceRange: "Acute Duration (< 7 days)",
+            isAbnormal: false,
+          },
+          {
+            testName: "Measured Body Temperature",
+            result: "99.8 °F (Low-grade pyrexia)",
+            referenceRange: "97.0 - 99.0 °F",
+            isAbnormal: true,
+            notes: "Mild fever spike responding to fluids",
+          },
+          {
+            testName: "Respiratory Distress / Stridor Screen",
+            result: "Clear & Unlabored",
+            referenceRange: "No accessory muscle usage",
+            isAbnormal: false,
+          },
+          {
+            testName: "Emergency Red Flag Audit",
+            result: "All 5 Negative (No chest pain/hemoptysis)",
+            referenceRange: "Zero Critical Indicators",
+            isAbnormal: false,
+          },
+        ],
+        clinicalNotes:
+          "Clinical presentation consistent with viral pharyngitis / seasonal change irritation. Warm saline gargles (1/2 tsp salt in warm water) 3 times daily. Hydrate with warm broths and honey-lemon tea. Physical clinic visit recommended if high fever (>102°F) develops or symptoms persist past 5 days.",
+      },
+      {
+        id: "SS-REC-44192",
+        referenceNumber: "SS-2026-44192",
+        labCaseNumber: "LB-39912",
+        userId: "default",
+        patientProfileId: "prof-self",
+        patientName: userName,
+        patientAge: "34 Y",
+        patientGender: "male",
+        category: "prescription",
+        title: "Seasonal Allergy & Bronchial Care Prescription",
+        panelName: "LICENSED MEDICAL PRESCRIPTION",
+        date: "01-Sep-2026 02:45 PM",
+        status: "doctor_approved",
+        reviewedByDoctor: "Dr. Ayesha Malik",
+        doctorPmdc: "PMDC #48291-P",
+        urgency: "GREEN",
+        prescriptionData: {
+          diagnosis: "Seasonal Allergic Rhinitis & Mild Tracheitis",
+          medicines: [
+            {
+              name: "Tab. Montika (Montelukast) 10mg",
+              dosage: "10mg",
+              duration: "14 Days",
+              instructions: "1 tablet daily at bedtime",
+              frequency: "Once Daily",
+            },
+            {
+              name: "Tab. Rigix (Cetirizine) 10mg",
+              dosage: "10mg",
+              duration: "5 Days",
+              instructions: "1 tablet as needed for severe sneezing or itching",
+              frequency: "As Needed",
+            },
+            {
+              name: "Syr. Acefyl (Diprophylline) 120ml",
+              dosage: "2 teaspoons",
+              duration: "5 Days",
+              instructions: "Twice daily after meals",
+              frequency: "Twice Daily",
+            },
+          ],
+          notes: "Avoid direct ice water, cold air conditioning drafts, and dusty environments.",
+        },
+        testResults: [
+          {
+            testName: "Primary Clinical Diagnosis",
+            result: "Seasonal Allergic Rhinitis with Mild Tracheitis",
+            referenceRange: "ICD-10 J30.1",
+            isAbnormal: false,
+          },
+          {
+            testName: "Doctor Verification",
+            result: "Signed & Digitally Verified via PMDC Portal",
+            referenceRange: "Valid for 30 Days",
+            isAbnormal: false,
+          },
+          {
+            testName: "DRAP Pharmacy Dispensing Code",
+            result: "DISP-VERIFIED-9821",
+            referenceRange: "Official DRAP Barcode QR",
+            isAbnormal: false,
+          },
+        ],
+        clinicalNotes:
+          "Prescription issued after clinical tele-triage. Patient advised to complete full course of Montelukast to prevent nighttime airway spasms.",
+        doctorComments: "Patient instructed to report if rash or significant drowsiness occurs.",
+      },
+    ];
+  }
+
+  function getDefaultUserProfiles(userName: string = "Myself"): any[] {
+    return [
+      {
+        id: "prof-self",
+        name: userName || "Myself",
+        relation: "Self",
+        ageGroup: "adult",
+        exactAge: 34,
+        gender: "male",
+        bloodGroup: "B+",
+        conditions: "Mild seasonal allergies",
+        medications: "None regular",
+        allergies: "Dust, Pollen",
+        emergencyContact: "0300-1234567",
+      },
+      {
+        id: "prof-child-1",
+        name: "Ali (Son)",
+        relation: "Child",
+        ageGroup: "child",
+        exactAge: 6,
+        gender: "male",
+        bloodGroup: "O+",
+        conditions: "None",
+        medications: "None",
+        allergies: "No known drug allergies",
+      },
+      {
+        id: "prof-parent-1",
+        name: "Ami Jan (Mother)",
+        relation: "Parent",
+        ageGroup: "elderly",
+        exactAge: 62,
+        gender: "female",
+        bloodGroup: "A+",
+        conditions: "Hypertension, Type 2 Diabetes",
+        medications: "Tab. Glucophage 500mg, Tab. Softvas 5mg",
+        allergies: "Penicillin allergy",
+        emergencyContact: "0321-9876543",
+      },
+    ];
+  }
+
+  // GET User Data (survives logout/login!)
+  app.get("/api/user-data/:userKey", (req, res) => {
+    try {
+      const userKey = (req.params.userKey || "default").toLowerCase().trim();
+      const store = ensureDataStoreExists();
+
+      if (!store[userKey]) {
+        // Initialize default profiles and realistic sample records for this user
+        const defaultName = userKey.includes("@") ? userKey.split("@")[0].replace(/[._]/g, " ") : "Patient";
+        store[userKey] = {
+          profiles: getDefaultUserProfiles(defaultName),
+          records: getDefaultUserRecords(defaultName),
+          vitals: {
+            bloodSugar: "105 mg/dL",
+            bloodPressure: "120/80 mmHg",
+            heartRate: "72 bpm",
+            weight: "68 kg",
+            recordedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+          },
+        };
+        saveUserDataStore(store);
+      }
+
+      res.json({
+        success: true,
+        userKey,
+        profiles: store[userKey].profiles || [],
+        records: store[userKey].records || [],
+        vitals: store[userKey].vitals || {},
+      });
+    } catch (e: any) {
+      console.error("Failed to get user data:", e);
+      res.status(500).json({ error: "Failed to load user records" });
+    }
+  });
+
+  // POST User Data (saves/syncs all profiles and records)
+  app.post("/api/user-data/:userKey", (req, res) => {
+    try {
+      const userKey = (req.params.userKey || "default").toLowerCase().trim();
+      const { profiles, records, vitals } = req.body;
+      const store = ensureDataStoreExists();
+
+      store[userKey] = {
+        profiles: profiles || store[userKey]?.profiles || [],
+        records: records || store[userKey]?.records || [],
+        vitals: vitals || store[userKey]?.vitals || {},
+      };
+
+      saveUserDataStore(store);
+      res.json({ success: true, count: store[userKey].records.length });
+    } catch (e: any) {
+      console.error("Failed to save user data:", e);
+      res.status(500).json({ error: "Failed to persist user records" });
+    }
+  });
+
+  // POST Single Record (Appends or updates a record)
+  app.post("/api/records", (req, res) => {
+    try {
+      const { userKey = "default", record } = req.body;
+      if (!record || !record.id) {
+        return res.status(400).json({ error: "Valid record object with an id is required" });
+      }
+
+      const key = (userKey || "default").toLowerCase().trim();
+      const store = ensureDataStoreExists();
+      if (!store[key]) {
+        store[key] = {
+          profiles: getDefaultUserProfiles(),
+          records: getDefaultUserRecords(),
+        };
+      }
+
+      const existingIndex = store[key].records.findIndex((r: any) => r.id === record.id);
+      if (existingIndex >= 0) {
+        store[key].records[existingIndex] = { ...store[key].records[existingIndex], ...record };
+      } else {
+        store[key].records.unshift(record);
+      }
+
+      saveUserDataStore(store);
+      res.json({ success: true, recordId: record.id, totalRecords: store[key].records.length });
+    } catch (e: any) {
+      console.error("Failed to save record:", e);
+      res.status(500).json({ error: "Failed to save record" });
+    }
+  });
+
+  // DELETE Single Record
+  app.delete("/api/records/:userKey/:recordId", (req, res) => {
+    try {
+      const key = (req.params.userKey || "default").toLowerCase().trim();
+      const recordId = req.params.recordId;
+      const store = ensureDataStoreExists();
+
+      if (store[key] && Array.isArray(store[key].records)) {
+        store[key].records = store[key].records.filter((r: any) => r.id !== recordId);
+        saveUserDataStore(store);
+      }
+
+      res.json({ success: true, recordId });
+    } catch (e: any) {
+      console.error("Failed to delete record:", e);
+      res.status(500).json({ error: "Failed to delete record" });
+    }
+  });
+
   // Medical Report & X-ray Analysis API
   app.post("/api/report-analyze", async (req, res) => {
     try {
@@ -851,70 +1275,245 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
     }
   });
 
-  // Audio Text-To-Speech API route for high quality speech audio
+  // Audio cache for instant replay & high-performance playback
+  const ttsAudioCache = new Map<string, Buffer>();
+
+  function fetchTTSChunk(text: string, tl: string): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${encodeURIComponent(tl)}&client=tw-ob`;
+      https.get(
+        url,
+        {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          },
+        },
+        (upstreamRes) => {
+          if (upstreamRes.statusCode !== 200) {
+            return reject(new Error(`TTS upstream error HTTP ${upstreamRes.statusCode}`));
+          }
+          const chunks: Buffer[] = [];
+          upstreamRes.on("data", (c) => chunks.push(c));
+          upstreamRes.on("end", () => resolve(Buffer.concat(chunks)));
+          upstreamRes.on("error", reject);
+        }
+      ).on("error", reject);
+    });
+  }
+
+  async function generateSpeechAudio(rawText: string, lang: string): Promise<Buffer> {
+    // Clean text: strip markdown symbols, URLs, asterisks, brackets
+    const clean = rawText
+      .replace(/[*_#`~[\]()]/g, "")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (!clean) {
+      throw new Error("Empty text after cleaning");
+    }
+
+    const normalizedLang = (lang || "en").toLowerCase();
+    const cacheKey = `${normalizedLang}:${clean.slice(0, 300)}`;
+    if (ttsAudioCache.has(cacheKey)) {
+      return ttsAudioCache.get(cacheKey)!;
+    }
+
+    // Determine Google TTS target language tag (tl)
+    let tl = "en";
+    const hasUrduScript = /[\u0600-\u06FF]/.test(clean);
+
+    if (normalizedLang === "ur" || normalizedLang === "urdu" || hasUrduScript) {
+      tl = "ur";
+    } else if (normalizedLang === "roman" || normalizedLang === "roman urdu") {
+      // Roman Urdu: tl='hi' natively pronounces Romanized South Asian / Urdu / Hindi syllables with authentic accent!
+      tl = "hi";
+    } else {
+      tl = "en";
+    }
+
+    // Chunk text if needed into <= 130 chars segments (Google TTS chunk limit)
+    const sentences = clean.match(/[^.!?،\n;]+[.!?،\n;]*/g) || [clean];
+    const chunks: string[] = [];
+    let currentChunk = "";
+
+    for (const s of sentences) {
+      if ((currentChunk + " " + s).trim().length <= 130) {
+        currentChunk = (currentChunk + " " + s).trim();
+      } else {
+        if (currentChunk) chunks.push(currentChunk);
+        if (s.length > 130) {
+          const words = s.split(" ");
+          let sub = "";
+          for (const w of words) {
+            if ((sub + " " + w).trim().length <= 130) {
+              sub = (sub + " " + w).trim();
+            } else {
+              if (sub) chunks.push(sub);
+              sub = w;
+            }
+          }
+          if (sub) chunks.push(sub);
+          currentChunk = "";
+        } else {
+          currentChunk = s.trim();
+        }
+      }
+    }
+    if (currentChunk) chunks.push(currentChunk);
+
+    // Limit to first 8 chunks for audio stream safety
+    const safeChunks = chunks.slice(0, 8);
+    const audioBuffers: Buffer[] = [];
+
+    for (const chunk of safeChunks) {
+      try {
+        const buf = await fetchTTSChunk(chunk, tl);
+        if (buf && buf.length > 0) {
+          audioBuffers.push(buf);
+        }
+      } catch (err) {
+        console.warn(`TTS fetch failed for chunk "${chunk.slice(0, 30)}":`, err);
+      }
+    }
+
+    if (audioBuffers.length === 0) {
+      throw new Error("Failed to produce audio buffers");
+    }
+
+    const combined = Buffer.concat(audioBuffers);
+    if (ttsAudioCache.size > 150) {
+      const firstKey = ttsAudioCache.keys().next().value;
+      if (firstKey) ttsAudioCache.delete(firstKey);
+    }
+    ttsAudioCache.set(cacheKey, combined);
+    return combined;
+  }
+
+  // Audio Text-To-Speech GET API (direct streaming into HTML5 Audio element)
+  app.get("/api/tts", async (req, res) => {
+    try {
+      const text = (req.query.text as string) || "";
+      const lang = ((req.query.lang || req.query.language) as string) || "en";
+      if (!text.trim()) {
+        return res.status(400).send("Text query parameter required");
+      }
+
+      const audioBuffer = await generateSpeechAudio(text, lang);
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.send(audioBuffer);
+    } catch (err: any) {
+      console.error("GET /api/tts error:", err);
+      res.status(500).send("Failed to generate speech audio");
+    }
+  });
+
+  // Audio Text-To-Speech POST API route
   app.post("/api/tts", async (req, res) => {
     try {
-      const { text, language = "English" } = req.body;
-      if (!text) {
+      const { text, lang = "en", language } = req.body;
+      const targetLang = lang || language || "en";
+      if (!text || !text.trim()) {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      // Try Gemini TTS if available and short text, or return speech metadata
-      const ai = getAI();
-      try {
-        const ttsResponse = await ai.models.generateContent({
-          model: "gemini-3.1-flash-tts-preview",
-          contents: [{ parts: [{ text: text.slice(0, 400) }] }],
-          config: {
-            responseModalities: ["AUDIO" as any],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: { voiceName: "Kore" },
-              },
-            },
-          },
-        });
-
-        const base64Audio = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-        if (base64Audio) {
-          return res.json({
-            audioBase64: base64Audio,
-            mimeType: "audio/mp3",
-            sampleRate: 24000,
-            provider: "gemini-tts",
-          });
-        }
-      } catch (ttsErr) {
-        // Fallback gracefully to client Web Speech API synthesis
-      }
-
+      const audioBuffer = await generateSpeechAudio(text, targetLang);
       res.json({
-        fallbackToWebSpeech: true,
-        text,
-        language,
+        audioBase64: audioBuffer.toString("base64"),
+        mimeType: "audio/mpeg",
+        language: targetLang,
       });
     } catch (err: any) {
-      res.json({ fallbackToWebSpeech: true, text: req.body?.text || "" });
+      console.error("POST /api/tts error:", err);
+      res.status(500).json({ error: "Failed to generate speech audio", fallbackToWebSpeech: true });
+    }
+  });
+
+  // Audio Speech-To-Text Transcription API for Urdu, Roman Urdu & English
+  app.post("/api/transcribe-audio", async (req, res) => {
+    try {
+      const { audioBase64, mimeType = "audio/webm", language = "ur" } = req.body;
+      if (!audioBase64) {
+        return res.status(400).json({ error: "audioBase64 payload is required" });
+      }
+
+      const ai = getAI();
+      let languageGuide = "";
+      if (language === "ur") {
+        languageGuide = "The speaker is speaking in Pakistani Urdu. Transcribe accurately into standard Urdu script (اردو). Preserve Pakistani medical terms and medicine names (like Panadol, Disprin, Augmentin, Brufen, BP, Sugar, Bukhar) accurately.";
+      } else if (language === "roman") {
+        languageGuide = "The speaker is speaking in Urdu / Hindi. Transcribe directly into natural, everyday Roman Urdu using the Latin / English alphabet (for example: 'Mujhe 2 din se shadeed bukhar aur gale mein dard hai'). Do not output Arabic script.";
+      } else {
+        languageGuide = "The speaker is speaking in English. Transcribe accurately in English.";
+      }
+
+      const prompt = `You are an expert medical transcription engine specialized in South Asian languages and healthcare terminology.
+${languageGuide}
+Clean up background ambient noise and filler stutter if any, but preserve all clinical symptoms, numbers, duration, and medicine names.
+CRITICAL: Output ONLY the exact transcribed text string. Do NOT add any preamble, explanation, markdown backticks, quotes, or metadata.`;
+
+      const contents = [
+        {
+          parts: [
+            {
+              inlineData: {
+                mimeType: (mimeType || "audio/webm").split(";")[0],
+                data: audioBase64,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ];
+
+      const result = await generateContentWithFallback(ai, {
+        contents,
+        primaryModel: "gemini-3.1-flash-lite",
+        timeoutMs: 9000,
+      });
+
+      const cleanTranscript = (result || "").trim().replace(/^["']|["']$/g, "");
+      res.json({ transcript: cleanTranscript });
+    } catch (err: any) {
+      console.error("Transcribe audio error:", err);
+      res.status(500).json({ error: "Failed to transcribe audio", details: err.message });
     }
   });
 
   // Vite middleware in development, static files in production
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const candidatePaths = [
+      path.join(process.cwd(), "dist"),
+      path.join(__dirname, "dist"),
+      __dirname,
+    ];
+    const distPath =
+      candidatePaths.find((p) => fs.existsSync(path.join(p, "index.html"))) ||
+      candidatePaths[0];
+
     app.use(express.static(distPath));
     app.get("*", (_req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      const indexPath = path.join(distPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(200).send("SehatSaathi Pro Backend is running.");
+      }
     });
   }
 
+  const PORT = 3000;
+
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`SehatSaathi Pro server running on http://0.0.0.0:${PORT}`);
+    console.log(`SehatSaathi Pro server running on port ${PORT}`);
   });
 }
 

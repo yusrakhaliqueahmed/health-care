@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { SupportedLanguage, MedicalReportRecord, UrgencyLevel } from '../types';
+import { SupportedLanguage, MedicalReportRecord, UrgencyLevel, UnifiedHealthRecord } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager } from '../services/voice';
 import { AudioPlayerControls } from './AudioPlayerControls';
@@ -17,16 +17,21 @@ import {
   BookmarkPlus,
   RefreshCw,
   Eye,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface ReportAnalyzerProps {
   currentLanguage: SupportedLanguage;
   onSaveToRecords: (record: MedicalReportRecord) => void;
+  onSaveUnifiedRecord?: (record: UnifiedHealthRecord) => void;
+  userName?: string;
 }
 
 export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
   currentLanguage,
   onSaveToRecords,
+  onSaveUnifiedRecord,
+  userName,
 }) => {
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
 
@@ -100,6 +105,75 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
         timestamp: new Date().toLocaleDateString(),
       };
       setAnalysisResult(resObj);
+
+      // Automatically persist to Medical Health Records as requested by user
+      const reportTitle =
+        currentLanguage === 'ur'
+          ? `آپ نے یہ رپورٹ چیک کروائی: ${reportType === 'lab' ? 'خون کی لیب رپورٹ' : reportType === 'xray' ? 'ایکسرے / ریڈیالوجی' : 'میڈیکل رپورٹ'}`
+          : currentLanguage === 'roman'
+          ? `Aap ny ye report ka pocha hai: ${reportType === 'lab' ? 'Lab Blood Report' : reportType === 'xray' ? 'X-Ray Report' : 'Medical Report'}`
+          : `Report Analyzed: ${reportType === 'lab' ? 'Laboratory Blood Test' : reportType === 'xray' ? 'Radiology Imaging (X-Ray)' : 'Medical Diagnostic Report'}`;
+
+      const legacyReport: MedicalReportRecord = {
+        id: `rep-${Date.now()}`,
+        title: reportTitle,
+        type: reportType,
+        patientName: userName || 'Patient',
+        patientAge: patientAgeGroup,
+        date: new Date().toISOString().split('T')[0],
+        photoUrl: photoBase64 || undefined,
+        findings: text,
+        urgency: urgency,
+        status: 'preliminary_ai',
+        reviewedByDoctor: 'Pending Review by PMDC Medical Officer',
+      };
+      onSaveToRecords(legacyReport);
+
+      if (onSaveUnifiedRecord) {
+        const unifiedRec: UnifiedHealthRecord = {
+          id: `rec-rep-${Date.now()}`,
+          referenceNumber: `SS-LB-${Date.now().toString().slice(-6)}`,
+          labCaseNumber: `LB-${Math.floor(10000 + Math.random() * 90000)}`,
+          userId: 'default',
+          patientProfileId: 'prof-self',
+          patientName: userName || 'Patient',
+          patientAge: patientAgeGroup || '30 Y',
+          patientGender: 'male',
+          category: 'lab_report',
+          searchQuery: reportTitle,
+          searchType: 'lab_report',
+          title: reportTitle,
+          panelName: reportType === 'lab' ? 'LABORATORY BLOOD INVESTIGATION' : 'DIAGNOSTIC RADIOLOGY REPORT',
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+          status: 'ai_preliminary',
+          urgency: urgency,
+          photoUrl: photoBase64 || undefined,
+          testResults: [
+            {
+              testName: currentLanguage === 'ur' ? 'رپورٹ کی قسم' : currentLanguage === 'roman' ? 'Report Type' : 'Report Type',
+              result: reportType.toUpperCase(),
+              referenceRange: 'Clinical Scan',
+              isAbnormal: urgency === 'RED',
+            },
+            {
+              testName: currentLanguage === 'ur' ? 'اہم تشخیصی نتائج' : currentLanguage === 'roman' ? 'Findings' : 'Key Findings',
+              result: text.slice(0, 100) + (text.length > 100 ? '...' : ''),
+              referenceRange: 'Normal Limits',
+              isAbnormal: urgency !== 'GREEN',
+            },
+          ],
+          clinicalNotes:
+            currentLanguage === 'ur'
+              ? `آپ نے اس میڈیکل رپورٹ کا پوچھا ہے۔ تفصیلی رپورٹ خلاصہ: ${text}`
+              : currentLanguage === 'roman'
+              ? `Aap ny is report ka pocha hai. Report findings: ${text}`
+              : `You inquired about this report. Findings: ${text}`,
+          doctorComments: 'Auto-saved to patient medical records upon diagnostic analysis.',
+          reviewedByDoctor: 'SehatSaathi Clinical Diagnostics AI',
+        };
+        onSaveUnifiedRecord(unifiedRec);
+      }
+      setSavedSuccess(true);
     } catch (err) {
       console.error(err);
       setAnalysisResult({
@@ -333,6 +407,26 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
       {/* Analysis Results Display */}
       {analysisResult && (
         <div className="space-y-4 animate-in fade-in duration-300">
+          {/* Permanent Record Confirmation Alert */}
+          <div className="flex items-center gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/70 border border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 shadow-xs">
+            <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <div className="text-xs sm:text-sm font-semibold">
+              {currentLanguage === 'ur' ? (
+                <span>
+                  آپ نے یہ رپورٹ چیک کروائی ہے — یہ رپورٹ اور تفصیلی تجاویز آپ کے میڈیکل ریکارڈ میں محفوظ ہو چکی ہیں!
+                </span>
+              ) : currentLanguage === 'roman' ? (
+                <span>
+                  Aap ny ye report ka pocha hai — Yeh report findings aap ke health record me save ho chuki hain!
+                </span>
+              ) : (
+                <span>
+                  You inquired about this lab report — All diagnostic findings have been logged to your Health Records!
+                </span>
+              )}
+            </div>
+          </div>
+
           <ClinicalOutputCard
             content={analysisResult.text}
             urgency={analysisResult.urgency}

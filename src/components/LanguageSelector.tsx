@@ -6,11 +6,15 @@ import { Globe, Check, ChevronDown } from 'lucide-react';
 interface LanguageSelectorProps {
   currentLanguage: SupportedLanguage;
   onLanguageChange: (lang: SupportedLanguage) => void;
+  compact?: boolean;
+  className?: string;
 }
 
 export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   currentLanguage,
   onLanguageChange,
+  compact = false,
+  className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,26 +42,33 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   };
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className={`relative inline-block text-left ${className}`} ref={dropdownRef}>
       <button
         id="language-selector-button"
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center justify-between gap-2 px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all focus:outline-hidden focus:ring-2 focus:ring-teal-500 min-h-[44px]"
+        className={
+          compact
+            ? "inline-flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-teal-900/80 hover:bg-teal-800 text-white border border-teal-700/50 shadow-xs transition-all focus:outline-hidden min-h-[38px] shrink-0"
+            : "inline-flex items-center justify-between gap-2 px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all focus:outline-hidden focus:ring-2 focus:ring-teal-500 min-h-[44px]"
+        }
         aria-expanded={isOpen}
         aria-haspopup="true"
+        title={`Current Language: ${activeLangInfo.name}`}
       >
-        <Globe className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
-        <span className="font-medium text-slate-900 dark:text-white">
+        <Globe className={`shrink-0 ${compact ? 'w-3.5 h-3.5 text-teal-300' : 'w-4 h-4 text-teal-600 dark:text-teal-400'}`} />
+        <span className={`font-medium truncate ${compact ? 'max-w-[70px]' : ''}`}>
           {activeLangInfo.nativeName}
         </span>
-        <span className="hidden md:inline text-xs text-slate-400 dark:text-slate-500 font-normal">
-          ({activeLangInfo.name})
-        </span>
+        {!compact && (
+          <span className="hidden md:inline text-xs text-slate-400 dark:text-slate-500 font-normal">
+            ({activeLangInfo.name})
+          </span>
+        )}
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
+          className={`shrink-0 text-slate-400 transition-transform duration-200 ${
+            compact ? 'w-3 h-3 text-teal-300' : 'w-3.5 h-3.5'
+          } ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -71,7 +82,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 
           <div
             id="language-dropdown-menu"
-            className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 bottom-4 sm:bottom-auto sm:top-full mt-2 w-auto sm:w-64 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-150"
+            className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 bottom-4 sm:bottom-auto sm:top-full mt-2 w-auto sm:w-64 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 max-w-sm mx-auto sm:max-w-none"
             role="menu"
             aria-orientation="vertical"
           >

@@ -3,11 +3,11 @@ import { SupportedLanguage, PatientProfile, NavigationTab, UserAccount } from '.
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager } from '../services/voice';
 import { LanguageSelector } from './LanguageSelector';
+import { ClinicalHeartIcon } from './ClinicalHeartIcon';
 import {
   Menu,
   PhoneCall,
   Share2,
-  Heart,
   Activity,
   Bell,
   HelpCircle,
@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Stethoscope,
   Sparkles,
+  MessageSquare,
 } from 'lucide-react';
 
 interface HighDensityHeaderProps {
@@ -32,6 +33,8 @@ interface HighDensityHeaderProps {
   onSelectLanguage: (lang: SupportedLanguage) => void;
   onOpenLogin?: () => void;
   onLogout?: () => void;
+  onOpenEmergencyCall?: () => void;
+  onOpenQuickMessage?: () => void;
 }
 
 export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
@@ -46,6 +49,8 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
   onToggleVoiceAutoPlay,
   onSelectLanguage,
   onOpenLogin,
+  onOpenEmergencyCall,
+  onOpenQuickMessage,
 }) => {
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const displayName =
@@ -56,31 +61,31 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
   const getTabLabel = (tab?: string) => {
     switch (tab) {
       case 'home':
-        return currentLanguage === 'ur' ? 'ڈیش بورڈ' : currentLanguage === 'roman' ? 'Dashboard' : 'Patient Dashboard';
+        return t.navHome;
       case 'symptoms':
-        return currentLanguage === 'ur' ? 'علامات کی جانچ' : currentLanguage === 'roman' ? 'Alamaat Checker' : 'AI Symptom Triage';
+        return t.navSymptoms;
       case 'medicine':
-        return currentLanguage === 'ur' ? 'ادویات کی جانچ' : currentLanguage === 'roman' ? 'Dawai Checker' : 'Medicine & Dosage Safety';
+        return t.navMedicine;
       case 'reports':
-        return currentLanguage === 'ur' ? 'لیب رپورٹس اور ایکسرے' : currentLanguage === 'roman' ? 'Lab Reports & X-Ray' : 'Lab Diagnostics & Vision';
+        return t.navReports;
       case 'care':
-        return currentLanguage === 'ur' ? 'قریبی ڈاکٹر اور کلینک' : currentLanguage === 'roman' ? 'Doctor & Care Finder' : 'Doctor & Hospital Finder';
+        return t.navNearby;
       case 'emergency':
-        return currentLanguage === 'ur' ? 'ایمرجنسی 1122' : currentLanguage === 'roman' ? 'Emergency 1122' : 'Emergency Rescue 1122';
+        return t.navEmergency;
       case 'records':
-        return currentLanguage === 'ur' ? 'صحت کے ریکارڈز' : currentLanguage === 'roman' ? 'Sehat Records' : 'Health Records & EHR';
+        return t.navRecords;
       case 'doctor_portal':
-        return currentLanguage === 'ur' ? 'ڈاکٹر پورٹل' : currentLanguage === 'roman' ? 'Doctor Portal' : 'PMDC Doctor Portal';
+        return t.navDoctorPortal;
       default:
-        return 'Dashboard';
+        return t.navHome;
     }
   };
 
   return (
     <div className="w-full mb-6 space-y-3">
       {/* Top Mobile Bar for screens < lg */}
-      <div className="lg:hidden flex items-center justify-between p-3 bg-[#0c2f28] text-white rounded-2xl shadow-md gap-2 border border-teal-900/60">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="lg:hidden flex items-center justify-between p-2.5 sm:p-3 bg-[#0c2f28] text-white rounded-2xl shadow-md gap-2 border border-teal-900/60 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={onOpenMobileMenu}
@@ -89,41 +94,58 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 cursor-pointer truncate" onClick={() => onNavigate('home')}>
+          <div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => onNavigate('home')}>
             <div className="relative w-8 h-8 rounded-lg bg-teal-950 border border-teal-500/40 flex items-center justify-center shrink-0">
-              <Heart className="w-4 h-4 text-teal-300 fill-teal-300/30" />
+              <ClinicalHeartIcon className="w-4 h-4 text-teal-300" />
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
             </div>
-            <span className="font-bold text-sm sm:text-base tracking-tight truncate">SehatSaathi</span>
+            <span className="font-bold text-sm tracking-tight truncate">SehatSaathi</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Mobile Top User Button */}
           <button
             type="button"
             onClick={onOpenLogin}
-            className="flex items-center gap-1.5 bg-teal-900/80 hover:bg-teal-800 text-white px-2.5 py-2 rounded-xl text-xs font-bold min-h-[40px] shrink-0 border border-teal-700/40"
+            className="flex items-center gap-1 bg-teal-900/80 hover:bg-teal-800 text-white px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-xs font-bold min-h-[38px] shrink-0 border border-teal-700/40"
             title={`Logged in as ${displayName}. Click to switch user`}
           >
-            <User className="w-3.5 h-3.5 text-teal-300" />
-            <span className="max-w-[70px] truncate">{displayName.split(' ')[0]}</span>
+            <User className="w-3.5 h-3.5 text-teal-300 shrink-0" />
+            <span className="hidden sm:inline max-w-[60px] truncate">{displayName.split(' ')[0]}</span>
           </button>
 
           {/* Mobile Top Language Switcher */}
           <LanguageSelector
             currentLanguage={currentLanguage}
             onLanguageChange={onSelectLanguage}
+            compact
           />
 
-          <a
-            href="tel:1122"
-            className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-2.5 py-2 rounded-xl text-xs font-bold shadow-xs min-h-[40px] shrink-0"
-            title="Call Rescue 1122 Ambulance"
-          >
-            <PhoneCall className="w-3.5 h-3.5 animate-pulse" />
-            <span>1122</span>
-          </a>
+          {/* Dual Action: Emergency Call & Quick Message (Mobile) */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              id="header-mobile-call-btn"
+              onClick={onOpenEmergencyCall || (() => { window.location.href = 'tel:1122'; })}
+              className="flex items-center gap-1 bg-red-600 hover:bg-red-700 active:scale-95 text-white px-2 py-1.5 rounded-xl text-xs font-bold shadow-xs min-h-[38px] cursor-pointer transition-transform"
+              title="Call Rescue 1122 Ambulance"
+            >
+              <PhoneCall className="w-3.5 h-3.5 animate-pulse" />
+              <span className="text-[11px] sm:text-xs">1122</span>
+            </button>
+
+            <button
+              type="button"
+              id="header-mobile-msg-btn"
+              onClick={onOpenQuickMessage}
+              className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2 py-1.5 rounded-xl text-xs font-bold shadow-xs min-h-[38px] cursor-pointer transition-transform"
+              title="Quick Medical Message / WhatsApp"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span className="text-[11px] sm:text-xs">Msg</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -157,7 +179,7 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span>Dr. Ayesha Malik (FCPS) • On Duty</span>
+            <span>{t.consultantOnDuty}: Dr. Ayesha Malik ({t.availableNow})</span>
           </div>
 
           {/* Voice Guidance Readout Button */}
@@ -180,21 +202,38 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
               voiceManager.speak(`${greeting} ${question}`, currentLanguage);
             }}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-2xs cursor-pointer min-h-[40px]"
-            title={currentLanguage === 'en' ? 'Listen to audio guidance' : currentLanguage === 'roman' ? 'Awaaz sunein' : 'آواز سنیں'}
+            title={t.audioPlay}
           >
             <Volume2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             <span className="hidden sm:inline">{t.audioPlay}</span>
           </button>
 
-          {/* Emergency 1122 Quick SOS Button */}
-          <a
-            href="tel:1122"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition-colors min-h-[40px]"
-            title="Immediate Rescue 1122 Ambulance dispatch"
-          >
-            <PhoneCall className="w-3.5 h-3.5 animate-pulse" />
-            <span>1122 SOS</span>
-          </a>
+          {/* Dual Action: Emergency Call & Quick Message (Desktop) */}
+          <div className="flex items-center gap-1.5">
+            {/* Emergency 1122 Quick SOS Call Button */}
+            <button
+              type="button"
+              id="header-btn-emergency-call"
+              onClick={onOpenEmergencyCall || (() => { window.location.href = 'tel:1122'; })}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all min-h-[40px] cursor-pointer"
+              title="Immediate Rescue 1122 Ambulance dispatch"
+            >
+              <PhoneCall className="w-3.5 h-3.5 animate-pulse" />
+              <span>1122 SOS</span>
+            </button>
+
+            {/* Quick Medical Message Button */}
+            <button
+              type="button"
+              id="header-btn-medical-message"
+              onClick={onOpenQuickMessage}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all min-h-[40px] cursor-pointer"
+              title="Quick Medical Message / WhatsApp & SMS Triage"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Message</span>
+            </button>
+          </div>
 
           {/* Accessible Top-Corner Language Switcher */}
           <div className="hidden lg:block">

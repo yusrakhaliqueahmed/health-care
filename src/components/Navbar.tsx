@@ -2,6 +2,7 @@ import React from 'react';
 import { SupportedLanguage, UserAccount } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { LanguageSelector } from './LanguageSelector';
+import { ClinicalHeartIcon } from './ClinicalHeartIcon';
 import {
   HeartPulse,
   PhoneCall,
@@ -95,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-2.5 sm:gap-3 group text-left focus:outline-hidden"
           >
             <div className="relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
-              <HeartPulse className="w-5 h-5 sm:w-6 sm:h-6" />
+              <ClinicalHeartIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 flex items-center justify-center">
                 <span className="w-1.5 h-1.5 rounded-full bg-white" />
               </div>

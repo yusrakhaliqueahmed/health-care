@@ -133,7 +133,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
 
   // Initialize welcome message
   useEffect(() => {
-    const welcomeByLang: Record<SupportedLanguage, string> = {
+    const welcomeByLang: Record<string, string> = {
       en: "Hello, I am SehatSaathi Pro. I am here to help you evaluate your symptoms and prepare a clinical file for your doctor. Who is this consultation for, and what symptoms are you experiencing?",
       roman: "Assalam-o-Alaikum, main SehatSaathi Pro hoon. Main aapki alamaat ko samajhnay aur doctor ke liye case file tayar karnay mein madad karoon ga. Yeh mashwara kis ke liye hai aur aapko kya takleef ya alamaat hain?",
       ur: "السلام علیکم، میں صحت ساتھی پرو ہوں۔ میں آپ کی علامات کو سمجھنے اور ڈاکٹر کے لیے رپورٹ تیار کرنے میں مدد کروں گا۔ آپ کو کیا تکلیف یا علامات ہیں؟",
@@ -287,7 +287,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       console.warn('Chat request completed with fallback:', err);
       clearTimeout(safetyTimeout);
 
-      // Intelligent symptom fallback supporting all Pakistani regional languages
+      // Intelligent symptom fallback supporting English, Urdu, and Roman Urdu
       let fallbackText = `Your symptoms have been noted: "${textToSend}".
 1. Rest in a comfortable, quiet room and stay well-hydrated with water or electrolytes.
 2. For mild tension or feverish discomfort, Paracetamol is commonly recommended (check age and allergies).

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { SupportedLanguage, NavigationTab, UserAccount, PatientProfile } from '../types';
+import { SupportedLanguage, NavigationTab, UserAccount, PatientProfile, UnifiedHealthRecord } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { createSpeechRecognizer } from '../services/voice';
-import { Medical3DCanvas } from './Medical3DCanvas';
+import { MedicalPulseHeart } from './MedicalPulseHeart';
+import { Diagnostic3DHeartCard } from './Diagnostic3DHeartCard';
 import { motion } from 'motion/react';
 import {
   Stethoscope,
@@ -18,7 +19,6 @@ import {
   Search,
   ArrowRight,
   CheckCircle2,
-  Heart,
   Activity,
   Calendar,
   Sparkles,
@@ -28,6 +28,7 @@ import {
   Award,
   Layers,
 } from 'lucide-react';
+import { ClinicalHeartIcon } from './ClinicalHeartIcon';
 
 interface HeroLandingProps {
   currentLanguage: SupportedLanguage;
@@ -39,6 +40,7 @@ interface HeroLandingProps {
   onEmergencyCall?: () => void;
   onOpenDisclaimer?: () => void;
   onReplaySplash?: () => void;
+  onSaveSearchRecord?: (record: UnifiedHealthRecord) => void;
 }
 
 export const HeroLanding: React.FC<HeroLandingProps> = ({
@@ -51,6 +53,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
   onEmergencyCall,
   onOpenDisclaimer,
   onReplaySplash,
+  onSaveSearchRecord,
 }) => {
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const isUrdu = currentLanguage === 'ur';
@@ -102,13 +105,87 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
     );
   };
 
+  const logSearchToRecords = (queryText: string, targetCategory: 'medicine' | 'lab_report' | 'symptom') => {
+    if (!onSaveSearchRecord || !queryText.trim()) return;
+    const isMed = targetCategory === 'medicine';
+    const isLab = targetCategory === 'lab_report';
+
+    const recordTitle =
+      isMed
+        ? isUrdu
+          ? `آپ نے یہ دوا تلاش کی ہے: ${queryText}`
+          : isRoman
+          ? `Aap ny ye medicine search ki hai: ${queryText}`
+          : `Medicine Searched: ${queryText}`
+        : isLab
+        ? isUrdu
+          ? `آپ نے یہ رپورٹ کا پوچھا ہے: ${queryText}`
+          : isRoman
+          ? `Aap ny is report ka pocha hai: ${queryText}`
+          : `Diagnostic Report Inquired: ${queryText}`
+        : isUrdu
+        ? `آپ نے یہ تلاش کیا ہے: ${queryText}`
+        : isRoman
+        ? `Aap ny ye search kiya hai: ${queryText}`
+        : `Medical Inquiry Logged: ${queryText}`;
+
+    const searchRecord: UnifiedHealthRecord = {
+      id: `rec-srch-${Date.now()}`,
+      referenceNumber: `SS-SR-${Date.now().toString().slice(-6)}`,
+      labCaseNumber: `SR-${Math.floor(10000 + Math.random() * 90000)}`,
+      userId: (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim(),
+      patientProfileId: 'prof-self',
+      patientName: displayName || 'Patient',
+      patientAge: '32 Y',
+      patientGender: 'male',
+      category: 'search_history',
+      searchQuery: queryText,
+      searchType: isMed ? 'medicine' : isLab ? 'lab_report' : 'symptom',
+      title: recordTitle,
+      panelName: isMed ? 'PHARMACOLOGICAL SAFETY SEARCH RECORD' : isLab ? 'LABORATORY REPORT INQUIRY RECORD' : 'PATIENT CLINICAL INQUIRY & TRIAGE LOG',
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: 'ai_preliminary',
+      urgency: 'GREEN',
+      testResults: [
+        {
+          testName: isUrdu ? 'سرچ شدہ الفاظ' : isRoman ? 'Search Query' : 'Searched Term',
+          result: queryText,
+          referenceRange: 'Clinical Inquiry',
+          isAbnormal: false,
+        },
+        {
+          testName: isUrdu ? 'متعلقہ شعبہ' : isRoman ? 'Category' : 'Clinical Domain',
+          result: isMed ? 'Pharmacology' : isLab ? 'Pathology / Diagnostics' : 'Clinical Triage',
+          referenceRange: 'General Medicine',
+          isAbnormal: false,
+        },
+      ],
+      clinicalNotes: isUrdu
+        ? `صارف نے صحت ساتھی پر تلاش کیا: "${queryText}"۔ یہ سرچ صارف کے میڈیکل ریکارڈ میں مستقل طور پر محفوظ کر دی گئی ہے۔`
+        : isRoman
+        ? `User ny SehatSaathi par search kiya: "${queryText}". Yeh query health record me save ho chuki hai.`
+        : `User inquired: "${queryText}". Logged to permanent patient health history.`,
+      doctorComments: 'Recorded to patient clinical inquiry history.',
+      reviewedByDoctor: 'SehatSaathi Clinical Diagnostics AI',
+    };
+
+    onSaveSearchRecord(searchRecord);
+  };
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    // Determine whether query is medicine or symptom
     const lower = searchQuery.toLowerCase();
-    if (lower.includes('mg') || lower.includes('syrup') || lower.includes('tablet') || lower.includes('panadol') || lower.includes('dawai') || lower.includes('medicine')) {
+    const isMed = lower.includes('mg') || lower.includes('syrup') || lower.includes('tablet') || lower.includes('panadol') || lower.includes('dawai') || lower.includes('medicine') || lower.includes('goli');
+    const isLab = lower.includes('report') || lower.includes('test') || lower.includes('cbc') || lower.includes('xray') || lower.includes('blood') || lower.includes('sugar') || lower.includes('urine');
+
+    const category: 'medicine' | 'lab_report' | 'symptom' = isMed ? 'medicine' : isLab ? 'lab_report' : 'symptom';
+    logSearchToRecords(searchQuery, category);
+
+    if (isMed) {
       onNavigate('medicine');
+    } else if (isLab) {
+      onNavigate('reports');
     } else {
       onNavigate('symptoms');
     }
@@ -139,11 +216,46 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
   };
 
   const quickSymptomsList = [
-    { label: isUrdu ? 'بخار اور سردی' : isRoman ? 'Bukhar aur sardi' : 'Fever & Chills', tab: 'symptoms' as NavigationTab },
-    { label: isUrdu ? 'سینے میں درد یا دباؤ' : isRoman ? 'Seenay mein dard' : 'Chest Pain', tab: 'symptoms' as NavigationTab },
-    { label: isUrdu ? 'پیناڈول شربت کی خوراک' : isRoman ? 'Panadol dosage' : 'Panadol Dosage', tab: 'medicine' as NavigationTab },
-    { label: isUrdu ? 'خون کا ٹیسٹ (سی بی سی)' : isRoman ? 'CBC Blood Report' : 'CBC Blood Report', tab: 'reports' as NavigationTab },
-    { label: isUrdu ? 'قریبی ایمرجنسی ہسپتال' : isRoman ? 'Hospital 1122' : 'Nearest Hospital', tab: 'care' as NavigationTab },
+    {
+      label: isUrdu
+        ? 'بخار اور سردی'
+        : isRoman
+        ? 'Bukhar aur sardi'
+        : 'Fever & Chills',
+      tab: 'symptoms' as NavigationTab,
+    },
+    {
+      label: isUrdu
+        ? 'سینے میں درد یا دباؤ'
+        : isRoman
+        ? 'Seenay mein dard'
+        : 'Chest Pain',
+      tab: 'symptoms' as NavigationTab,
+    },
+    {
+      label: isUrdu
+        ? 'پیناڈول شربت کی خوراک'
+        : isRoman
+        ? 'Panadol dosage'
+        : 'Panadol Dosage',
+      tab: 'medicine' as NavigationTab,
+    },
+    {
+      label: isUrdu
+        ? 'خون کا ٹیسٹ (سی بی سی)'
+        : isRoman
+        ? 'CBC Blood Report'
+        : 'CBC Blood Report',
+      tab: 'reports' as NavigationTab,
+    },
+    {
+      label: isUrdu
+        ? 'قریبی ایمرجنسی ہسپتال'
+        : isRoman
+        ? 'Hospital 1122'
+        : 'Nearest Hospital',
+      tab: 'care' as NavigationTab,
+    },
   ];
 
   return (
@@ -160,47 +272,31 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-semibold border border-teal-400/30">
                 <ShieldCheck className="w-3.5 h-3.5 text-teal-300" />
-                <span>PMDC Certified Clinical Care</span>
+                <span>{t.pmdcCertifiedCare}</span>
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-semibold border border-emerald-400/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Doctors On Duty 24/7</span>
+                <span>{t.doctorsOnDuty}</span>
               </span>
               {onReplaySplash && (
                 <button
                   type="button"
                   onClick={onReplaySplash}
                   className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-600/30 hover:bg-teal-600/50 text-teal-200 text-xs font-semibold border border-teal-400/40 transition-colors cursor-pointer"
-                  title="View 3D Doctor & Anatomy Simulation"
+                  title={t.medicalOverview}
                 >
                   <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-                  <span>3D Medical Simulation</span>
+                  <span>{t.medicalOverview}</span>
                 </button>
               )}
             </div>
 
             <div>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
-                {displayName ? (
-                  isUrdu
-                    ? `خوش آمدید، ${displayName}`
-                    : isRoman
-                    ? `Khush Amdeed, ${displayName}`
-                    : `How can we help you today, ${displayName.split(' ')[0]}?`
-                ) : (
-                  isUrdu
-                    ? 'صحت ساتھی میں خوش آمدید'
-                    : isRoman
-                    ? 'SehatSaathi mein Khush Amdeed'
-                    : 'How can we help you today?'
-                )}
+                {displayName ? `${t.welcomeGreeting}, ${displayName}` : t.appName}
               </h2>
               <p className="text-sm sm:text-base text-teal-100/80 mt-1 max-w-2xl font-normal">
-                {isUrdu
-                  ? 'اپنی علامات لکھیں یا بولیں، ادویات کی درست خوراک جانچیں، یا فوری ایمرجنسی 1122 حاصل کریں۔'
-                  : isRoman
-                  ? 'Apni alamaat likhein ya bol kar batayein, dawai ki sahi dosage check karein, ya 1122 ambulance hasil karein.'
-                  : 'Check your symptoms via voice, verify medicine safety & dosage, decode diagnostic lab tests, or locate nearby verified care.'}
+                {t.tagline}
               </p>
             </div>
 
@@ -212,13 +308,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={
-                    isUrdu
-                      ? 'اپنی بیماری کی علامات یا دوا کا نام یہاں درج کریں...'
-                      : isRoman
-                      ? 'Alamaat ya dawai ka naam likhein (maslan: tez bukhar, khansi)...'
-                      : 'Describe symptoms or medicine (e.g., fever, throat pain, Augmentin dosage)...'
-                  }
+                  placeholder={t.searchPlaceholder}
                   className="w-full px-3 py-2.5 text-sm sm:text-base text-slate-800 dark:text-slate-100 placeholder-slate-400 bg-transparent focus:outline-hidden"
                 />
 
@@ -231,7 +321,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                       ? 'bg-red-600 text-white animate-pulse'
                       : 'bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900'
                   }`}
-                  title="Speak symptoms (Urdu / Roman Urdu / English)"
+                  title={`${t.audioPlay} (${currentLanguage})`}
                 >
                   {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                 </button>
@@ -240,7 +330,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                   type="submit"
                   className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors shrink-0"
                 >
-                  {isUrdu ? 'چیک کریں' : isRoman ? 'Check Karein' : 'Analyze'}
+                  {t.searchButton}
                 </button>
               </div>
             </form>
@@ -248,13 +338,16 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
             {/* Quick Symptoms Preset Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <span className="text-xs text-teal-300/80 font-medium">
-                {isUrdu ? 'فوری جانچ:' : isRoman ? 'Jald check karein:' : 'Quick shortcuts:'}
+                {t.quickShortcuts}
               </span>
               {quickSymptomsList.map((item, idx) => (
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => onNavigate(item.tab)}
+                  onClick={() => {
+                    logSearchToRecords(item.label, 'symptom');
+                    onNavigate(item.tab);
+                  }}
                   className="text-xs px-3 py-1 rounded-full bg-teal-950/60 hover:bg-teal-900 border border-teal-700/50 text-teal-200 transition-colors font-medium hover:scale-105 active:scale-95"
                 >
                   {item.label}
@@ -263,53 +356,14 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Live Interactive 3D Medical Hologram Pod */}
+          {/* Right Column: 3D Diagnostic Heart & Anatomy (Video Model) - Doctor picture removed */}
           <div className="lg:col-span-5 relative flex flex-col items-center justify-center">
-            <div className="w-full max-w-sm rounded-2xl bg-teal-950/50 border border-teal-500/30 backdrop-blur-md p-4 shadow-[0_16px_40px_rgba(0,0,0,0.45)] relative overflow-hidden group hover:border-teal-400/50 transition-all duration-300">
-              {/* Header Badge */}
-              <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-teal-800/40 text-xs">
-                <div className="flex items-center gap-2 text-teal-300 font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
-                  <Sparkles className="w-3.5 h-3.5 text-teal-300" />
-                  <span>3D Diagnostic Heart & DNA</span>
-                </div>
-                <span className="text-[10px] uppercase font-bold text-teal-300 bg-teal-900/80 px-2 py-0.5 rounded-md border border-teal-600/50 tracking-wide">
-                  WebGL 3D
-                </span>
-              </div>
-
-              {/* 3D Canvas Box */}
-              <div className="relative w-full h-64 rounded-xl overflow-hidden bg-radial from-teal-900/30 via-transparent to-transparent flex items-center justify-center cursor-grab active:cursor-grabbing">
-                <Medical3DCanvas interactive={true} />
-
-                {/* 3D Drag Orbit Hint Overlay */}
-                <div className="absolute bottom-2 inset-x-2 flex items-center justify-between text-[10px] text-teal-200/80 bg-black/50 backdrop-blur-xs px-2.5 py-1 rounded-lg pointer-events-none border border-teal-800/50">
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3 h-3 text-teal-300" />
-                    <span>3D Interactive Anatomy</span>
-                  </span>
-                  <span>Drag to rotate in 3D</span>
-                </div>
-              </div>
-
-              {/* Bottom Quick Controls */}
-              <div className="mt-3 pt-2.5 border-t border-teal-800/40 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 text-slate-300 text-[11px]">
-                  <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-                  <span>PMDC Anatomical Model</span>
-                </div>
-                {onReplaySplash && (
-                  <button
-                    type="button"
-                    onClick={onReplaySplash}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-[11px] font-bold shadow-xs transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    <span>Expand 3D</span>
-                  </button>
-                )}
-              </div>
-            </div>
+            <Diagnostic3DHeartCard
+              currentLanguage={currentLanguage}
+              size={185}
+              interactive={true}
+              showExpandButton={true}
+            />
           </div>
         </div>
 
@@ -324,14 +378,10 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
-              {isUrdu ? 'طبی سہولیات' : isRoman ? 'Tibbi Sahuliyat' : 'Primary Clinical Services'}
+              {t.primaryClinicalServices}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {isUrdu
-                ? 'ہر ٹول میں اردو، رومن اردو اور انگریزی آواز کی رہنمائی دستیاب ہے'
-                : isRoman
-                ? 'Har tool mein Roman Urdu aur audio guidance shamil hai'
-                : 'AI-assisted, PMDC physician-backed diagnostic & guidance suite'}
+              {t.primaryServicesSubtitle}
             </p>
           </div>
           <button
@@ -339,7 +389,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
             onClick={onOpenDisclaimer}
             className="text-xs font-semibold text-teal-700 dark:text-teal-300 hover:underline flex items-center gap-1"
           >
-            <span>Safety Guidelines</span>
+            <span>{t.safetyGuidelines}</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -356,7 +406,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                   <Stethoscope className="w-5 h-5" />
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                  Voice + Text
+                  {isUrdu ? 'آواز اور تحریر' : isRoman ? 'Awaaz + Tehreer' : 'Voice + Text'}
                 </span>
               </div>
 
@@ -364,12 +414,12 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 {t.navSymptoms}
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
-                Describe illness in your own voice or text. Get red-flag triage rating, immediate care advice, and case file for doctors.
+                {t.symptomsCardDesc}
               </p>
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-teal-600 dark:text-teal-400">
-              <span>Start Assessment</span>
+              <span>{t.startAssessment}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -385,7 +435,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                   <Pill className="w-5 h-5" />
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  Pediatric Safe
+                  {isUrdu ? 'بچوں کے لیے محفوظ' : isRoman ? 'Bachon ke liye Mehfooz' : 'Pediatric Safe'}
                 </span>
               </div>
 
@@ -393,12 +443,12 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 {t.navMedicine}
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
-                Check syrup and tablet doses by child or adult age. Verify dangerous drug interactions and scan packaging photos.
+                {t.medicineCardDesc}
               </p>
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
-              <span>Verify Medicine</span>
+              <span>{t.verifyMedicine}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -414,7 +464,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                   <FileText className="w-5 h-5" />
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-50 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
-                  AI Vision
+                  {isUrdu ? 'تصویری تجزیہ' : isRoman ? 'Tasveeri Tajziya' : 'AI Vision'}
                 </span>
               </div>
 
@@ -422,12 +472,12 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 {t.navReports}
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
-                Upload blood test reports (CBC, HbA1c, LFT) or chest X-rays. Receive simplified normal/abnormal explanations in your language.
+                {t.reportsCardDesc}
               </p>
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-cyan-600 dark:text-cyan-400">
-              <span>Analyze Report</span>
+              <span>{t.analyzeReport}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -443,7 +493,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                   <MapPin className="w-5 h-5" />
                 </div>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                  GPS Verified
+                  {isUrdu ? 'جی پی ایس تصدیق شدہ' : isRoman ? 'GPS Tasdeeq Shuda' : 'GPS Verified'}
                 </span>
               </div>
 
@@ -451,12 +501,12 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                 {t.navNearby}
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
-                Connect directly with PMDC licensed physicians, book teleconsultations, and locate 24/7 pharmacies across Pakistan.
+                {t.nearbyCardDesc}
               </p>
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-teal-600 dark:text-teal-400">
-              <span>Find Care</span>
+              <span>{t.findCareBtn}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
@@ -474,10 +524,10 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
               </div>
               <div>
                 <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
-                  {isUrdu ? 'مریض کی صحت کا خاکہ' : isRoman ? 'Patient Health Snapshot' : 'Patient Health & Vitals'}
+                  {t.patientHealthVitals}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {displayName || (isUrdu ? 'معزز مریض' : isRoman ? 'Moazziz Mareez' : 'Guest Patient')} • {vitalsData ? (isUrdu ? 'ریکارڈ شدہ وائٹلز' : 'Logged Vitals') : (isUrdu ? 'کوئی وائٹلز درج نہیں ہیں' : isRoman ? 'Koi vitals darj nahi hain' : 'No vitals recorded yet')}
+                  {displayName || t.navRecords} • {vitalsData ? t.recorded : t.notRecorded}
                 </p>
               </div>
             </div>
@@ -487,63 +537,64 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
               onClick={() => onNavigate('records')}
               className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline"
             >
-              {isUrdu ? 'ریکارڈ دیکھیں →' : 'View EHR →'}
+              {t.viewEhr}
             </button>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
             {/* Heart Rate */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
-              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                Heart Rate
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <ClinicalHeartIcon className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                <span>{t.heartRate}</span>
               </span>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-baseline gap-1">
                 <span>{vitalsData?.heartRate || '—'}</span>
                 {vitalsData?.heartRate && <span className="text-xs font-normal text-slate-400">bpm</span>}
               </div>
               <span className={`inline-block mt-1 text-[10px] font-semibold ${vitalsData?.heartRate ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                {vitalsData?.heartRate ? '● Recorded' : (isUrdu ? 'درج نہیں' : 'Not recorded')}
+                {vitalsData?.heartRate ? `● ${t.recorded}` : t.notRecorded}
               </span>
             </div>
 
             {/* Blood Pressure */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
               <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                Blood Pressure
+                {t.bloodPressure}
               </span>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-baseline gap-1">
                 <span>{vitalsData?.bloodPressure || '—'}</span>
                 {vitalsData?.bloodPressure && <span className="text-xs font-normal text-slate-400">mmHg</span>}
               </div>
               <span className={`inline-block mt-1 text-[10px] font-semibold ${vitalsData?.bloodPressure ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                {vitalsData?.bloodPressure ? '● Recorded' : (isUrdu ? 'درج نہیں' : 'Not recorded')}
+                {vitalsData?.bloodPressure ? `● ${t.recorded}` : t.notRecorded}
               </span>
             </div>
 
             {/* Blood Sugar */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
               <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                Blood Sugar
+                {t.bloodSugar}
               </span>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1 flex items-baseline gap-1">
                 <span>{vitalsData?.bloodSugar || '—'}</span>
                 {vitalsData?.bloodSugar && <span className="text-xs font-normal text-slate-400">mg/dL</span>}
               </div>
               <span className={`inline-block mt-1 text-[10px] font-semibold ${vitalsData?.bloodSugar ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                {vitalsData?.bloodSugar ? '● Recorded' : (isUrdu ? 'درج نہیں' : 'Not recorded')}
+                {vitalsData?.bloodSugar ? `● ${t.recorded}` : t.notRecorded}
               </span>
             </div>
 
             {/* Active Prescriptions */}
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60">
               <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-                Verified Rx
+                {t.verifiedRx}
               </span>
               <div className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">
-                {prescriptionsCount} Active
+                {prescriptionsCount} {t.active}
               </div>
               <span className="inline-block mt-1 text-[10px] font-semibold text-teal-600 dark:text-teal-400">
-                {prescriptionsCount > 0 ? 'QR Licensed' : (isUrdu ? 'کوئی نسخہ نہیں' : 'None yet')}
+                {prescriptionsCount > 0 ? (isUrdu ? 'کیو آر لائسنس یافتہ' : isRoman ? 'QR Licensed' : 'QR Licensed') : t.notRecorded}
               </span>
             </div>
           </div>
@@ -551,18 +602,14 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           {!vitalsData && (
             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
               <span className="text-slate-500 dark:text-slate-400">
-                {isUrdu
-                  ? 'آپ نے ابھی تک اپنا بلڈ پریشر یا شوگر درج نہیں کی ہے۔'
-                  : isRoman
-                  ? 'Aap ne abhi tak apna blood pressure ya sugar record nahi kiya.'
-                  : 'You have not recorded blood pressure, pulse, or sugar readings yet.'}
+                {t.noVitalsRecorded}
               </span>
               <button
                 type="button"
                 onClick={() => onNavigate('records')}
                 className="px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs transition-colors shrink-0 cursor-pointer self-start sm:self-auto"
               >
-                {isUrdu ? 'وائٹلز درج کریں' : isRoman ? 'Vitals Darj Karein' : 'Record Vitals'}
+                {t.recordVitals}
               </button>
             </div>
           )}
@@ -573,20 +620,20 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           <div>
             <div className="flex items-center justify-between mb-3">
               <span className="text-[11px] font-bold uppercase tracking-wider text-teal-300 bg-teal-950/80 px-2.5 py-0.5 rounded-full border border-teal-700/60">
-                Consultant On Duty
+                {t.consultantOnDuty}
               </span>
               <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                Available Now
+                {t.availableNow}
               </span>
             </div>
 
             <h4 className="text-lg font-bold text-white">Dr. Ayesha Malik</h4>
-            <p className="text-xs text-teal-200">MBBS, FCPS • General Physician</p>
-            <p className="text-[11px] text-teal-300/80 mt-1">PMDC License #48291-P</p>
+            <p className="text-xs text-teal-200">{t.doctorSpecialty}</p>
+            <p className="text-[11px] text-teal-300/80 mt-1">{t.doctorLicense}</p>
 
             <p className="text-xs text-slate-300 mt-3 leading-relaxed">
-              Available for instant AI case reviews, prescription approvals, and direct video consultations.
+              {t.doctorDesc}
             </p>
           </div>
 
@@ -596,14 +643,14 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
               onClick={() => onNavigate('care')}
               className="flex-1 py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-colors text-center"
             >
-              Book Teleconsult
+              {t.bookTeleconsult}
             </button>
             <button
               type="button"
               onClick={() => onNavigate('doctor_portal')}
               className="py-2 px-3 rounded-xl bg-teal-950 hover:bg-teal-900 border border-teal-700 text-teal-200 text-xs font-semibold transition-colors"
             >
-              Portal ({pendingDoctorReviewsCount})
+              {t.portal} ({pendingDoctorReviewsCount})
             </button>
           </div>
         </div>
@@ -618,15 +665,15 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase font-bold tracking-widest bg-red-800/80 px-2 py-0.5 rounded text-red-100">
-                National Emergency Rescue
+                {t.nationalEmergencyRescue}
               </span>
-              <span className="text-xs text-red-200">24/7 Free Helpline</span>
+              <span className="text-xs text-red-200">{t.freeHelpline24_7}</span>
             </div>
             <h4 className="text-lg font-extrabold text-white mt-0.5">
-              Rescue 1122 Ambulance Dispatch
+              {t.rescue1122Title}
             </h4>
             <p className="text-xs text-red-100">
-              Immediate medical evacuation, road trauma care, and hospital coordination across Pakistan.
+              {t.rescue1122Desc}
             </p>
           </div>
         </div>
@@ -637,7 +684,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-white text-red-700 font-extrabold text-sm shadow-md hover:bg-red-50 active:scale-95 transition-all"
           >
             <PhoneCall className="w-4 h-4" />
-            <span>Call 1122</span>
+            <span>{t.navEmergency}</span>
           </a>
 
           <button
@@ -646,7 +693,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-700/80 hover:bg-red-800 border border-red-400/40 text-white font-bold text-xs transition-colors"
           >
             <Share2 className="w-4 h-4" />
-            <span>{copiedSos ? 'GPS Copied!' : 'Share Live GPS'}</span>
+            <span>{copiedSos ? t.gpsCopied : t.shareLiveGps}</span>
           </button>
         </div>
       </section>
@@ -656,7 +703,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
           <span>
-            Compliant with Pakistan Medical & Dental Council (PMDC) digital tele-health guidelines.
+            {t.complianceNote}
           </span>
         </div>
 
@@ -665,7 +712,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           onClick={onOpenDisclaimer}
           className="text-teal-600 dark:text-teal-400 font-semibold hover:underline shrink-0"
         >
-          Read Clinical Disclaimers & Privacy Notice →
+          {t.readDisclaimers}
         </button>
       </section>
     </div>

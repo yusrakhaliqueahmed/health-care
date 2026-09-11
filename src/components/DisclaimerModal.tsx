@@ -24,11 +24,11 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
   return (
     <div
       id="disclaimer-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 overflow-y-auto p-3 sm:p-4 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div
         id="disclaimer-modal-card"
-        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-teal-100 dark:border-slate-800 p-6 sm:p-8 text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-200 overflow-hidden"
+        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl shadow-2xl border border-teal-100 dark:border-slate-800 p-5 sm:p-7 text-slate-800 dark:text-slate-100 animate-in zoom-in-95 duration-200 my-auto max-h-[min(94vh,640px)] overflow-y-auto"
       >
         {/* Subtle top decoration band */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-teal-600" />

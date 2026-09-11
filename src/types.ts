@@ -10,6 +10,55 @@ export interface LanguageInfo {
   greeting: string;
 }
 
+export type RecordCategory =
+  | 'symptom'
+  | 'medicine'
+  | 'lab_report'
+  | 'prescription'
+  | 'consultation'
+  | 'search_history';
+
+export interface DiagnosticTestItem {
+  testName: string;
+  result: string;
+  referenceRange: string;
+  unit?: string;
+  isAbnormal?: boolean;
+  notes?: string;
+}
+
+export interface UnifiedHealthRecord {
+  id: string; // e.g. "SS-2026-89421"
+  referenceNumber: string; // "R No: SS-2026-89421"
+  labCaseNumber: string; // "Lab No: LB-77491"
+  userId: string; // user email or account ID
+  patientProfileId: string;
+  patientName: string;
+  patientAge: string;
+  patientGender: 'male' | 'female' | 'other';
+  category: RecordCategory;
+  title: string;
+  panelName: string; // e.g. "SYMPTOM SUMMARY", "MEDICINE CHECK RESULT", "COMPLETE BLOOD COUNT (CBC)"
+  date: string;
+  status: 'ai_preliminary' | 'doctor_approved' | 'escalated';
+  reviewedByDoctor?: string;
+  doctorPmdc?: string;
+  urgency: 'GREEN' | 'YELLOW' | 'RED';
+  testResults: DiagnosticTestItem[];
+  clinicalNotes: string;
+  doctorComments?: string;
+  photoUrl?: string;
+  originalLanguage?: SupportedLanguage;
+  fullMarkdownContent?: string;
+  searchQuery?: string;
+  searchType?: 'medicine' | 'lab_report' | 'symptom' | 'general';
+  prescriptionData?: {
+    diagnosis: string;
+    medicines: { name: string; dosage: string; duration: string; instructions: string; frequency?: string }[];
+    notes?: string;
+  };
+}
+
 export type AgeGroup = 'infant' | 'child' | 'teen' | 'adult' | 'elderly';
 
 export interface UserAccount {

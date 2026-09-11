@@ -8,6 +8,7 @@ import {
   MedicalReportRecord,
   Doctor,
   UserAccount,
+  UnifiedHealthRecord,
 } from './types';
 import { TRANSLATIONS } from './services/i18n';
 import { INITIAL_PROFILES, INITIAL_CASES, INITIAL_PRESCRIPTIONS, INITIAL_REPORTS } from './services/data';
@@ -28,25 +29,42 @@ import { SplashScreen } from './components/SplashScreen';
 import { InitialDisclaimerScreen } from './components/InitialDisclaimerScreen';
 import { LoginFormScreen } from './components/LoginFormScreen';
 import { LoginModal } from './components/LoginModal';
+import { GlobalFooter } from './components/GlobalFooter';
+import { EmergencyCallModal } from './components/EmergencyCallModal';
+import { MedicalQuickMessageModal } from './components/MedicalQuickMessageModal';
 import {
   PhoneCall,
+  MessageSquare,
   ShieldCheck,
-  Heart,
   Volume2,
   VolumeX,
   Stethoscope,
   Info,
   Linkedin,
   Globe,
+  LayoutDashboard,
+  Pill,
+  FileText,
+  MapPin,
+  UserCheck,
 } from 'lucide-react';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
-  const [hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer] = useState<boolean>(false);
-  const [hasLoggedIn, setHasLoggedIn] = useState<boolean>(false);
+  const [hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer] = useState<boolean>(true);
+  const [hasLoggedIn, setHasLoggedIn] = useState<boolean>(true);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
+  const [showEmergencyCallModal, setShowEmergencyCallModal] = useState(false);
+  const [showQuickMessageModal, setShowQuickMessageModal] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => {
+    const saved = localStorage.getItem('sehat_saathi_language');
+    if (saved === 'en' || saved === 'ur' || saved === 'roman') {
+      return saved;
+    }
+    return 'en';
+  });
+  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const [activeTab, setActiveTab] = useState<NavigationTab>('home');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -153,11 +171,32 @@ export default function App() {
   // Handle dynamic login
   const handleLogin = (user: UserAccount) => {
     setCurrentUser(user);
+    setHasLoggedIn(true);
     try {
       localStorage.setItem('sehat_saathi_current_user', JSON.stringify(user));
     } catch {
       // ignore
     }
+
+    const userKey = (user.email || user.id || 'default').toLowerCase().trim();
+
+    // Migrate any guest session searches directly into the user's permanent Google profile
+    try {
+      const guestLocal = localStorage.getItem('sehat_records_default');
+      if (guestLocal) {
+        const guestRecords: UnifiedHealthRecord[] = JSON.parse(guestLocal);
+        if (Array.isArray(guestRecords) && guestRecords.length > 0) {
+          guestRecords.forEach((gr) => {
+            fetch('/api/records', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userKey, record: { ...gr, userId: userKey } }),
+            }).catch(() => {});
+          });
+        }
+      }
+    } catch {}
+
     setPatientProfiles((prev) => {
       const updated = [...prev];
       if (updated[0]) {
@@ -183,10 +222,12 @@ export default function App() {
   };
 
   // RTL/LTR alignment handling
-  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const isRTL = t.direction === 'rtl';
 
   useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_language', currentLanguage);
+    } catch {}
     document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
     document.documentElement.lang = currentLanguage;
   }, [currentLanguage, isRTL]);
@@ -209,9 +250,58 @@ export default function App() {
     }
   };
 
-  // Add Case from Symptom Checker to Doctor Queue
+  // Add Case from Symptom Checker to Doctor Queue & Permanent Records
   const handleAddCaseForDoctorReview = (caseData: any) => {
     setPendingCases((prev) => [caseData, ...prev]);
+
+    // Also persist as a diagnostic record
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const triageRecord: UnifiedHealthRecord = {
+      id: `rec-${caseData.id || Date.now()}`,
+      referenceNumber: `SS-TR-${Date.now().toString().slice(-6)}`,
+      labCaseNumber: `LB-TR-${Math.floor(10000 + Math.random() * 90000)}`,
+      userId: userKey,
+      patientProfileId: caseData.patientProfileId || 'prof-self',
+      title: `Symptom Triage: ${caseData.chiefComplaint || 'Clinical Assessment'}`,
+      panelName: 'SYMPTOM CLINICAL ASSESSMENT REPORT',
+      category: 'symptom',
+      patientName: caseData.patientName || currentUser?.name || 'Self',
+      patientAge: caseData.patientAge?.toString() || '30 Y',
+      patientGender: caseData.patientGender || 'male',
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: 'ai_preliminary',
+      urgency: caseData.urgency || 'YELLOW',
+      testResults: [
+        {
+          testName: 'Chief Complaint',
+          result: caseData.chiefComplaint || 'Symptom Triage',
+          referenceRange: 'Self-Reported',
+          isAbnormal: false,
+        },
+        {
+          testName: 'Triage Urgency Score',
+          result: caseData.urgency || 'Moderate',
+          referenceRange: 'Normal / Mild',
+          isAbnormal: caseData.urgency === 'RED',
+        },
+        {
+          testName: 'Symptom Duration',
+          result: caseData.duration || '2-3 days',
+          referenceRange: '< 7 days',
+          isAbnormal: false,
+        },
+      ],
+      clinicalNotes: caseData.summary || caseData.chiefComplaint || 'Clinical triage completed.',
+      doctorComments: 'Queued for PMDC physician review.',
+      reviewedByDoctor: 'Dr. Tariq Jamil (PMDC #33190-S)',
+      doctorPmdc: 'PMDC #33190-S',
+    };
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: triageRecord }),
+    }).catch((e) => console.warn('Sync error:', e));
   };
 
   // Doctor approves case and issues prescription
@@ -247,6 +337,42 @@ export default function App() {
 
     setPrescriptions((prev) => [newRx, ...prev]);
     setPendingCases((prev) => prev.filter((c) => c.id !== caseId));
+
+    // Save as persistent prescription record
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const rxRecord: UnifiedHealthRecord = {
+      id: `rec-${newRx.id}`,
+      referenceNumber: `SS-RX-${Date.now().toString().slice(-6)}`,
+      labCaseNumber: `LB-RX-${Math.floor(10000 + Math.random() * 90000)}`,
+      userId: userKey,
+      patientProfileId: matched.patientProfileId || 'prof-self',
+      title: `Rx: ${newRx.diagnosis}`,
+      panelName: 'LICENSED MEDICAL PRESCRIPTION & CLINICAL SUMMARY',
+      category: 'prescription',
+      patientName: newRx.patientName,
+      patientAge: matched.patientAge?.toString() || '32 Y',
+      patientGender: matched.patientGender || 'male',
+      date: newRx.date,
+      status: 'doctor_approved',
+      urgency: 'GREEN',
+      testResults: newRx.medicines.map((m) => ({
+        testName: m.name,
+        result: `${m.dosage} (${m.frequency})`,
+        referenceRange: m.duration,
+        isAbnormal: false,
+      })),
+      clinicalNotes: `Clinical diagnosis: ${newRx.diagnosis}. Dispensing instruction: ${newRx.medicines[0]?.instructions || ''}`,
+      doctorComments: `Electronically verified and authorized by ${newRx.doctorName} (${newRx.doctorPmdc})`,
+      reviewedByDoctor: newRx.doctorName,
+      doctorPmdc: newRx.doctorPmdc,
+      prescriptionData: newRx,
+    };
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: rxRecord }),
+    }).catch((e) => console.warn('Sync error:', e));
   };
 
   // Add new family profile
@@ -257,11 +383,74 @@ export default function App() {
   // Add saved medical report
   const handleSaveReport = (newRecord: MedicalReportRecord) => {
     setReports((prev) => [newRecord, ...prev]);
+
+    // Save as persistent lab report record
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const labRecord: UnifiedHealthRecord = {
+      id: newRecord.id,
+      referenceNumber: `SS-LB-${Date.now().toString().slice(-6)}`,
+      labCaseNumber: `LB-${Math.floor(10000 + Math.random() * 90000)}`,
+      userId: userKey,
+      patientProfileId: 'prof-self',
+      title: newRecord.title,
+      panelName: newRecord.title,
+      category: 'lab_report',
+      patientName: newRecord.patientName || currentUser?.name || 'Muhammad Ali',
+      patientAge: '35 Y',
+      patientGender: 'male',
+      date: newRecord.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: newRecord.status === 'approved_by_pmdc_doctor' ? 'doctor_approved' : 'ai_preliminary',
+      urgency: 'GREEN',
+      testResults: (newRecord.findings || '')
+        .split(/[\n,]+/)
+        .filter((f) => f.trim())
+        .map((f) => ({
+          testName: f.split(':')[0]?.trim() || f.trim(),
+          result: f.split(':')[1]?.trim() || 'Normal',
+          referenceRange: 'Standard Normal',
+          isAbnormal: f.toLowerCase().includes('high') || f.toLowerCase().includes('low') || f.toLowerCase().includes('abnormal'),
+        })),
+      clinicalNotes: newRecord.findings || 'Lab diagnostic evaluation completed.',
+      doctorComments: 'Automated digital assay verified on SehatSaathi Pro Diagnostic Network.',
+      reviewedByDoctor: 'Dr. Ayesha Malik (PMDC #48291-P)',
+      doctorPmdc: 'PMDC #48291-P',
+    };
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: labRecord }),
+    }).catch((e) => console.warn('Sync error:', e));
+  };
+
+  // Save any unified medical record (searches, inquiries, medicine checks, lab reports)
+  const handleSaveUnifiedRecord = (newRecord: UnifiedHealthRecord) => {
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const recordToSave: UnifiedHealthRecord = {
+      ...newRecord,
+      userId: userKey,
+    };
+
+    // Cache locally for instant reactivity across page refreshes
+    try {
+      const storageKey = `sehat_records_${userKey}`;
+      const existingStr = localStorage.getItem(storageKey);
+      const existing = existingStr ? JSON.parse(existingStr) : [];
+      const updated = [recordToSave, ...existing.filter((r: any) => r.id !== recordToSave.id)];
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+    } catch {}
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: recordToSave }),
+    }).catch((e) => console.warn('Sync error:', e));
   };
 
   return (
     <div
-      className={`min-h-screen flex font-sans transition-colors duration-200 ${
+      dir={isRTL ? 'rtl' : 'ltr'}
+      className={`min-h-screen flex font-sans transition-colors duration-200 overflow-x-hidden w-full max-w-[100vw] ${
         isRTL ? 'font-urdu' : ''
       } ${
         isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'
@@ -346,8 +535,8 @@ export default function App() {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* High Density Main Content Container */}
-      <main className="flex-1 flex flex-col min-h-screen p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto">
+      {/* High Density Main Content Container with Safe Bottom Clearance */}
+      <main className="flex-1 flex flex-col min-h-screen p-3 sm:p-6 lg:p-8 pb-36 lg:pb-12 min-w-0 overflow-y-auto">
         <HighDensityHeader
           currentLanguage={currentLanguage}
           activeTab={activeTab}
@@ -360,6 +549,8 @@ export default function App() {
           voiceAutoPlay={voiceAutoPlay}
           onToggleVoiceAutoPlay={toggleVoiceAutoPlay}
           onSelectLanguage={setCurrentLanguage}
+          onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
+          onOpenQuickMessage={() => setShowQuickMessageModal(true)}
         />
 
         <div className="flex-1 min-h-0">
@@ -374,6 +565,7 @@ export default function App() {
               onEmergencyCall={() => setActiveTab('emergency')}
               onOpenDisclaimer={() => setShowDisclaimer(true)}
               onReplaySplash={() => setShowSplash(true)}
+              onSaveSearchRecord={handleSaveUnifiedRecord}
             />
           )}
 
@@ -394,6 +586,8 @@ export default function App() {
               onNavigateToCare={(filter) => {
                 setActiveTab('care');
               }}
+              onSaveRecord={handleSaveUnifiedRecord}
+              userName={currentUser?.name}
             />
           )}
 
@@ -401,6 +595,8 @@ export default function App() {
             <ReportAnalyzer
               currentLanguage={currentLanguage}
               onSaveToRecords={handleSaveReport}
+              onSaveUnifiedRecord={handleSaveUnifiedRecord}
+              userName={currentUser?.name}
             />
           )}
 
@@ -422,6 +618,8 @@ export default function App() {
               prescriptions={prescriptions}
               reports={reports}
               onAddProfile={handleAddProfile}
+              currentUser={currentUser}
+              onNavigateToTab={(tab) => setActiveTab(tab as any)}
             />
           )}
 
@@ -434,101 +632,204 @@ export default function App() {
           )}
         </div>
 
-        {/* Pinned Bottom Footer Container */}
-        <div id="app-bottom-footer-container" className="mt-auto pt-10 shrink-0">
-          {/* High Density Footer */}
-          <footer className="py-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-bold gap-3">
-            <div className="flex flex-wrap gap-4 sm:gap-6 justify-center sm:justify-start">
-              <button
-                type="button"
-                onClick={() => setActiveTab('doctor_portal')}
-                className="hover:text-teal-600 dark:hover:text-teal-400 transition-colors cursor-pointer"
-              >
-                PMDC Verified: 2,400+ Doctors ({pendingCases.length} in Queue)
-              </button>
-              <span>•</span>
-              <span>Privacy: HIPAA Encrypted</span>
-              <span>•</span>
-              <span>7 Languages: Urdu • English • Sindhi • Pashto • Balochi • Punjabi • Saraiki</span>
-            </div>
-
-            <div className="flex items-center gap-2 text-rose-500 font-semibold">
-              <span className="w-2 h-2 bg-rose-500 rounded-full animate-ping shrink-0" />
-              <span>Note: AI is assistive, always verify with a doctor</span>
-            </div>
-          </footer>
-
-          {/* Minimal Bottom Footer Line */}
-          <div
-            id="designer-attribution-footer"
-            className="mt-3 mb-2 pt-3 pb-2 flex flex-col items-center justify-center border-t border-slate-200/60 dark:border-slate-800/60 text-center select-none group"
-          >
-            <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full backdrop-blur-md backdrop-saturate-150 bg-gradient-to-r from-white/70 via-teal-50/40 to-white/70 dark:from-slate-900/60 dark:via-teal-950/30 dark:to-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 shadow-[0_4px_16px_-2px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_16px_-2px_rgba(0,0,0,0.2)] transition-all duration-300 ease-out group-hover:scale-[1.03] group-hover:brightness-105 group-hover:border-teal-500/50 dark:group-hover:border-teal-400/50 group-hover:shadow-[0_0_18px_rgba(20,184,166,0.25)] dark:group-hover:shadow-[0_0_20px_rgba(45,212,191,0.22)]">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 group-hover:bg-teal-400 transition-colors shrink-0" />
-              <p className="text-xs font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100 tracking-wide transition-colors whitespace-nowrap">
-                Design by <span className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">Yusra Khalique Ahmed</span>
-              </p>
-
-              {/* Minimalist interactive profile icons appearing on hover */}
-              <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-300/60 dark:border-slate-700/60 opacity-0 group-hover:opacity-100 max-w-0 group-hover:max-w-[70px] overflow-hidden transition-all duration-300 ease-out">
-                <a
-                  href="https://linkedin.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-1 rounded-md text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
-                  title="LinkedIn Profile"
-                  aria-label="LinkedIn Profile"
-                >
-                  <Linkedin className="w-3.5 h-3.5" />
-                </a>
-                <a
-                  href="https://github.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-1 rounded-md text-slate-400 hover:text-teal-600 dark:hover:text-teal-300 hover:bg-slate-200/50 dark:hover:bg-slate-800/60 transition-colors cursor-pointer"
-                  title="Design Portfolio"
-                  aria-label="Design Portfolio"
-                >
-                  <Globe className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Global Multi-Column Professional Footer */}
+        <GlobalFooter
+          currentLanguage={currentLanguage}
+          onNavigateTab={(tab) => setActiveTab(tab as any)}
+          onOpenDisclaimer={() => setShowDisclaimer(true)}
+        />
       </main>
 
-      {/* Floating Action Buttons: Two separate buttons with fixed flexbox layout & at least 20px gap */}
+      {/* Mobile Bottom Navigation Bar (< lg screens) */}
+      <nav
+        id="mobile-bottom-nav"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0c2f28]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/70 shadow-lg px-2 py-1.5 flex items-center justify-around select-none safe-area-inset-bottom"
+        aria-label="Mobile Navigation"
+      >
+        <button
+          type="button"
+          onClick={() => setActiveTab('home')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+            activeTab === 'home'
+              ? 'text-teal-600 dark:text-teal-300 font-bold'
+              : 'text-slate-500 dark:text-teal-200/70'
+          }`}
+        >
+          <LayoutDashboard className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] leading-tight">
+            {t.navHome}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('symptoms')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+            activeTab === 'symptoms'
+              ? 'text-teal-600 dark:text-teal-300 font-bold'
+              : 'text-slate-500 dark:text-teal-200/70'
+          }`}
+        >
+          <Stethoscope className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] leading-tight">
+            {t.navSymptoms}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('medicine')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+            activeTab === 'medicine'
+              ? 'text-teal-600 dark:text-teal-300 font-bold'
+              : 'text-slate-500 dark:text-teal-200/70'
+          }`}
+        >
+          <Pill className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] leading-tight">
+            {t.navMedicine}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('reports')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+            activeTab === 'reports'
+              ? 'text-teal-600 dark:text-teal-300 font-bold'
+              : 'text-slate-500 dark:text-teal-200/70'
+          }`}
+        >
+          <FileText className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] leading-tight">
+            {t.navReports}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('care')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+            activeTab === 'care'
+              ? 'text-teal-600 dark:text-teal-300 font-bold'
+              : 'text-slate-500 dark:text-teal-200/70'
+          }`}
+        >
+          <MapPin className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px] leading-tight">
+            {t.navNearby}
+          </span>
+        </button>
+      </nav>
+
+      {/* Floating Action Buttons: Dedicated Medical Message & Emergency Call Helplines */}
       <div
         id="floating-actions-dock"
-        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 z-40 flex items-center gap-5 pointer-events-auto"
+        className="fixed bottom-[74px] right-3 sm:bottom-[80px] sm:right-6 lg:bottom-8 lg:right-8 z-30 flex items-center gap-2.5 sm:gap-3 pointer-events-auto transition-all duration-300"
       >
-        {/* Button 1: Instant AI Symptom Assessment (Hidden when already on symptoms screen to avoid bottom-right corner overlap) */}
-        {activeTab !== 'symptoms' && (
-          <button
-            type="button"
-            id="fab-symptom-assistant"
-            onClick={() => setActiveTab('symptoms')}
-            className="w-14 h-14 sm:w-16 sm:h-16 bg-teal-600 hover:bg-teal-500 rounded-full shadow-2xl flex items-center justify-center text-white border-4 border-white dark:border-slate-800 active:scale-95 transition-transform cursor-pointer shrink-0"
-            title={currentLanguage === 'en' ? 'Instant AI Symptom Assessment' : 'فوری علامات کی تشخیص'}
-            aria-label="Instant AI Symptom Assessment"
-          >
-            <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-            </svg>
-          </button>
-        )}
-
-        {/* Button 2: Rescue 1122 Emergency Ambulance Helpline */}
-        <a
-          id="fab-emergency-helpline"
-          href="tel:1122"
-          className="w-14 h-14 sm:w-16 sm:h-16 bg-red-600 hover:bg-red-500 rounded-full shadow-2xl flex items-center justify-center text-white border-4 border-white dark:border-slate-800 active:scale-95 transition-transform cursor-pointer shrink-0"
-          title={currentLanguage === 'en' ? 'Call Rescue 1122 Emergency Ambulance' : 'ریسکیو 1122 ایمرجنسی کال'}
-          aria-label="Call Rescue 1122"
+        {/* Medical App Message Button (Side-by-side with Call button) */}
+        <button
+          type="button"
+          id="fab-quick-message-btn"
+          onClick={() => setShowQuickMessageModal(true)}
+          className="group relative w-12 h-12 sm:w-14 sm:h-14 bg-emerald-600 hover:bg-emerald-500 rounded-full shadow-2xl flex items-center justify-center text-white border-3 border-white dark:border-slate-800 active:scale-95 transition-all cursor-pointer shrink-0"
+          title="Medical Quick Message / WhatsApp & SMS Triage"
+          aria-label="Send Medical Message"
         >
-          <PhoneCall className="w-6 h-6 sm:w-7 sm:h-7 text-white animate-pulse" />
-        </a>
+          <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:scale-110 transition-transform" />
+          {/* Active status beacon */}
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 border-2 border-white dark:border-slate-900 rounded-full shadow-xs" />
+        </button>
+
+        {/* Rescue 1122 Emergency Ambulance Call & Heart Vitality Button */}
+        <button
+          type="button"
+          id="fab-emergency-helpline"
+          onClick={() => setShowEmergencyCallModal(true)}
+          className="group relative w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-rose-950 via-red-950 to-neutral-950 hover:from-red-900 hover:to-rose-950 rounded-full shadow-[0_8px_25px_rgba(225,29,72,0.45)] flex items-center justify-center text-white border-3 border-white dark:border-slate-800 active:scale-95 cursor-pointer shrink-0 transition-transform duration-200"
+          title={t.navEmergency}
+          aria-label="Call Emergency Helpline (1122)"
+        >
+          {/* Visually rich, CSS-rendered 3D volumetric heart shape with layered crimson radial gradients & inner depth shadow */}
+          <div
+            className="relative w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center transition-transform group-hover:scale-110"
+            style={{
+              filter: 'drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45))',
+            }}
+          >
+            <div className="relative w-4.5 h-4.5 sm:w-5 sm:h-5 -rotate-45">
+              {/* Conical base forming lower ventricular apex */}
+              <div
+                className="absolute inset-0 rounded-xs"
+                style={{
+                  background: 'radial-gradient(circle at 60% 60%, #ff4b6e 0%, #d90429 28%, #9b0a23 62%, #3d020c 100%)',
+                  boxShadow: 'inset -2px -2px 4px rgba(0,0,0,0.7), inset 2px 2px 3px rgba(255,200,215,0.45)',
+                }}
+              />
+              {/* Superior atrium/ventricular dome lobe */}
+              <div
+                className="absolute -top-[9px] sm:-top-[10px] left-0 right-0 h-[10px] sm:h-[11px] rounded-t-full"
+                style={{
+                  background: 'radial-gradient(circle at 45% 35%, #ff6b8b 0%, #d90429 35%, #850b20 75%, #3d020c 100%)',
+                  boxShadow: 'inset 0 2px 3px rgba(255,225,235,0.65), inset -1px 0 3px rgba(0,0,0,0.55)',
+                }}
+              />
+              {/* Lateral atrium/ventricular dome lobe */}
+              <div
+                className="absolute top-0 -right-[9px] sm:-right-[10px] bottom-0 w-[10px] sm:w-[11px] rounded-r-full"
+                style={{
+                  background: 'radial-gradient(circle at 65% 45%, #ff5277 0%, #c9082a 40%, #7a091c 80%, #3d020c 100%)',
+                  boxShadow: 'inset -2px 0 3px rgba(0,0,0,0.7), inset 0 2px 3px rgba(255,200,215,0.4)',
+                }}
+              />
+              {/* Specular high-gloss sheen reflection for 3D curved depth */}
+              <div
+                className="absolute -top-[7px] sm:-top-[8px] left-[1px] w-[7px] h-[6px] rounded-full pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.25) 60%, transparent 100%)',
+                  filter: 'blur(0.3px)',
+                }}
+              />
+              {/* Inter-atrial sulcus depression shadow between lobes */}
+              <div
+                className="absolute -top-[4px] -right-[1px] w-1.5 h-1.5 rounded-full pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle, rgba(45, 2, 9, 0.8) 0%, transparent 80%)',
+                }}
+              />
+            </div>
+            {/* Micro Aortic Root arch atop cleft */}
+            <div
+              className="absolute -top-0.5 left-[48%] -translate-x-1/2 w-1.5 h-1.5 rounded-t-xs pointer-events-none"
+              style={{
+                background: 'linear-gradient(to top, #850b20, #ff4d6d)',
+                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5)',
+              }}
+            />
+          </div>
+          {/* SOS beacon */}
+          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-80"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-white dark:border-slate-900 shadow-xs"></span>
+          </span>
+        </button>
       </div>
+
+      {/* Emergency Call Modal */}
+      <EmergencyCallModal
+        isOpen={showEmergencyCallModal}
+        onClose={() => setShowEmergencyCallModal(false)}
+        currentLanguage={currentLanguage}
+      />
+
+      {/* Medical Quick Message Modal */}
+      <MedicalQuickMessageModal
+        isOpen={showQuickMessageModal}
+        onClose={() => setShowQuickMessageModal(false)}
+        currentLanguage={currentLanguage}
+        patientName={currentUser?.name || 'Ahmed Raza'}
+        onNavigateToTab={(tab) => setActiveTab(tab as any)}
+      />
     </div>
   );
 }

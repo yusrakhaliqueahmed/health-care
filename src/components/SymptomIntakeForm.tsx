@@ -7,7 +7,6 @@ import {
   CheckCircle,
   Clock,
   FileText,
-  Heart,
   HelpCircle,
   Info,
   Mic,
@@ -52,8 +51,8 @@ interface SymptomIntakeFormProps {
 interface SymptomCategoryOption {
   id: string;
   icon: string;
-  labels: Record<SupportedLanguage, string>;
-  examples: Record<SupportedLanguage, string>;
+  labels: Record<string, string>;
+  examples: Record<string, string>;
 }
 
 const SYMPTOM_CATEGORIES: SymptomCategoryOption[] = [

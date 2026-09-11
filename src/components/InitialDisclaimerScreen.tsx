@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Stethoscope, ArrowRight, ShieldCheck, Volume2 } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Volume2, VolumeX } from 'lucide-react';
 import { SupportedLanguage } from '../types';
 import { LanguageSelector } from './LanguageSelector';
 import { voiceManager } from '../services/voice';
+import { Realistic3DHeart } from './Realistic3DHeart';
 
 interface InitialDisclaimerScreenProps {
   currentLanguage: SupportedLanguage;
@@ -44,8 +45,29 @@ export const InitialDisclaimerScreen: React.FC<InitialDisclaimerScreenProps> = (
       ? 'Main Samajh Gaya, Aage Barhein'
       : 'I Understand, Continue';
 
-  const handleSpeak = () => {
-    voiceManager.speak(message, currentLanguage);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = voiceManager.subscribe((state) => {
+      setIsPlaying(state.isPlaying);
+    });
+    return () => {
+      unsubscribe();
+      voiceManager.stop();
+    };
+  }, []);
+
+  const handleToggleSpeak = () => {
+    if (isPlaying) {
+      voiceManager.stop();
+    } else {
+      voiceManager.speak(message, currentLanguage);
+    }
+  };
+
+  const handleContinue = () => {
+    voiceManager.stop();
+    onAcknowledge();
   };
 
   return (
@@ -75,9 +97,9 @@ export const InitialDisclaimerScreen: React.FC<InitialDisclaimerScreenProps> = (
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 text-center flex flex-col items-center"
         >
-          {/* Top Circular Stethoscope Badge */}
-          <div className="w-16 h-16 rounded-full bg-teal-50 dark:bg-teal-950/60 border-2 border-teal-100 dark:border-teal-800 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-4 shadow-xs">
-            <Stethoscope className="w-8 h-8 stroke-[1.8]" />
+          {/* Top 3D Animated Pumping Heart Converted From Medical Photo */}
+          <div className="relative mb-3 flex items-center justify-center">
+            <Realistic3DHeart size={110} interactive={false} />
           </div>
 
           {/* Badge Pill */}
@@ -96,27 +118,51 @@ export const InitialDisclaimerScreen: React.FC<InitialDisclaimerScreenProps> = (
             {message}
           </p>
 
-          {/* Audio Listen Option */}
+          {/* Audio Listen Option with active playing state */}
           <button
             type="button"
-            onClick={handleSpeak}
-            className="inline-flex items-center gap-1.5 text-xs text-teal-600 dark:text-teal-400 font-semibold mb-6 hover:underline cursor-pointer"
+            onClick={handleToggleSpeak}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold mb-6 transition-all cursor-pointer ${
+              isPlaying
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-300 dark:border-rose-800 animate-pulse'
+                : 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800/80 hover:bg-teal-100 dark:hover:bg-teal-900/60'
+            }`}
           >
-            <Volume2 className="w-4 h-4" />
-            <span>
-              {currentLanguage === 'ur'
-                ? 'آواز میں سنیں'
-                : currentLanguage === 'roman'
-                ? 'Awaaz mein sunein'
-                : 'Listen to message'}
-            </span>
+            {isPlaying ? (
+              <>
+                <VolumeX className="w-4 h-4 text-rose-500" />
+                <span>
+                  {currentLanguage === 'ur'
+                    ? 'آواز بند کریں'
+                    : currentLanguage === 'roman'
+                    ? 'Awaaz band karein'
+                    : 'Stop Audio'}
+                </span>
+                <span className="flex items-center gap-0.5 ml-1">
+                  <span className="w-1 h-3 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1 h-4 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1 h-2 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <span>
+                  {currentLanguage === 'ur'
+                    ? 'آواز میں سنیں (Urdu Voice)'
+                    : currentLanguage === 'roman'
+                    ? 'Awaaz mein sunein'
+                    : 'Listen to message'}
+                </span>
+              </>
+            )}
           </button>
 
           {/* Primary Action Button */}
           <button
             type="button"
             id="disclaimer-continue-btn"
-            onClick={onAcknowledge}
+            onClick={handleContinue}
             className="w-full py-3.5 px-6 rounded-xl sm:rounded-2xl bg-[#0f766e] hover:bg-[#0d6d66] active:scale-[0.99] text-white font-semibold text-base shadow-md shadow-teal-700/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <span>{buttonText}</span>

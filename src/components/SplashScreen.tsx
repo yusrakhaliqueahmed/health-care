@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Loader2, ShieldCheck, Sparkles, ArrowRight, Heart } from 'lucide-react';
 import { SupportedLanguage } from '../types';
-import { Medical3DCanvas } from './Medical3DCanvas';
+import { Realistic3DHeart } from './Realistic3DHeart';
 
 interface SplashScreenProps {
   currentLanguage: SupportedLanguage;
@@ -17,9 +17,9 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
 
   const stages = [
     {
-      en: 'Initializing 3D Medical Core & Diagnostics...',
-      ur: 'طبی ماڈل اور تشخیص کا آغاز ہو رہا ہے...',
-      roman: '3D Medical Engine tayar ho raha hai...',
+      en: 'Initializing Medical Core & Diagnostics...',
+      ur: 'طبی نظام اور تشخیص کا آغاز ہو رہا ہے...',
+      roman: 'Medical Engine tayar ho raha hai...',
     },
     {
       en: 'Loading PMDC Certified Clinical Guidelines...',
@@ -39,7 +39,6 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
   ];
 
   useEffect(() => {
-    // 3.2s total smooth duration for rich 3D visualization
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
@@ -75,7 +74,13 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
       <div className="w-full max-w-4xl flex items-center justify-between z-20 pt-2">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-950/80 border border-teal-500/30 text-xs font-semibold text-teal-300 tracking-wide shadow-xs">
           <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
-          <span>PMDC VERIFIED MEDICAL SYSTEM</span>
+          <span>
+            {currentLanguage === 'ur'
+              ? 'پی ایم ڈی سی تصدیق شدہ طبی نظام'
+              : currentLanguage === 'roman'
+              ? 'PMDC TASDEEQ SHUDA MEDICAL SYSTEM'
+              : 'PMDC VERIFIED MEDICAL SYSTEM'}
+          </span>
         </div>
 
         <button
@@ -83,27 +88,25 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
           onClick={onFinish}
           className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-900/60 hover:bg-teal-800 border border-teal-600/40 text-xs font-medium text-teal-200 transition-colors cursor-pointer"
         >
-          <span>{currentLanguage === 'ur' ? 'جاری رکھیں' : 'Skip Intro'}</span>
+          <span>
+            {currentLanguage === 'ur'
+              ? 'آگے بڑھیں'
+              : currentLanguage === 'roman'
+              ? 'Aage Barhein'
+              : 'Skip Intro'}
+          </span>
           <ArrowRight className="w-3 h-3" />
         </button>
       </div>
 
-      {/* Centerpiece: Advanced 3D Healthcare & Doctor Model */}
-      <div className="relative w-full max-w-md h-[340px] sm:h-[380px] z-10 flex flex-col items-center justify-center my-auto">
-        {/* Holographic Diagnostic HUD Frame */}
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="w-[280px] sm:w-[320px] h-[280px] sm:h-[320px] rounded-full border border-teal-500/20 border-dashed animate-[spin_40s_linear_infinite]" />
-          <div className="w-[340px] sm:w-[380px] h-[340px] sm:h-[380px] rounded-full border border-teal-400/15 animate-[spin_60s_linear_infinite_reverse]" />
-        </div>
-
-        {/* 3D WebGL Canvas */}
-        <Medical3DCanvas interactive={true} />
-
-        {/* Interactive Pointer Hint */}
-        <div className="absolute bottom-1 px-3 py-1 rounded-full bg-teal-950/70 border border-teal-700/40 text-[10px] text-teal-300/80 tracking-wider flex items-center gap-1.5 backdrop-blur-xs pointer-events-none">
-          <Sparkles className="w-3 h-3 text-teal-400 animate-pulse" />
-          <span>Move cursor or touch to explore 3D stethoscope & cardiac anatomy</span>
-        </div>
+      {/* Centerpiece: Real Anatomical 3D Pumping Diagnostic Heart Converted From User Picture */}
+      <div className="relative w-full max-w-md z-10 flex flex-col items-center justify-center my-auto py-3">
+        <Realistic3DHeart
+          size={240}
+          interactive={true}
+          showTelemetry={true}
+          showSoundToggle={true}
+        />
       </div>
 
       {/* Bottom Branding & Loading Status */}
@@ -111,8 +114,8 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         {/* Pulse Heartbeat Badge with Red Dot (Video signature) */}
         <div className="flex items-center gap-2.5">
           <div className="relative w-8 h-8 rounded-lg bg-[#07221d] border border-teal-500/40 flex items-center justify-center shadow-md">
-            <Heart className="w-4 h-4 text-teal-300 fill-teal-300/30" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e] animate-pulse" />
+            <Heart className="w-4.5 h-4.5 text-rose-400 fill-rose-500 animate-pulse" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-ping" />
           </div>
           <div className="text-left">
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-none">
