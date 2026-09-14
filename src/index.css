@@ -30,14 +30,35 @@ html, body {
   color: #F8FAFC;
 }
 
-/* Urdu, Punjabi Shahmukhi, and Sindhi Arabic Typography */
-.font-urdu, [dir="rtl"] {
-  font-family: 'Noto Nastaliq Urdu', 'Noto Sans Arabic', -apple-system, system-ui, sans-serif;
-  line-height: 1.8;
+/* Modern High-Legibility Urdu Typography - Clean, horizontal, no overlapping lines */
+.font-urdu {
+  font-family: 'Noto Sans Arabic', 'Noto Nastaliq Urdu', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  word-spacing: 0.04em;
 }
 
-[dir="rtl"] input, [dir="rtl"] textarea {
-  text-align: right;
+/* Ensure Urdu headings have ample line height so text lines never collide or overlap */
+.font-urdu h1,
+.font-urdu h2,
+.font-urdu h3,
+.font-urdu h4,
+.font-urdu h5,
+.font-urdu h6 {
+  line-height: 1.6 !important;
+  letter-spacing: 0;
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+}
+
+.font-urdu p {
+  line-height: 1.8 !important;
+}
+
+.font-urdu button,
+.font-urdu span,
+.font-urdu label {
+  line-height: 1.5;
 }
 
 /* Mobile Safe Area Inset Utility */
@@ -94,19 +115,18 @@ html, body {
   backface-visibility: hidden;
 }
 
-/* 3D Card Hover & Depth Effects */
+/* Professional Card Hover & Depth Effects */
 .card-3d {
-  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease-out, border-color 0.35s ease-out;
-  transform: perspective(1000px) translateZ(0);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .card-3d:hover {
-  transform: perspective(1000px) translateY(-5px) translateZ(12px) rotateX(1.5deg) rotateY(-1deg);
-  box-shadow: 0 16px 32px -8px rgba(19, 78, 74, 0.18), 0 6px 12px -4px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
 }
 
 .dark .card-3d:hover {
-  box-shadow: 0 16px 32px -8px rgba(45, 212, 191, 0.15), 0 6px 12px -4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 4px 10px -2px rgba(20, 184, 166, 0.15);
 }
 
 /* Subtle 3D Levitation Float Animation */
@@ -137,121 +157,24 @@ html, body {
   animation: pulseGlow3d 3s infinite;
 }
 
-/* Subtle Pulsing Animation for Floating Actions Dock on Hover */
-@keyframes dockPulse {
+/* Refined transitions and subtle pulse */
+@keyframes subtlePulse {
   0%, 100% {
-    transform: scale(1);
-    filter: drop-shadow(0 10px 25px rgba(13, 148, 136, 0.35));
+    opacity: 1;
   }
   50% {
-    transform: scale(1.045);
-    filter: drop-shadow(0 15px 35px rgba(225, 29, 72, 0.45));
+    opacity: 0.7;
   }
 }
 
-.dock-pulse-hover:hover {
-  animation: dockPulse 1.6s ease-in-out infinite;
+.animate-subtle-pulse {
+  animation: subtlePulse 2.5s ease-in-out infinite;
 }
 
-/* 3D Holographic Orbital Rings for Anatomical Heart */
-@keyframes spinOrbitA {
-  0% {
-    transform: rotateX(65deg) rotateZ(0deg);
-  }
-  100% {
-    transform: rotateX(65deg) rotateZ(360deg);
-  }
+/* Clean Floating Actions Dock */
+#floating-actions-dock {
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
-@keyframes spinOrbitB {
-  0% {
-    transform: rotateX(45deg) rotateY(-35deg) rotateZ(360deg);
-  }
-  100% {
-    transform: rotateX(45deg) rotateY(-35deg) rotateZ(0deg);
-  }
-}
-
-@keyframes spinOrbitC {
-  0% {
-    transform: rotateX(-30deg) rotateY(60deg) rotateZ(0deg);
-  }
-  100% {
-    transform: rotateX(-30deg) rotateY(60deg) rotateZ(360deg);
-  }
-}
-
-.animate-orbit-a {
-  animation: spinOrbitA 12s linear infinite;
-}
-
-.animate-orbit-b {
-  animation: spinOrbitB 16s linear infinite;
-}
-
-.animate-orbit-c {
-  animation: spinOrbitC 20s linear infinite;
-}
-
-/* Organic Heartbeat Animation for Floating Heart Button (#floating-actions-dock #fab-emergency-helpline) */
-@keyframes heartbeat {
-  0% {
-    transform: scale(1);
-  }
-  14% {
-    transform: scale(1.09);
-  }
-  26% {
-    transform: scale(1);
-  }
-  38% {
-    transform: scale(1.15);
-  }
-  56% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes heartbeatHover {
-  0% {
-    transform: scale(1.14);
-    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.8)) drop-shadow(0 8px 22px rgba(225, 29, 72, 0.55));
-  }
-  14% {
-    transform: scale(1.23);
-    filter: drop-shadow(0 0 24px rgba(239, 68, 68, 0.95)) drop-shadow(0 10px 28px rgba(225, 29, 72, 0.75));
-  }
-  26% {
-    transform: scale(1.14);
-    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.8)) drop-shadow(0 8px 22px rgba(225, 29, 72, 0.55));
-  }
-  38% {
-    transform: scale(1.27);
-    filter: drop-shadow(0 0 30px rgba(239, 68, 68, 1)) drop-shadow(0 12px 34px rgba(244, 63, 94, 0.85));
-  }
-  56% {
-    transform: scale(1.14);
-    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.8)) drop-shadow(0 8px 22px rgba(225, 29, 72, 0.55));
-  }
-  100% {
-    transform: scale(1.14);
-    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.8)) drop-shadow(0 8px 22px rgba(225, 29, 72, 0.55));
-  }
-}
-
-/* Targeted to the heart button only in the floating actions dock */
-#floating-actions-dock #fab-emergency-helpline {
-  animation: heartbeat 1.6s ease-in-out infinite;
-  transform-origin: center center;
-  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.28s ease-out;
-}
-
-#floating-actions-dock #fab-emergency-helpline:hover {
-  animation: heartbeatHover 1.05s cubic-bezier(0.25, 1, 0.5, 1) infinite;
-  filter: drop-shadow(0 0 22px rgba(239, 68, 68, 0.9)) drop-shadow(0 10px 28px rgba(220, 38, 38, 0.7));
-}
 
 

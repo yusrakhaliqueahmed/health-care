@@ -68,6 +68,12 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
         return t.navMedicine;
       case 'reports':
         return t.navReports;
+      case 'vitals':
+        return currentLanguage === 'ur'
+          ? 'وائٹلز (شوگر، بلڈ پریشر، نبض)'
+          : currentLanguage === 'roman'
+          ? 'Vitals (Sugar, BP, Pulse)'
+          : (t.navVitals || 'Vitals & Health Tracker');
       case 'care':
         return t.navNearby;
       case 'emergency':
@@ -84,22 +90,22 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
   return (
     <div className="w-full mb-6 space-y-3">
       {/* Top Mobile Bar for screens < lg */}
-      <div className="lg:hidden flex items-center justify-between p-2.5 sm:p-3 bg-[#0c2f28] text-white rounded-2xl shadow-md gap-2 border border-teal-900/60 min-w-0">
+      <div className="lg:hidden flex items-center justify-between p-2.5 sm:p-3 bg-white dark:bg-slate-900 text-slate-800 dark:text-white rounded-2xl shadow-xs gap-2 border border-slate-200/90 dark:border-slate-800 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <button
             type="button"
             onClick={onOpenMobileMenu}
-            className="p-2 bg-teal-900/80 hover:bg-teal-800 rounded-xl text-white transition-colors shrink-0"
+            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-slate-700 dark:text-slate-200 transition-colors shrink-0"
             aria-label="Open Navigation Menu"
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => onNavigate('home')}>
-            <div className="relative w-8 h-8 rounded-lg bg-teal-950 border border-teal-500/40 flex items-center justify-center shrink-0">
-              <ClinicalHeartIcon className="w-4 h-4 text-teal-300" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <div className="relative w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+              <ClinicalHeartIcon className="w-4 h-4 text-white" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-slate-900" />
             </div>
-            <span className="font-bold text-sm tracking-tight truncate">SehatSaathi</span>
+            <span className="font-bold text-sm tracking-tight truncate text-slate-900 dark:text-white">SehatSaathi</span>
           </div>
         </div>
 
@@ -108,10 +114,10 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
           <button
             type="button"
             onClick={onOpenLogin}
-            className="flex items-center gap-1 bg-teal-900/80 hover:bg-teal-800 text-white px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-xs font-bold min-h-[38px] shrink-0 border border-teal-700/40"
+            className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold min-h-[38px] shrink-0 border border-slate-200/80 dark:border-slate-700"
             title={`Logged in as ${displayName}. Click to switch user`}
           >
-            <User className="w-3.5 h-3.5 text-teal-300 shrink-0" />
+            <User className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
             <span className="hidden sm:inline max-w-[60px] truncate">{displayName.split(' ')[0]}</span>
           </button>
 
@@ -128,10 +134,10 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
               type="button"
               id="header-mobile-call-btn"
               onClick={onOpenEmergencyCall || (() => { window.location.href = 'tel:1122'; })}
-              className="flex items-center gap-1 bg-red-600 hover:bg-red-700 active:scale-95 text-white px-2 py-1.5 rounded-xl text-xs font-bold shadow-xs min-h-[38px] cursor-pointer transition-transform"
+              className="flex items-center gap-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs min-h-[38px] cursor-pointer transition-transform"
               title="Call Rescue 1122 Ambulance"
             >
-              <PhoneCall className="w-3.5 h-3.5 animate-pulse" />
+              <PhoneCall className="w-3.5 h-3.5" />
               <span className="text-[11px] sm:text-xs">1122</span>
             </button>
 
@@ -139,7 +145,7 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
               type="button"
               id="header-mobile-msg-btn"
               onClick={onOpenQuickMessage}
-              className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-2 py-1.5 rounded-xl text-xs font-bold shadow-xs min-h-[38px] cursor-pointer transition-transform"
+              className="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs min-h-[38px] cursor-pointer transition-transform"
               title="Quick Medical Message / WhatsApp"
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -173,13 +179,13 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
 
         {/* Top-Right Controls: Doctor Status, Voice, Emergency, Language, User Badge */}
         <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap sm:flex-nowrap">
-          {/* PMDC Doctor Duty Status Badge */}
-          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 text-xs font-semibold text-emerald-800 dark:text-emerald-300 shadow-2xs">
+          {/* Teleconsultation Duty Status Badge */}
+          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 text-xs font-semibold text-teal-800 dark:text-teal-300 shadow-2xs">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500" />
             </span>
-            <span>{t.consultantOnDuty}: Dr. Ayesha Malik ({t.availableNow})</span>
+            <span>{currentLanguage === 'ur' ? 'آن لائن طبی کنسلٹیشن فعال ہے' : 'Telehealth Consultation Active'}</span>
           </div>
 
           {/* Voice Guidance Readout Button */}

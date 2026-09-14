@@ -19,6 +19,7 @@ class VoiceService {
   private currentLang: SupportedLanguage | string = 'en';
   private speed = 1.0;
   private isAutoPlayEnabled = false;
+  private playbackSessionId = 0;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -81,7 +82,39 @@ class VoiceService {
     return this.isAutoPlayEnabled;
   }
 
+  public stop() {
+    // Invalidate any ongoing or pending playback promises
+    this.playbackSessionId++;
+
+    // 1. Completely dismantle HTML5 Audio
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.onplay = null;
+        this.currentAudio.onpause = null;
+        this.currentAudio.onended = null;
+        this.currentAudio.onerror = null;
+        this.currentAudio.removeAttribute('src');
+        this.currentAudio.load();
+      } catch (_) {}
+      this.currentAudio = null;
+    }
+
+    // 2. Completely cancel Web Speech synthesis
+    if (this.synth) {
+      try {
+        this.synth.cancel();
+      } catch (_) {}
+    }
+
+    this.isPlaying = false;
+    this.isPaused = false;
+    this.currentUtterance = null;
+    this.notify();
+  }
+
   public speak(rawText: string, lang: SupportedLanguage | string) {
+    // 1. Immediately halt all previous sound
     this.stop();
 
     // Clean markdown symbols & URLs for clearer speech
@@ -93,23 +126,51 @@ class VoiceService {
 
     if (!cleanText) return;
 
+    // Capture this unique session
+    const sessionId = ++this.playbackSessionId;
     this.currentText = cleanText;
     this.currentLang = lang;
 
-    // First attempt: High quality streaming audio from /api/tts (Works in Urdu, English & Roman Urdu on all devices)
+    const normalizedLang = (typeof lang === 'string' ? lang : 'en').toLowerCase();
+
+    // STRICT ANTI-DOUBLE-VOICE RULE:
+    // For English: ALWAYS use browser Web Speech API directly when available.
+    // This prevents the dual male/female speech overlap completely.
+    if (normalizedLang === 'en' || normalizedLang === 'en-us' || normalizedLang === 'en-gb') {
+      if (this.synth) {
+        this.speakWebSpeech(cleanText, 'en', sessionId);
+        return;
+      }
+    }
+
+    // For Urdu and Roman Urdu: prioritize high-quality streaming audio from /api/tts
+    // (Google's authentic Urdu voice model). Local browser SpeechSynthesis on Windows/Mac
+    // has no native Urdu voice and its Hindi voice cannot read Arabic script.
+    if (normalizedLang === 'ur' || normalizedLang === 'roman' || /[\u0600-\u06FF]/.test(cleanText)) {
+      this.playViaTtsApi(cleanText, lang, sessionId);
+      return;
+    }
+
+    // High quality streaming audio from /api/tts for other non-English languages
+    this.playViaTtsApi(cleanText, lang, sessionId);
+  }
+
+  private playViaTtsApi(cleanText: string, lang: SupportedLanguage | string, sessionId: number) {
     try {
       const audioUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 500))}&lang=${encodeURIComponent(lang)}`;
-      const audio = new Audio(audioUrl);
+      const audio = new Audio();
       this.currentAudio = audio;
       audio.playbackRate = this.speed;
 
       audio.onplay = () => {
+        if (this.playbackSessionId !== sessionId) return;
         this.isPlaying = true;
         this.isPaused = false;
         this.notify();
       };
 
       audio.onpause = () => {
+        if (this.playbackSessionId !== sessionId) return;
         if (audio.currentTime < audio.duration && !audio.ended) {
           this.isPaused = true;
           this.notify();
@@ -117,34 +178,69 @@ class VoiceService {
       };
 
       audio.onended = () => {
+        if (this.playbackSessionId !== sessionId) return;
         this.isPlaying = false;
         this.isPaused = false;
         this.currentAudio = null;
         this.notify();
       };
 
-      audio.onerror = () => {
-        console.warn('Audio streaming failed, falling back to Web Speech API synthesis');
-        this.currentAudio = null;
-        this.speakWebSpeech(cleanText, lang);
+      const handleFallback = () => {
+        if (this.playbackSessionId !== sessionId) return;
+        try {
+          audio.onplay = null;
+          audio.onpause = null;
+          audio.onended = null;
+          audio.onerror = null;
+          audio.pause();
+          audio.removeAttribute('src');
+          audio.load();
+        } catch (_) {}
+        if (this.currentAudio === audio) {
+          this.currentAudio = null;
+        }
+        this.speakWebSpeech(cleanText, lang, sessionId);
       };
+
+      audio.onerror = handleFallback;
+
+      audio.src = audioUrl;
+      this.isPlaying = true;
+      this.notify();
 
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
-          console.warn('HTML5 Audio playback interrupted, falling back to Web Speech API:', err);
-          this.currentAudio = null;
-          this.speakWebSpeech(cleanText, lang);
+          console.warn('Direct audio play failed, trying blob fetch:', err);
+          fetch(audioUrl)
+            .then((res) => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.blob();
+            })
+            .then((blob) => {
+              if (this.playbackSessionId !== sessionId) return;
+              const blobUrl = URL.createObjectURL(blob);
+              audio.src = blobUrl;
+              return audio.play();
+            })
+            .catch(() => {
+              handleFallback();
+            });
         });
       }
     } catch (err) {
-      console.warn('Failed to initiate HTML5 Audio, using web speech fallback:', err);
-      this.speakWebSpeech(cleanText, lang);
+      console.warn('Failed to initiate TTS Audio:', err);
+      this.speakWebSpeech(cleanText, lang, sessionId);
     }
   }
 
-  private speakWebSpeech(cleanText: string, lang: SupportedLanguage | string) {
+  private speakWebSpeech(cleanText: string, lang: SupportedLanguage | string, sessionId?: number) {
     if (!this.synth) return;
+    if (sessionId !== undefined && sessionId !== this.playbackSessionId) return;
+
+    try {
+      this.synth.cancel();
+    } catch (_) {}
 
     // Resolve BCP-47 tag
     let bcp47 = 'en-US';
@@ -165,10 +261,17 @@ class VoiceService {
         voices.find((v) => v.lang.toLowerCase().startsWith('en-pk')) ||
         voices.find((v) => v.lang.toLowerCase().startsWith('en-in')) ||
         voices.find((v) => v.lang.toLowerCase().startsWith('en'));
-    } else {
+    } else if (lang === 'ur' || bcp47.startsWith('ur')) {
       matchedVoice =
-        voices.find((v) => v.lang.toLowerCase().startsWith(bcp47.slice(0, 2).toLowerCase())) ||
-        (bcp47.startsWith('ur') ? voices.find((v) => v.lang.toLowerCase().startsWith('hi')) : undefined);
+        voices.find((v) => v.lang.toLowerCase().startsWith('ur')) ||
+        voices.find((v) => v.lang.toLowerCase().startsWith('hi'));
+    } else {
+      // English: Select a single natural English voice
+      matchedVoice =
+        voices.find((v) => v.name.includes('Natural') && v.lang.startsWith('en')) ||
+        voices.find((v) => v.name.includes('Google') && v.lang.startsWith('en')) ||
+        voices.find((v) => v.lang === 'en-US') ||
+        voices.find((v) => v.lang.startsWith('en'));
     }
 
     let spokenText = cleanText;
@@ -208,12 +311,19 @@ class VoiceService {
     }
 
     utterance.onstart = () => {
+      if (sessionId !== undefined && sessionId !== this.playbackSessionId) {
+        try {
+          this.synth?.cancel();
+        } catch (_) {}
+        return;
+      }
       this.isPlaying = true;
       this.isPaused = false;
       this.notify();
     };
 
     utterance.onend = () => {
+      if (sessionId !== undefined && sessionId !== this.playbackSessionId) return;
       this.isPlaying = false;
       this.isPaused = false;
       this.currentUtterance = null;
@@ -221,6 +331,7 @@ class VoiceService {
     };
 
     utterance.onerror = () => {
+      if (sessionId !== undefined && sessionId !== this.playbackSessionId) return;
       this.isPlaying = false;
       this.isPaused = false;
       this.currentUtterance = null;
@@ -228,11 +339,13 @@ class VoiceService {
     };
 
     utterance.onpause = () => {
+      if (sessionId !== undefined && sessionId !== this.playbackSessionId) return;
       this.isPaused = true;
       this.notify();
     };
 
     utterance.onresume = () => {
+      if (sessionId !== undefined && sessionId !== this.playbackSessionId) return;
       this.isPaused = false;
       this.notify();
     };
@@ -273,24 +386,6 @@ class VoiceService {
       this.isPaused = false;
       this.notify();
     }
-  }
-
-  public stop() {
-    if (this.currentAudio) {
-      this.currentAudio.pause();
-      this.currentAudio.currentTime = 0;
-      this.currentAudio.src = '';
-      this.currentAudio = null;
-    }
-    if (this.synth) {
-      try {
-        this.synth.cancel();
-      } catch (_) {}
-    }
-    this.isPlaying = false;
-    this.isPaused = false;
-    this.currentUtterance = null;
-    this.notify();
   }
 
   public replay() {

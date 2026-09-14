@@ -2,8 +2,11 @@ import React, { useState, useRef } from 'react';
 import { SupportedLanguage, PatientProfile, MedicineCheckResult, UnifiedHealthRecord } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager, createSpeechRecognizer } from '../services/voice';
+import { validateMedicalInput } from '../services/inputValidation';
 import { AudioPlayerControls } from './AudioPlayerControls';
 import { ClinicalOutputCard } from './ClinicalOutputCard';
+import { SmartValidationAlert } from './SmartValidationAlert';
+import { InvalidUploadAlert } from './InvalidUploadAlert';
 import {
   Pill,
   Camera,
@@ -61,17 +64,17 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
 
   const medNameLabel =
     currentLanguage === 'ur'
-      ? 'دوا کا نام (مثلاً پیناڈول، اگمینٹن، بروفین، فلیجل، ڈسپرین)'
+      ? 'دوا کا نام اور پاور (مثلاً پیناڈول 500mg، اگمینٹن 625، بروفین 400، رائزک 20mg)'
       : currentLanguage === 'roman'
-      ? 'Dawai Ka Naam (maslan Panadol, Augmentin, Brufen, Flagyl)'
-      : 'Medicine Name (e.g. Panadol, Augmentin, Brufen, Flagyl, Disprin)';
+      ? 'Dawai Ka Naam Aur Power (maslan Panadol 500mg, Augmentin 625, Brufen 400)'
+      : 'Medicine Name & Strength (e.g. Panadol 500mg, Augmentin 625, Brufen 400)';
 
   const medNamePlaceholder =
     currentLanguage === 'ur'
-      ? 'دوا کا نام لکھیں یا مائیک دبائیں...'
+      ? 'دوا کا نام اور پاور لکھیں (مثلاً پیناڈول 500mg یا اگمینٹن 625)...'
       : currentLanguage === 'roman'
-      ? 'Dawai ka naam likhein ya mic se bolein...'
-      : 'Type or speak medicine brand or generic...';
+      ? 'Dawai ka naam aur power likhein (maslan Panadol 500mg ya Augmentin 625)...'
+      : 'Type medicine name & strength (e.g. Panadol 500mg, Augmentin 625)...';
 
   const conditionLabel =
     currentLanguage === 'ur'
@@ -122,6 +125,20 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<MedicineCheckResult | null>(null);
 
+  // Validation & Error Alert States
+  const [validationAlert, setValidationAlert] = useState<{
+    field: 'name' | 'condition';
+    alertText: string;
+    spokenText: string;
+    suggestion?: string;
+  } | null>(null);
+
+  const [invalidUploadError, setInvalidUploadError] = useState<{
+    reason: 'not_medical' | 'not_medicine' | 'unclear_blurry';
+    text: string;
+    spokenAlert: string;
+  } | null>(null);
+
   // Speech Recognition
   const [isRecording, setIsRecording] = useState(false);
   const [recordingField, setRecordingField] = useState<'name' | 'condition' | null>(null);
@@ -133,12 +150,17 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
       const reader = new FileReader();
       reader.onload = () => {
         setPhotoBase64(reader.result as string);
+        setValidationAlert(null);
+        setInvalidUploadError(null);
+        setResult(null);
       };
       reader.readAsDataURL(file);
     }
   };
 
   const startVoiceInput = (field: 'name' | 'condition') => {
+    setValidationAlert(null);
+    setInvalidUploadError(null);
     if (isRecording) {
       speechRecognizer.current.stop();
       setIsRecording(false);
@@ -167,7 +189,69 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
 
   const handleVerifyMedicine = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!medicineName && !condition && !photoBase64) return;
+    setValidationAlert(null);
+    setInvalidUploadError(null);
+
+    const langKey = currentLanguage === 'ur' ? 'ur' : currentLanguage === 'roman' ? 'roman' : 'en';
+
+    // 1. Validation for Mode 1: Check-a-medicine
+    if (mode === 'check') {
+      const nameVal = validateMedicalInput(medicineName, 'medicine', currentLanguage);
+      if (!nameVal.isValid) {
+        setValidationAlert({
+          field: 'name',
+          alertText: nameVal.alertMessage[langKey],
+          spokenText: nameVal.spokenAlert[langKey],
+          suggestion: nameVal.suggestion,
+        });
+        return;
+      }
+
+      if (condition.trim()) {
+        const condVal = validateMedicalInput(condition, 'condition', currentLanguage);
+        if (!condVal.isValid) {
+          setValidationAlert({
+            field: 'condition',
+            alertText: condVal.alertMessage[langKey],
+            spokenText: condVal.spokenAlert[langKey],
+            suggestion: condVal.suggestion,
+          });
+          return;
+        }
+      }
+    }
+
+    // 2. Validation for Mode 2: Reverse lookup
+    if (mode === 'reverse') {
+      const condVal = validateMedicalInput(condition, 'condition', currentLanguage);
+      if (!condVal.isValid) {
+        setValidationAlert({
+          field: 'condition',
+          alertText: condVal.alertMessage[langKey],
+          spokenText: condVal.spokenAlert[langKey],
+          suggestion: condVal.suggestion,
+        });
+        return;
+      }
+    }
+
+    // 3. Validation for Mode 3: Photo
+    if (mode === 'photo' && !photoBase64) {
+      setInvalidUploadError({
+        reason: 'not_medicine',
+        text: currentLanguage === 'ur'
+          ? 'برائے مہربانی دوا کی تصویر اپلوڈ کریں یا کیمرے سے لیں۔'
+          : currentLanguage === 'roman'
+          ? 'Baraye meherbani dawai ki photo upload karein.'
+          : 'Please upload or capture a photo of your medicine packaging or strip.',
+        spokenAlert: currentLanguage === 'ur'
+          ? 'برائے مہربانی دوا کی تصویر اپلوڈ کریں۔'
+          : currentLanguage === 'roman'
+          ? 'Baraye meherbani dawai ki photo upload karein.'
+          : 'Please upload or capture a photo of your medicine.',
+      });
+      return;
+    }
 
     setIsLoading(true);
     voiceManager.stop();
@@ -189,6 +273,18 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
       });
 
       const data = await res.json();
+
+      // Check if image is an invalid/unrelated upload or too blurry
+      if (data.isRelevant === false) {
+        setInvalidUploadError({
+          reason: data.relevanceReason || 'not_medicine',
+          text: data.text,
+          spokenAlert: data.spokenAlert || data.text,
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const explanationText =
         data.text || data.fallbackText || 'Please consult a pharmacist or PMDC doctor.';
 
@@ -305,142 +401,232 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
         </div>
       </div>
 
-      {/* Mode Switcher Tabs */}
-      <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
-        <button
-          type="button"
-          onClick={() => setMode('check')}
-          className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
-            mode === 'check'
-              ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Search className="w-4 h-4" />
-          <span className="truncate">{t.checkMedicine}</span>
-        </button>
+        {/* Mode Switcher Tabs */}
+        <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <button
+            type="button"
+            onClick={() => {
+              setMode('check');
+              setValidationAlert(null);
+              setInvalidUploadError(null);
+            }}
+            className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
+              mode === 'check'
+                ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Search className="w-4 h-4" />
+            <span className="truncate">{t.checkMedicine}</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setMode('reverse')}
-          className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
-            mode === 'reverse'
-              ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <RotateCcw className="w-4 h-4" />
-          <span className="truncate">{t.reverseLookup}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('reverse');
+              setValidationAlert(null);
+              setInvalidUploadError(null);
+            }}
+            className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
+              mode === 'reverse'
+                ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span className="truncate">{t.reverseLookup}</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setMode('photo')}
-          className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
-            mode === 'photo'
-              ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Camera className="w-4 h-4" />
-          <span className="truncate">{t.photoMedicine}</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => {
+              setMode('photo');
+              setValidationAlert(null);
+              setInvalidUploadError(null);
+            }}
+            className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all min-h-[44px] flex items-center justify-center gap-1.5 ${
+              mode === 'photo'
+                ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Camera className="w-4 h-4" />
+            <span className="truncate">{t.photoMedicine}</span>
+          </button>
+        </div>
 
-      {/* Verification Form Card */}
-      <form
-        onSubmit={handleVerifyMedicine}
-        className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5"
-      >
-        {/* Mode 1: Check a specific medicine */}
-        {mode === 'check' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                {medNameLabel}
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={medicineName}
-                  onChange={(e) => setMedicineName(e.target.value)}
-                  placeholder={medNamePlaceholder}
-                  className="w-full px-4 py-3 pr-12 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 min-h-[48px]"
-                />
-                <button
-                  type="button"
-                  onClick={() => startVoiceInput('name')}
-                  className={`absolute right-2 p-2.5 rounded-xl transition-colors ${
-                    isRecording && recordingField === 'name'
-                      ? 'bg-red-600 text-white animate-pulse'
-                      : 'text-slate-400 hover:text-teal-600'
-                  }`}
-                  title="Speak medicine name"
-                >
-                  <Mic className="w-4 h-4" />
-                </button>
+        {/* Verification Form Card */}
+        <form
+          onSubmit={handleVerifyMedicine}
+          className="p-6 sm:p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5"
+        >
+          {/* Smart Input Validation Alert */}
+          {validationAlert && (
+            <SmartValidationAlert
+              alertText={validationAlert.alertText}
+              spokenText={validationAlert.spokenText}
+              currentLanguage={currentLanguage}
+              suggestion={validationAlert.suggestion}
+              onApplySuggestion={(sug) => {
+                if (validationAlert.field === 'name') {
+                  setMedicineName(sug);
+                } else {
+                  setCondition(sug);
+                }
+                setValidationAlert(null);
+              }}
+              onDismiss={() => setValidationAlert(null)}
+            />
+          )}
+
+          {/* Invalid Upload Alert */}
+          {invalidUploadError && (
+            <InvalidUploadAlert
+              reason={invalidUploadError.reason}
+              customAlertText={invalidUploadError.text}
+              customSpokenText={invalidUploadError.spokenAlert}
+              currentLanguage={currentLanguage}
+              onTakePhoto={() => {
+                setInvalidUploadError(null);
+                fileInputRef.current?.click();
+              }}
+              onUploadGallery={() => {
+                setInvalidUploadError(null);
+                fileInputRef.current?.click();
+              }}
+              onDismiss={() => setInvalidUploadError(null)}
+            />
+          )}
+
+          {/* Mode 1: Check a specific medicine */}
+          {mode === 'check' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  {medNameLabel}
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={medicineName}
+                    onChange={(e) => {
+                      setMedicineName(e.target.value);
+                      if (validationAlert) setValidationAlert(null);
+                    }}
+                    placeholder={medNamePlaceholder}
+                    className="w-full px-4 py-3 pr-12 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 min-h-[48px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => startVoiceInput('name')}
+                    className={`absolute right-2 p-2.5 rounded-xl transition-colors ${
+                      isRecording && recordingField === 'name'
+                        ? 'bg-red-600 text-white animate-pulse'
+                        : 'text-slate-400 hover:text-teal-600'
+                    }`}
+                    title="Speak medicine name"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Quick Medicine with Power Suggestion Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    {currentLanguage === 'ur'
+                      ? 'عام ادویات مع پاور:'
+                      : currentLanguage === 'roman'
+                      ? 'Aam dawaiyan power ke sath:'
+                      : 'Common medicines with strength:'}
+                  </span>
+                  {[
+                    currentLanguage === 'ur' ? 'پیناڈول 500mg' : 'Panadol 500mg',
+                    currentLanguage === 'ur' ? 'اگمینٹن 625' : 'Augmentin 625',
+                    currentLanguage === 'ur' ? 'بروفین 400' : 'Brufen 400',
+                    currentLanguage === 'ur' ? 'رائزک 20mg' : 'Risek 20mg',
+                    currentLanguage === 'ur' ? 'ڈسپرین 300' : 'Disprin 300',
+                    currentLanguage === 'ur' ? 'فلیجل 400mg' : 'Flagyl 400mg',
+                  ].map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      onClick={() => {
+                        setMedicineName(example);
+                        if (validationAlert) setValidationAlert(null);
+                      }}
+                      className="px-2.5 py-1 text-xs rounded-full bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900 transition-colors"
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  {conditionLabel}
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    value={condition}
+                    onChange={(e) => {
+                      setCondition(e.target.value);
+                      if (validationAlert) setValidationAlert(null);
+                    }}
+                    placeholder={conditionLabel}
+                    className="w-full px-4 py-3 pr-12 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 min-h-[48px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => startVoiceInput('condition')}
+                    className={`absolute right-2 p-2.5 rounded-xl transition-colors ${
+                      isRecording && recordingField === 'condition'
+                        ? 'bg-red-600 text-white animate-pulse'
+                        : 'text-slate-400 hover:text-teal-600'
+                    }`}
+                    title="Speak condition"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
+          )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                {conditionLabel}
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
-                  placeholder={conditionLabel}
-                  className="w-full px-4 py-3 pr-12 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500 min-h-[48px]"
-                />
-                <button
-                  type="button"
-                  onClick={() => startVoiceInput('condition')}
-                  className={`absolute right-2 p-2.5 rounded-xl transition-colors ${
-                    isRecording && recordingField === 'condition'
-                      ? 'bg-red-600 text-white animate-pulse'
-                      : 'text-slate-400 hover:text-teal-600'
-                  }`}
-                  title="Speak condition"
-                >
-                  <Mic className="w-4 h-4" />
-                </button>
+          {/* Mode 2: Reverse lookup */}
+          {mode === 'reverse' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  {reverseLabel}
+                </label>
+                <div className="relative flex items-center">
+                  <textarea
+                    rows={3}
+                    value={condition}
+                    onChange={(e) => {
+                      setCondition(e.target.value);
+                      if (validationAlert) setValidationAlert(null);
+                    }}
+                    placeholder={reverseLabel}
+                    className="w-full p-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => startVoiceInput('condition')}
+                    className={`absolute bottom-3 right-3 p-2.5 rounded-xl transition-colors ${
+                      isRecording
+                        ? 'bg-red-600 text-white animate-pulse'
+                        : 'text-slate-400 hover:text-teal-600 bg-white dark:bg-slate-700 shadow-xs'
+                    }`}
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Mode 2: Reverse lookup */}
-        {mode === 'reverse' && (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                {reverseLabel}
-              </label>
-              <div className="relative flex items-center">
-                <textarea
-                  rows={3}
-                  value={condition}
-                  onChange={(e) => setCondition(e.target.value)}
-                  placeholder={reverseLabel}
-                  className="w-full p-4 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-teal-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => startVoiceInput('condition')}
-                  className={`absolute bottom-3 right-3 p-2.5 rounded-xl transition-colors ${
-                    isRecording
-                      ? 'bg-red-600 text-white animate-pulse'
-                      : 'text-slate-400 hover:text-teal-600 bg-white dark:bg-slate-700 shadow-xs'
-                  }`}
-                >
-                  <Mic className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+          )}
 
         {/* Mode 3: Photo of medicine strip/box */}
         {mode === 'photo' && (

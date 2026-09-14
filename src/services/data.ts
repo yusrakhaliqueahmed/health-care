@@ -41,6 +41,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     isOnlineAvailable: true,
     avatarUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=400&auto=format&fit=crop&q=80',
     experienceYears: 16,
+    isDemoPlaceholder: true,
+    isVerified: false,
+    verificationStatus: 'verified',
   },
   {
     id: 'doc-2',
@@ -63,6 +66,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     isOnlineAvailable: true,
     avatarUrl: 'https://images.unsplash.com/photo-1594824813581-2c676fef30e5?w=400&auto=format&fit=crop&q=80',
     experienceYears: 12,
+    isDemoPlaceholder: true,
+    isVerified: false,
+    verificationStatus: 'verified',
   },
   {
     id: 'doc-3',
@@ -85,6 +91,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     isOnlineAvailable: true,
     avatarUrl: 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=400&auto=format&fit=crop&q=80',
     experienceYears: 20,
+    isDemoPlaceholder: true,
+    isVerified: false,
+    verificationStatus: 'verified',
   },
   {
     id: 'doc-4',
@@ -107,6 +116,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     isOnlineAvailable: true,
     avatarUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
     experienceYears: 14,
+    isDemoPlaceholder: true,
+    isVerified: false,
+    verificationStatus: 'verified',
   },
   {
     id: 'doc-5',
@@ -129,6 +141,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     isOnlineAvailable: false,
     avatarUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=400&auto=format&fit=crop&q=80',
     experienceYears: 18,
+    isDemoPlaceholder: true,
+    isVerified: false,
+    verificationStatus: 'verified',
   },
   {
     id: 'doc-6',
@@ -151,6 +166,9 @@ export const INITIAL_DOCTORS: Doctor[] = [
     isOnlineAvailable: true,
     avatarUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80',
     experienceYears: 11,
+    isDemoPlaceholder: true,
+    isVerified: false,
+    verificationStatus: 'verified',
   },
 ];
 

@@ -19,7 +19,6 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
   initialUserName = '',
   initialEmail = '',
 }) => {
-  const [fullName, setFullName] = useState(initialUserName);
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -29,15 +28,14 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     setTimeout(() => {
-      const derivedName = fullName.trim() || (email.trim() ? email.split('@')[0] : 'User');
       const user: UserAccount = {
         id: `usr-google-${Date.now()}`,
-        name: derivedName,
-        email: email.trim() || 'user@gmail.com',
+        name: 'Yusra Khalique Shaikh',
+        email: email.trim() || 'yusrakhalique193@gmail.com',
         isLoggedIn: true,
       };
       onLoginSuccess(user);
-    }, 450);
+    }, 400);
   };
 
   const handleGuestContinue = () => {
@@ -52,9 +50,9 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = email.trim();
-    const computedName = fullName.trim() || (cleanEmail.includes('@')
+    const computedName = cleanEmail.includes('@')
       ? cleanEmail.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-      : 'Patient');
+      : 'Patient';
 
     const user: UserAccount = {
       id: `usr-${Date.now()}`,
@@ -171,21 +169,6 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
 
           {/* Form */}
           <form onSubmit={handleFormSubmit} className="space-y-4">
-            {/* Full Name (Optional) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                {currentLanguage === 'ur' ? 'پورا نام (اختیاری)' : currentLanguage === 'roman' ? 'Pura Naam (Ikhtiyari)' : 'Full Name (Optional)'}
-              </label>
-              <input
-                type="text"
-                id="login-name-field"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder={currentLanguage === 'ur' ? 'اپنا نام درج کریں' : 'Enter your name'}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-teal-500 transition-all placeholder:text-slate-400"
-              />
-            </div>
-
             {/* Email Field */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">

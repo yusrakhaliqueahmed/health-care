@@ -233,19 +233,26 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
       .map((t) => `${t.testName}: ${t.result}`)
       .join(', ');
 
+    const isReviewed = rec.isDoctorReviewed || rec.status === 'doctor_approved';
+
     let speechText = '';
     if (currentLanguage === 'roman') {
-      speechText = `SehatSaathi Pro Record: ${rec.title}. Tareekh: ${rec.date}. Mareez: ${rec.patientName}. Haalat: ${
-        rec.status === 'doctor_approved' ? 'Doctor se tasdeeq shuda' : 'AI preliminary review'
-      }. Khas nateeja: ${keyFindings}. Tibbi wazahat: ${rec.clinicalNotes || 'Sab theek hai'}.`;
+      const docDisclosure = isReviewed
+        ? 'Yeh record licensed doctor se tasdeeq shuda hai.'
+        : 'Yeh nateeja sirf AI generated hai aur abhi tak kisi licensed doctor ne check nahi kiya.';
+      speechText = `Health Record: ${rec.title}. Tareekh: ${rec.date}. Mareez: ${rec.patientName}. ${docDisclosure} Khas nateeja: ${keyFindings || rec.summary || 'Recorded'}. Tibbi wazahat: ${rec.clinicalNotes || 'Normal'}.`;
     } else if (currentLanguage === 'ur') {
-      speechText = `صحت ساتھی پرو میڈیکل ریکارڈ: ${rec.title}۔ تاریخ: ${rec.date}۔ مریض: ${rec.patientName}۔ نتائج: ${keyFindings}۔ طبی رائے: ${
-        rec.clinicalNotes || 'تمام ٹیسٹ محفوظ حدود میں ہیں'
+      const docDisclosure = isReviewed
+        ? 'یہ ریکارڈ مستند لائسنس یافتہ ڈاکٹر سے تصدیق شدہ ہے۔'
+        : 'اہم وضاحت: یہ نتیجہ صرف اے آئی کا تجزیہ ہے اور ابھی تک کسی مستند ڈاکٹر نے اس کا معائنہ نہیں کیا ہے۔';
+      speechText = `طبی ریکارڈ: ${rec.title}۔ تاریخ: ${rec.date}۔ مریض: ${rec.patientName}۔ ${docDisclosure} نتائج: ${keyFindings || rec.summary || 'محفوظ'}۔ طبی رائے: ${
+        rec.clinicalNotes || 'وائٹلز کا تجزیہ مکمل'
       }۔`;
     } else {
-      speechText = `SehatSaathi Pro Record: ${rec.title}. Date: ${rec.date}. Patient: ${rec.patientName}. Status: ${
-        rec.status === 'doctor_approved' ? 'Doctor Verified' : 'AI Preliminary'
-      }. Key Findings: ${keyFindings}. Clinical Summary: ${rec.clinicalNotes || 'Normal parameters'}.`;
+      const docDisclosure = isReviewed
+        ? 'This record has been officially reviewed and signed by a licensed physician.'
+        : 'Notice: This result is AI-generated only and has not yet been reviewed by a licensed doctor.';
+      speechText = `Health Record: ${rec.title}. Date: ${rec.date}. Patient: ${rec.patientName}. ${docDisclosure} Key Findings: ${keyFindings || rec.summary || 'Completed'}. Clinical Summary: ${rec.clinicalNotes || 'Recorded successfully'}.`;
     }
 
     voiceManager.speak(speechText, currentLanguage);
@@ -309,6 +316,7 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {
       all: records.length,
+      vitals: 0,
       search_history: 0,
       symptom: 0,
       medicine: 0,
@@ -317,6 +325,10 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
       consultation: 0,
     };
     records.forEach((r) => {
+      if (r.category === 'vitals' || r.category === 'telemetry_vitals') {
+        counts.vitals++;
+      }
+
       const isSearch =
         r.category === 'search_history' ||
         r.id.startsWith('rec-srch-') ||
@@ -329,7 +341,7 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
       }
 
       const cat = (r.category as string) === 'symptom_triage' ? 'symptom' : r.category;
-      if (counts[cat] !== undefined) {
+      if (counts[cat] !== undefined && cat !== 'vitals') {
         counts[cat]++;
       }
     });
@@ -351,6 +363,9 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
             (r.title && r.title.toLowerCase().includes('search')) ||
             (r.title && r.title.toLowerCase().includes('تلاش'))
           );
+        }
+        if (activeCategoryTab === 'vitals') {
+          return r.category === 'vitals' || r.category === 'telemetry_vitals';
         }
         if (activeCategoryTab === 'symptom') {
           return r.category === 'symptom' || (r.category as string) === 'symptom_triage';
@@ -398,6 +413,9 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
 
   const getCategoryIcon = (category: RecordCategory) => {
     switch (category) {
+      case 'vitals':
+      case 'telemetry_vitals':
+        return <HeartPulse className="w-5 h-5 text-rose-600" />;
       case 'search_history':
         return <Search className="w-5 h-5 text-indigo-600" />;
       case 'medicine':
@@ -416,6 +434,9 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
 
   const getCategoryBadgeClass = (category: RecordCategory) => {
     switch (category) {
+      case 'vitals':
+      case 'telemetry_vitals':
+        return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'search_history':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'medicine':
@@ -589,6 +610,7 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
       <div className="flex items-center space-x-1 sm:space-x-2 border-b border-slate-200 overflow-x-auto pb-1 text-xs sm:text-sm">
         {[
           { id: 'all', label: isUrdu ? 'تمام ریکارڈز' : isRoman ? 'Tamam Records' : 'All Records', count: categoryCounts.all },
+          { id: 'vitals', label: isUrdu ? 'وائٹلز لاگز' : isRoman ? 'Vitals Logs' : 'Vitals Logs', count: categoryCounts.vitals },
           { id: 'search_history', label: isUrdu ? 'تلاش و استفسار ہسٹری' : isRoman ? 'Searches & Inquiries' : 'Searches & Inquiries', count: categoryCounts.search_history },
           { id: 'symptom', label: isUrdu ? 'علامات کی جانچ' : isRoman ? 'Symptom Checks' : 'Symptom Checks', count: categoryCounts.symptom },
           { id: 'medicine', label: isUrdu ? 'دواؤں کی تصدیق' : isRoman ? 'Medicine Checks' : 'Medicine Checks', count: categoryCounts.medicine },
@@ -777,18 +799,18 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
                     <div className="flex flex-col items-end space-y-1">
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase flex items-center space-x-1 ${
-                          rec.status === 'doctor_approved'
+                          rec.status === 'doctor_approved' || rec.isDoctorReviewed
                             ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-amber-100 text-amber-800'
+                            : 'bg-slate-100 text-slate-700'
                         }`}
                       >
-                        {rec.status === 'doctor_approved' ? (
+                        {rec.status === 'doctor_approved' || rec.isDoctorReviewed ? (
                           <>
                             <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                            <span>Doctor Verified</span>
+                            <span>{rec.doctorPmdc ? `Doctor Reviewed (${rec.doctorPmdc})` : 'Doctor Reviewed'}</span>
                           </>
                         ) : (
-                          <span>AI Triage</span>
+                          <span>AI-Only (Not Doctor-Reviewed)</span>
                         )}
                       </span>
 

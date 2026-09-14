@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Loader2, ShieldCheck, Sparkles, ArrowRight, Heart } from 'lucide-react';
+import { Activity, Loader2, ShieldCheck, Sparkles, ArrowRight, Heart, CheckCircle2 } from 'lucide-react';
 import { SupportedLanguage } from '../types';
-import { Realistic3DHeart } from './Realistic3DHeart';
+import trustedDoctorsImg from '../assets/images/trusted_doctors_1789283228204.jpg';
 
 interface SplashScreenProps {
   currentLanguage: SupportedLanguage;
@@ -99,59 +99,58 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         </button>
       </div>
 
-      {/* Centerpiece: Real Anatomical 3D Pumping Diagnostic Heart Converted From User Picture */}
-      <div className="relative w-full max-w-md z-10 flex flex-col items-center justify-center my-auto py-3">
-        <Realistic3DHeart
-          size={240}
-          interactive={true}
-          showTelemetry={true}
-          showSoundToggle={true}
-        />
+      {/* Centerpiece: Clean video-identical branding */}
+      <div className="flex-1 flex flex-col items-center justify-center text-center z-20 px-4">
+        {/* Pulse Heartbeat Box with Red Heart Indicator */}
+        <div className="relative mb-5">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#07241e] border border-teal-500/40 flex items-center justify-center shadow-xl shadow-teal-950/80">
+            <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-teal-300 stroke-[2.2] animate-pulse" />
+          </div>
+          <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-rose-500 border-2 border-[#0c2f28] flex items-center justify-center shadow-md">
+            <Heart className="w-3.5 h-3.5 text-white fill-white" />
+          </div>
+        </div>
+
+        {/* Brand Name */}
+        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-1.5">
+          SehatSaathi
+        </h1>
+
+        {/* Tagline */}
+        <p className="text-sm sm:text-base text-teal-200 font-medium tracking-wide mb-3">
+          Aapka Digital Health Companion
+        </p>
+
+        {/* Verification Pill */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-950/90 border border-teal-500/40 text-[11px] font-semibold text-teal-300 tracking-wider uppercase mb-8 shadow-xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+          <span>AI + DOCTOR VERIFIED • AVAILABLE 24/7</span>
+        </div>
+
+        {/* Preparing indicator matching video: "🔄 Preparing your health companion..." */}
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-teal-300/90 font-medium">
+          <Loader2 className="w-4 h-4 animate-spin text-teal-400" />
+          <span>
+            {currentLanguage === 'ur'
+              ? 'صحت ساتھی تیار ہو رہا ہے...'
+              : currentLanguage === 'roman'
+              ? 'Health companion tayar ho raha hai...'
+              : 'Preparing your health companion...'}
+          </span>
+        </div>
+
+        {/* Subtle progress bar */}
+        <div className="w-64 max-w-xs mt-4 bg-teal-950/80 border border-teal-800/60 h-1.5 rounded-full overflow-hidden p-0.5">
+          <div
+            className="h-full bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-400 rounded-full transition-all duration-150 shadow-[0_0_8px_#2dd4bf]"
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+        </div>
       </div>
 
-      {/* Bottom Branding & Loading Status */}
-      <div className="w-full max-w-sm flex flex-col items-center text-center z-20 space-y-3 pb-4">
-        {/* Pulse Heartbeat Badge with Red Dot (Video signature) */}
-        <div className="flex items-center gap-2.5">
-          <div className="relative w-8 h-8 rounded-lg bg-[#07221d] border border-teal-500/40 flex items-center justify-center shadow-md">
-            <Heart className="w-4.5 h-4.5 text-rose-400 fill-rose-500 animate-pulse" />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-ping" />
-          </div>
-          <div className="text-left">
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-none">
-              SehatSaathi
-            </h1>
-            <p className="text-[11px] text-teal-300/90 font-medium tracking-wide">
-              Aapka Digital Health Companion
-            </p>
-          </div>
-        </div>
-
-        {/* Dynamic Progress Bar with Medical Glow */}
-        <div className="w-full space-y-1.5 pt-1">
-          <div className="w-full bg-teal-950/90 border border-teal-800/60 h-2 rounded-full overflow-hidden p-0.5 shadow-inner">
-            <div
-              className="h-full bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-400 rounded-full transition-all duration-200 shadow-[0_0_10px_#2dd4bf]"
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] text-teal-200/80">
-            <span className="flex items-center gap-1.5 truncate">
-              <Loader2 className="w-3 h-3 animate-spin text-teal-400 shrink-0" />
-              <span className="truncate">
-                {currentLanguage === 'ur'
-                  ? currentStage.ur
-                  : currentLanguage === 'roman'
-                  ? currentStage.roman
-                  : currentStage.en}
-              </span>
-            </span>
-            <span className="font-mono font-bold text-teal-300 shrink-0 ml-2">
-              {Math.min(Math.round(progress), 100)}%
-            </span>
-          </div>
-        </div>
+      {/* Footer text */}
+      <div className="w-full text-center text-[11px] text-teal-400/60 pb-2 z-10">
+        PMDC Verified Medical Standards • 24/7 Accessible Care
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager } from '../services/voice';
 import { AudioPlayerControls } from './AudioPlayerControls';
 import { ClinicalOutputCard } from './ClinicalOutputCard';
+import { InvalidUploadAlert } from './InvalidUploadAlert';
 import {
   FileText,
   Camera,
@@ -45,6 +46,11 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
     urgency: UrgencyLevel;
     timestamp: string;
   } | null>(null);
+  const [invalidUploadError, setInvalidUploadError] = useState<{
+    reason: 'not_medical' | 'not_medicine' | 'unclear_blurry';
+    text: string;
+    spokenAlert: string;
+  } | null>(null);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // File input refs
@@ -59,6 +65,7 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
       reader.onload = () => {
         setPhotoBase64(reader.result as string);
         setAnalysisResult(null);
+        setInvalidUploadError(null);
         setSavedSuccess(false);
       };
       reader.readAsDataURL(file);
@@ -73,6 +80,7 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
       setPhotoBase64('https://images.unsplash.com/photo-1530497610245-94d3c16cda28?w=700&auto=format&fit=crop&q=80');
     }
     setAnalysisResult(null);
+    setInvalidUploadError(null);
     setSavedSuccess(false);
   };
 
@@ -80,6 +88,7 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
     if (!photoBase64) return;
 
     setIsLoading(true);
+    setInvalidUploadError(null);
     voiceManager.stop();
 
     try {
@@ -96,6 +105,18 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
       });
 
       const data = await res.json();
+
+      // Check if image is an invalid/unrelated upload or too blurry
+      if (data.isRelevant === false) {
+        setInvalidUploadError({
+          reason: data.relevanceReason || 'not_medical',
+          text: data.text,
+          spokenAlert: data.spokenAlert || data.text,
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const text = data.text || data.fallbackText || 'Report analyzed.';
       const urgency = (data.urgency as UrgencyLevel) || 'YELLOW';
 
@@ -402,6 +423,29 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Invalid Upload Alert */}
+      {invalidUploadError && (
+        <InvalidUploadAlert
+          reason={invalidUploadError.reason}
+          customAlertText={invalidUploadError.text}
+          customSpokenText={invalidUploadError.spokenAlert}
+          currentLanguage={currentLanguage}
+          onTakePhoto={() => {
+            setInvalidUploadError(null);
+            cameraInputRef.current?.click();
+          }}
+          onUploadGallery={() => {
+            setInvalidUploadError(null);
+            galleryInputRef.current?.click();
+          }}
+          onRecordVideo={() => {
+            setInvalidUploadError(null);
+            videoInputRef.current?.click();
+          }}
+          onDismiss={() => setInvalidUploadError(null)}
+        />
       )}
 
       {/* Analysis Results Display */}

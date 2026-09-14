@@ -33,10 +33,10 @@ export const GlobalFooter: React.FC<GlobalFooterProps> = ({
       className="mt-16 border-t border-slate-200 dark:border-slate-800/80 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-[#081d18] text-slate-700 dark:text-slate-300 transition-colors"
     >
       {/* Top Banner with Emergency Helpline & 24/7 Doctor Network */}
-      <div className="border-b border-slate-200/80 dark:border-slate-800/80 bg-teal-900 text-teal-50 px-4 py-3.5">
+      <div className="border-b border-slate-800 bg-slate-900 text-slate-100 px-4 py-3">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
           <div className="flex items-center space-x-2 rtl:space-x-reverse text-center sm:text-left">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span className="font-semibold text-white">
               {isUrdu
                 ? '۲۴/۷ قومی ہنگامی طبی امداد:'
@@ -44,7 +44,7 @@ export const GlobalFooter: React.FC<GlobalFooterProps> = ({
                 ? '24/7 Qaumi Emergency Medical Imdad:'
                 : '24/7 National Emergency Medical Response:'}
             </span>
-            <span className="bg-red-600 text-white font-black px-2.5 py-0.5 rounded-full text-xs tracking-wider">
+            <span className="bg-rose-600 text-white font-bold px-2.5 py-0.5 rounded-full text-xs tracking-wider">
               {isUrdu ? 'کال 1122' : isRoman ? 'DIAL 1122' : 'DIAL 1122'}
             </span>
           </div>
@@ -82,7 +82,7 @@ export const GlobalFooter: React.FC<GlobalFooterProps> = ({
                 <Activity className="w-6 h-6 stroke-[2.2]" />
               </div>
               <div>
-                <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white uppercase font-serif">
+                <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white uppercase">
                   {isUrdu ? 'صحت ساتھی پرو' : 'SehatSaathi Pro'}
                 </span>
                 <p className="text-[10px] font-bold text-teal-700 dark:text-teal-400 tracking-wider uppercase">
@@ -152,6 +152,16 @@ export const GlobalFooter: React.FC<GlobalFooterProps> = ({
                 >
                   <ChevronRight className="w-3 h-3 text-teal-600" />
                   <span>{t.navReports}</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab('vitals')}
+                  className="hover:text-teal-600 dark:hover:text-teal-400 flex items-center space-x-1.5 rtl:space-x-reverse transition-colors cursor-pointer"
+                >
+                  <ChevronRight className="w-3 h-3 text-teal-600" />
+                  <span>{t.navVitals}</span>
                 </button>
               </li>
               <li>

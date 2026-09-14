@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, ShieldCheck, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Volume2, VolumeX, Stethoscope } from 'lucide-react';
 import { SupportedLanguage } from '../types';
 import { LanguageSelector } from './LanguageSelector';
 import { voiceManager } from '../services/voice';
-import { Realistic3DHeart } from './Realistic3DHeart';
 
 interface InitialDisclaimerScreenProps {
   currentLanguage: SupportedLanguage;
@@ -61,7 +60,13 @@ export const InitialDisclaimerScreen: React.FC<InitialDisclaimerScreenProps> = (
     if (isPlaying) {
       voiceManager.stop();
     } else {
-      voiceManager.speak(message, currentLanguage);
+      const fullSpeechText =
+        currentLanguage === 'ur'
+          ? 'اہم پیغام۔ ڈاکٹر کی تصدیق لازمی ہے۔ یہ ایپ آپ کی رہنمائی کے لیے ہے، لیکن یہ کسی اصل ڈاکٹر کا متبادل نہیں ہے۔ کوئی بھی دوا لینے یا علاج شروع کرنے سے پہلے ہمیشہ مستند ڈاکٹر سے مشورہ کریں۔'
+          : currentLanguage === 'roman'
+          ? 'Ahem Paigham. Doctor ki tasdeeq lazmi hai. Yeh app aapki rehnumai ke liye hai, lekin yeh kisi asli doctor ka mutabadil nahi hai. Koi bhi dawa lene ya ilaaj shuru karne se pehle hamesha licensed doctor se mashwara karein.'
+          : 'Important message. Doctor verification required. This app is here to help guide you, but it does not replace a real doctor. Always consult a licensed doctor before taking any medicine or starting any treatment.';
+      voiceManager.speak(fullSpeechText, currentLanguage);
     }
   };
 
@@ -97,14 +102,16 @@ export const InitialDisclaimerScreen: React.FC<InitialDisclaimerScreenProps> = (
           transition={{ duration: 0.3, ease: 'easeOut' }}
           className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-10 text-center flex flex-col items-center"
         >
-          {/* Top 3D Animated Pumping Heart Converted From Medical Photo */}
+          {/* Stethoscope Icon in Circle Emblem (Matching video) */}
           <div className="relative mb-3 flex items-center justify-center">
-            <Realistic3DHeart size={110} interactive={false} />
+            <div className="w-16 h-16 rounded-full bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-sm">
+              <Stethoscope className="w-8 h-8 stroke-[2]" />
+            </div>
           </div>
 
           {/* Badge Pill */}
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/80 border border-teal-200/70 dark:border-teal-800/80 text-[11px] font-bold text-teal-700 dark:text-teal-300 tracking-wider uppercase mb-3">
-            <ShieldCheck className="w-3.5 h-3.5" />
+            <Stethoscope className="w-3.5 h-3.5" />
             <span>{badgeText}</span>
           </div>
 

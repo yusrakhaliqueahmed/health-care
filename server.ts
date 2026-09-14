@@ -634,6 +634,21 @@ CRITICAL LANGUAGE MANDATE: You MUST respond in ${language}.
 - If Roman Urdu: Natural, clear Roman Urdu (Urdu written in English script).
 - If Urdu: Urdu script (اردو).
 
+MANDATORY PHOTO RELEVANCE CHECK (If photo is provided):
+- Carefully examine the uploaded image before any analysis.
+- Does it clearly show medicine (tablet strip, capsule blister pack, medicine syrup bottle, box/carton, dropper, injection, ointment, or medical prescription specifying medications)?
+- If the image is CLEARLY UNRELATED (e.g. a selfie, face, animal/pet, car/vehicle, scenery, food, clothing, meme, random room, non-medicine item):
+  You MUST output on the very first line EXACTLY:
+  STATUS: INVALID_NOT_MEDICINE
+  followed by a short friendly message in ${language} stating that this image does not appear to be a medicine photo.
+- If the photo is intended as a medicine but is completely blurry or dark:
+  You MUST output on the very first line EXACTLY:
+  STATUS: INVALID_UNCLEAR_BLURRY
+- If genuine medicine or prescription:
+  You MUST output on the very first line:
+  STATUS: VALID_MEDICINE
+  followed by the full drug profile and safety check.
+
 SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
 1. Age-Aware Calibration:
    - Infant (0-2 years): Strict caution. Many common adult analgesics/cough syrups are contra-indicated or fatal in wrong doses.
@@ -726,8 +741,47 @@ SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
         },
       });
 
-      let safetyStatus: "SAFE" | "CAUTION" | "DANGER" = "CAUTION";
       const upper = text.toUpperCase();
+
+      if (text.includes("STATUS: INVALID_NOT_MEDICINE") || upper.includes("INVALID_NOT_MEDICINE")) {
+        const notMedMsg =
+          language === "Urdu"
+            ? "یہ تصویر کسی دوا کی ڈبیا، پتی یا نسخہ معلوم نہیں ہوتی۔ برائے مہربانی دوا کی درست تصویر اپلوڈ کریں۔"
+            : language === "Roman Urdu"
+            ? "Yeh picture kisi dawai ki packaging ya prescription nahi lagti. Baraye meherbani dawai ki saaf photo upload karein."
+            : "This doesn't appear to be a medicine bottle, tablet strip, or prescription. Please capture or upload a clear medicine photo.";
+        return res.json({
+          isRelevant: false,
+          relevanceReason: "not_medicine",
+          text: notMedMsg,
+          spokenAlert: notMedMsg,
+          safetyStatus: "CAUTION",
+          language,
+          mode,
+        });
+      }
+
+      if (text.includes("STATUS: INVALID_UNCLEAR_BLURRY") || upper.includes("INVALID_UNCLEAR_BLURRY")) {
+        const blurryMsg =
+          language === "Urdu"
+            ? "یہ تصویر بہت دھندلی یا اندھیرے میں ہے اور دوا کا نام پڑھا نہیں جا رہا۔ برائے مہربانی اچھی روشنی میں صاف تصویر دوبارہ لیں۔"
+            : language === "Roman Urdu"
+            ? "Yeh picture bohat dhundli ya andheray mein hai. Baraye meherbani achi roshni mein saaf photo dobara lein."
+            : "This image is too blurry or dark to read clearly. Please retake a clear, steady photo with good lighting.";
+        return res.json({
+          isRelevant: false,
+          relevanceReason: "unclear_blurry",
+          text: blurryMsg,
+          spokenAlert: blurryMsg,
+          safetyStatus: "CAUTION",
+          language,
+          mode,
+        });
+      }
+
+      const cleanText = text.replace(/^STATUS:\s*VALID_MEDICINE\s*\n?/i, "");
+
+      let safetyStatus: "SAFE" | "CAUTION" | "DANGER" = "CAUTION";
       if (upper.includes("NOT RECOMMENDED") || upper.includes("DANGEROUS") || upper.includes("CONTRAINDICATED") || upper.includes("نقصان دہ")) {
         safetyStatus = "DANGER";
       } else if (upper.includes("SAFE TO CONTINUE") || upper.includes("SAFE FOR THIS AGE") || upper.includes("عام طور پر محفوظ")) {
@@ -735,7 +789,8 @@ SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
       }
 
       res.json({
-        text,
+        isRelevant: true,
+        text: cleanText,
         safetyStatus,
         language,
         mode,
@@ -1199,6 +1254,21 @@ CRITICAL LANGUAGE MANDATE: You MUST respond purely in ${language}.
 - If Roman Urdu: Clean, accessible Roman Urdu (Urdu written in English alphabet).
 - If Urdu: Urdu script (اردو).
 
+MANDATORY PRE-ANALYSIS VALIDATION (IMAGE / VIDEO SCAN RELEVANCE):
+1. Examine the image/frame: Is it a genuine medical document (laboratory blood/urine report, pathology test, hospital paper, doctor prescription slip) or a diagnostic radiology scan (X-ray, CT, MRI, ultrasound)?
+2. If the image is CLEARLY UNRELATED (e.g. a selfie, portrait of a person, animal/pet, car/vehicle, landscape, food item, furniture, clothing, meme, wallpaper, room interior, non-medical document):
+   You MUST output EXACTLY on the first line:
+   STATUS: INVALID_NOT_MEDICAL
+   followed by a brief 1-sentence explanation in ${language}.
+   Never invent or guess lab values or fake radiological impressions for an unrelated photo!
+3. If the image is intended as a medical report or scan, but is completely blank, solid black/white, or so blurry/dark that no text, numbers, or anatomical structures can be read:
+   You MUST output EXACTLY on the first line:
+   STATUS: INVALID_UNCLEAR_BLURRY
+   followed by a brief 1-sentence request in ${language} to retake a clearer photo or steady video in good lighting.
+4. ONLY IF the image is a genuine medical report, X-ray, scan, or prescription, output on the first line:
+   STATUS: VALID_MEDICAL
+   followed by the full structured breakdown.
+
 YOUR MISSION & ANTI-HALLUCINATION RULES:
 1. Examine the uploaded medical report or X-ray / scan image.
 2. If it is a LAB REPORT (CBC, Blood Sugar, LFT, Lipid, Urine, etc.):
@@ -1252,8 +1322,47 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
         },
       });
 
-      let urgency: "GREEN" | "YELLOW" | "RED" = "YELLOW";
       const upper = text.toUpperCase();
+
+      if (text.includes("STATUS: INVALID_NOT_MEDICAL") || upper.includes("INVALID_NOT_MEDICAL")) {
+        const notMedReportMsg =
+          language === "Urdu"
+            ? "یہ تصویر یا ویڈیو کوئی میڈیکل رپورٹ، ایکسرے یا دوا کی تصویر معلوم نہیں ہوتی۔ برائے مہربانی درست میڈیکل دستاویز یا دوا اپلوڈ کریں۔"
+            : language === "Roman Urdu"
+            ? "Yeh picture ya video koi medical report, X-ray ya medicine ki photo nahi lagti. Baraye meherbani sahi medical image ya video upload karein."
+            : "This doesn't appear to be a medical report, X-ray, or medicine photo. Please upload or capture the correct image/video.";
+        return res.json({
+          isRelevant: false,
+          relevanceReason: "not_medical",
+          text: notMedReportMsg,
+          spokenAlert: notMedReportMsg,
+          urgency: "YELLOW",
+          language,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      if (text.includes("STATUS: INVALID_UNCLEAR_BLURRY") || upper.includes("INVALID_UNCLEAR_BLURRY")) {
+        const blurryReportMsg =
+          language === "Urdu"
+            ? "یہ میڈیکل تصویر بہت دھندلی یا اندھیرے میں ہے اور پڑھی نہیں جا رہی۔ برائے مہربانی اچھی روشنی میں صاف تصویر یا ویڈیو دوبارہ لیں۔"
+            : language === "Roman Urdu"
+            ? "Yeh picture bohat dhundli ya andheray mein hai. Baraye meherbani achi roshni mein saaf photo ya video dobara lein."
+            : "This image is too blurry or dark to read clearly. Please retake a clear, steady photo or video with good lighting.";
+        return res.json({
+          isRelevant: false,
+          relevanceReason: "unclear_blurry",
+          text: blurryReportMsg,
+          spokenAlert: blurryReportMsg,
+          urgency: "YELLOW",
+          language,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      const cleanReportText = text.replace(/^STATUS:\s*VALID_MEDICAL\s*\n?/i, "");
+
+      let urgency: "GREEN" | "YELLOW" | "RED" = "YELLOW";
       if (upper.includes("RED") || upper.includes("CRITICAL") || upper.includes("URGENT") || upper.includes("فوری")) {
         urgency = "RED";
       } else if (upper.includes("GREEN") || upper.includes("NORMAL") || upper.includes("ALL NORMAL") || upper.includes("سب ٹھیک")) {
@@ -1261,7 +1370,8 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
       }
 
       res.json({
-        text,
+        isRelevant: true,
+        text: cleanReportText,
         urgency,
         language,
         timestamp: new Date().toISOString(),

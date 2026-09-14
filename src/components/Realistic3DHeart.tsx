@@ -30,119 +30,171 @@ function createAnatomicalCardiacTextures(): {
   const width = 1024;
   const height = 1024;
 
-  // 1. Color Texture
+  // 1. Color Texture: Authentic Human Cadaveric / Surgical Pathology Tones
   const colorCanvas = document.createElement('canvas');
   colorCanvas.width = width;
   colorCanvas.height = height;
   const ctx = colorCanvas.getContext('2d')!;
 
-  // Deep biological myocardial base (Real human heart is dense oxblood/brownish-red, not candy red)
+  // Biological myocardial base: Human heart tissue is rich dark garnet, brownish crimson and deep venous burgundy
   const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-  bgGrad.addColorStop(0, '#36090e');    // Atrial base & sulcus
-  bgGrad.addColorStop(0.24, '#4a0e16'); // AV groove region
-  bgGrad.addColorStop(0.52, '#5e141e'); // Ventricular mid-body
-  bgGrad.addColorStop(0.82, '#691823'); // Lower muscular body
-  bgGrad.addColorStop(1, '#3a0a10');    // Apex tip
+  bgGrad.addColorStop(0, '#260408');    // Deep posterior atrium & fibrous skeleton
+  bgGrad.addColorStop(0.18, '#3d0a11'); // Atrioventricular groove margin
+  bgGrad.addColorStop(0.38, '#521019'); // Upper ventricular anterior wall
+  bgGrad.addColorStop(0.65, '#430b13'); // Mid ventricular myocardium
+  bgGrad.addColorStop(0.85, '#4f0e18'); // Lower apical myocardium
+  bgGrad.addColorStop(1, '#2a0509');    // Thick apical tip
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // Swirling helical muscle fibers (Torrent-Guasp helical ventricular band striations)
-  ctx.lineWidth = 1.6;
-  for (let i = 0; i < height; i += 3) {
+  // Micro-speckled biological mottling (removes flat synthetic toy balloon surface)
+  for (let m = 0; m < 4500; m++) {
+    const mx = Math.random() * width;
+    const my = Math.random() * height;
+    const mr = 1.2 + Math.random() * 2.8;
+    const shade = Math.random();
+    ctx.fillStyle = shade > 0.65
+      ? 'rgba(125, 25, 38, 0.14)'
+      : shade > 0.3
+      ? 'rgba(40, 5, 10, 0.22)'
+      : 'rgba(165, 45, 58, 0.10)';
+    ctx.beginPath();
+    ctx.arc(mx, my, mr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Torrent-Guasp Helical Ventricular Myocardial Striations (dense overlapping organic fibers)
+  ctx.lineWidth = 1.3;
+  for (let i = 0; i < height; i += 2) {
     const yRatio = i / height;
-    ctx.strokeStyle = yRatio < 0.3
-      ? 'rgba(180, 24, 48, 0.16)'
-      : 'rgba(215, 65, 85, 0.18)';
+    // Fibers twist and spiral downwards into apex vortex
+    ctx.strokeStyle = yRatio < 0.25
+      ? 'rgba(120, 18, 28, 0.22)'
+      : 'rgba(155, 28, 42, 0.24)';
     ctx.beginPath();
     ctx.moveTo(0, i);
-    // Helical vortex twist towards apex
-    const wave = Math.sin(i * 0.04) * (20 + yRatio * 28);
+    const wave1 = Math.sin(i * 0.035) * (18 + yRatio * 32);
+    const wave2 = Math.cos(i * 0.02) * 14;
     ctx.bezierCurveTo(
-      width * 0.32, i + wave,
-      width * 0.68, i - wave * 1.3,
-      width, i + wave * 0.6
+      width * 0.30, i + wave1,
+      width * 0.70, i - wave2 * 1.2,
+      width, i + wave1 * 0.5
     );
     ctx.stroke();
   }
 
-  // Inter-muscular bundle valleys (natural shadows between muscle fascicles)
-  ctx.lineWidth = 2.0;
-  ctx.strokeStyle = 'rgba(24, 3, 6, 0.35)';
-  for (let i = 4; i < height; i += 8) {
+  // Inter-muscular clefts & deep fibrous fascicle valleys
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = 'rgba(15, 2, 4, 0.42)';
+  for (let i = 6; i < height; i += 9) {
     ctx.beginPath();
     ctx.moveTo(0, i);
     ctx.bezierCurveTo(
-      width * 0.35, i - Math.cos(i * 0.04) * 12,
-      width * 0.65, i + Math.sin(i * 0.04) * 12,
+      width * 0.32, i - Math.cos(i * 0.03) * 10,
+      width * 0.68, i + Math.sin(i * 0.03) * 10,
       width, i
     );
     ctx.stroke();
   }
 
-  // Epicardial Adipose (Fat Tissue) in AV groove (horizontal band near top)
-  ctx.fillStyle = 'rgba(202, 148, 54, 0.52)';
+  // Epicardial Adipose (Sub-epicardial Fat Tissue) in Atrioventricular Groove (natural pale ochre-ivory with mottled lipid clusters)
+  ctx.fillStyle = 'rgba(188, 142, 58, 0.68)';
   ctx.beginPath();
-  ctx.ellipse(width * 0.5, height * 0.26, width * 0.48, 44, 0, 0, Math.PI * 2);
+  ctx.ellipse(width * 0.5, height * 0.25, width * 0.48, 48, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Fatty deposits in Anterior Interventricular Sulcus (diagonal channel)
-  ctx.strokeStyle = 'rgba(218, 165, 64, 0.48)';
-  ctx.lineWidth = 34;
+  // Lipid globule clusters in AV groove
+  for (let g = 0; g < 120; g++) {
+    const gx = width * 0.1 + Math.random() * width * 0.8;
+    const gy = height * 0.25 + (Math.random() - 0.5) * 44;
+    ctx.fillStyle = 'rgba(215, 175, 88, 0.55)';
+    ctx.beginPath();
+    ctx.arc(gx, gy, 4 + Math.random() * 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Fatty deposits embedded in Anterior Interventricular Sulcus (diagonal sulcal fat)
+  ctx.strokeStyle = 'rgba(196, 148, 62, 0.65)';
+  ctx.lineWidth = 36;
   ctx.beginPath();
-  ctx.moveTo(width * 0.53, height * 0.22);
-  ctx.bezierCurveTo(width * 0.48, height * 0.48, width * 0.44, height * 0.72, width * 0.37, height * 0.95);
+  ctx.moveTo(width * 0.54, height * 0.20);
+  ctx.bezierCurveTo(width * 0.49, height * 0.48, width * 0.45, height * 0.72, width * 0.38, height * 0.95);
   ctx.stroke();
 
-  // Fine micro-vascular capillary bed (arborized coronary arterioles)
-  ctx.strokeStyle = 'rgba(244, 165, 175, 0.40)';
-  ctx.lineWidth = 1.0;
-  for (let c = 0; c < 60; c++) {
+  // Sulcal lipid nodules
+  for (let sn = 0; sn < 45; sn++) {
+    const t = sn / 45;
+    const nx = (1 - t) * width * 0.54 + t * width * 0.38 + (Math.random() - 0.5) * 20;
+    const ny = height * (0.20 + t * 0.75) + (Math.random() - 0.5) * 10;
+    ctx.fillStyle = 'rgba(224, 184, 96, 0.60)';
+    ctx.beginPath();
+    ctx.arc(nx, ny, 3 + Math.random() * 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Arborized Microvascular Capillary Bed (arterioles and venules branching into myocardium)
+  ctx.strokeStyle = 'rgba(180, 50, 60, 0.45)';
+  ctx.lineWidth = 1.1;
+  for (let c = 0; c < 85; c++) {
     const startX = Math.random() * width;
-    const startY = height * 0.18 + Math.random() * height * 0.78;
+    const startY = height * 0.15 + Math.random() * height * 0.80;
     ctx.beginPath();
     ctx.moveTo(startX, startY);
-    const branchLen = 35 + Math.random() * 55;
-    const angle = (Math.random() - 0.5) * 1.6;
-    ctx.lineTo(startX + Math.sin(angle) * branchLen, startY + Math.cos(angle) * branchLen);
+    const branchLen = 30 + Math.random() * 50;
+    const angle = (Math.random() - 0.5) * 1.8;
+    const midX = startX + Math.sin(angle) * (branchLen * 0.5);
+    const midY = startY + Math.cos(angle) * (branchLen * 0.5);
+    ctx.lineTo(midX, midY);
+    // Sub-branch
+    const subAngle = angle + (Math.random() - 0.5) * 0.8;
+    ctx.lineTo(midX + Math.sin(subAngle) * (branchLen * 0.5), midY + Math.cos(subAngle) * (branchLen * 0.5));
     ctx.stroke();
   }
 
-  // 2. High-Frequency Tactile Bump Canvas (muscle relief)
+  // 2. High-Frequency Tactile Bump Canvas (muscle relief and tissue fiber density)
   const bumpCanvas = document.createElement('canvas');
   bumpCanvas.width = 512;
   bumpCanvas.height = 512;
   const bCtx = bumpCanvas.getContext('2d')!;
-  bCtx.fillStyle = '#808080';
+  bCtx.fillStyle = '#7a7a7a';
   bCtx.fillRect(0, 0, 512, 512);
 
-  // Microscopic muscular ridges
+  // Muscular fascicle ridges
   for (let y = 0; y < 512; y += 2) {
-    const noise = Math.floor(115 + Math.random() * 50);
+    const noise = Math.floor(100 + Math.random() * 65);
     bCtx.fillStyle = `rgb(${noise},${noise},${noise})`;
     bCtx.fillRect(0, y, 512, 2);
   }
 
   // Sulcus depth groove in bump
-  bCtx.lineWidth = 26;
-  bCtx.strokeStyle = '#353535';
+  bCtx.lineWidth = 32;
+  bCtx.strokeStyle = '#282828';
   bCtx.beginPath();
-  bCtx.moveTo(260, 110);
-  bCtx.bezierCurveTo(245, 240, 220, 370, 195, 480);
+  bCtx.moveTo(265, 100);
+  bCtx.bezierCurveTo(250, 240, 225, 370, 195, 485);
   bCtx.stroke();
 
-  // 3. Roughness Canvas (Fat is matte, muscle has subtle moist sheen, sulci retain moisture)
+  // 3. Roughness Canvas: Living myocardium has organic specular variation (tissue is moist/semi-matte, never plastic/balloon)
   const roughCanvas = document.createElement('canvas');
   roughCanvas.width = 512;
   roughCanvas.height = 512;
   const rCtx = roughCanvas.getContext('2d')!;
-  rCtx.fillStyle = '#727272'; // baseline myocardial roughness ~0.45 (Natural moist organ, not rubber balloon!)
+  rCtx.fillStyle = '#8e8e8e'; // Organic semi-matte base ~0.56 (Eliminates high-gloss balloon reflection)
   rCtx.fillRect(0, 0, 512, 512);
 
-  // Fat regions have higher roughness ~0.65
-  rCtx.fillStyle = 'rgba(175, 175, 175, 0.7)';
+  // Fat regions are diffusely matte ~0.78
+  rCtx.fillStyle = 'rgba(215, 215, 215, 0.85)';
   rCtx.beginPath();
-  rCtx.ellipse(256, 135, 240, 32, 0, 0, Math.PI * 2);
+  rCtx.ellipse(256, 130, 240, 36, 0, 0, Math.PI * 2);
   rCtx.fill();
+
+  // Sulcal fat strip matte
+  rCtx.strokeStyle = 'rgba(220, 220, 220, 0.80)';
+  rCtx.lineWidth = 28;
+  rCtx.beginPath();
+  rCtx.moveTo(265, 100);
+  rCtx.bezierCurveTo(250, 240, 225, 370, 195, 485);
+  rCtx.stroke();
 
   const colorTexture = new THREE.CanvasTexture(colorCanvas);
   colorTexture.wrapS = THREE.RepeatWrapping;
@@ -483,13 +535,13 @@ export const Realistic3DHeart: React.FC<Realistic3DHeartProps> = ({
     const myocardiumMaterial = new THREE.MeshPhysicalMaterial({
       map: colorTexture,
       bumpMap: bumpTexture,
-      bumpScale: 0.045,
+      bumpScale: 0.055,
       roughnessMap: roughnessTexture,
-      roughness: 0.46, // Semi-matte living muscular tissue (NOT 0.26 shiny plastic!)
-      metalness: 0.01,
-      clearcoat: 0.36, // Natural moist wet film (NOT 0.98 car paint/balloon!)
-      clearcoatRoughness: 0.30,
-      reflectivity: 0.35,
+      roughness: 0.62, // Authentic semi-matte living muscular tissue (Eliminates rubber/balloon look)
+      metalness: 0.0,
+      clearcoat: 0.16, // Gentle natural biological serous fluid sheen (NOT shiny car paint/balloon!)
+      clearcoatRoughness: 0.45,
+      reflectivity: 0.20,
     });
 
     const ventriclesMesh = new THREE.Mesh(ventriclesGeo, myocardiumMaterial);
@@ -553,11 +605,11 @@ export const Realistic3DHeart: React.FC<Realistic3DHeartProps> = ({
     // 4C. EPICARDIAL ADIPOSE TISSUE (Fat Pads in Sulci) - Key to Biological Realism!
     // =========================================================================
     const fatMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xd4a84e, // Natural ochre-ivory biological adipose tissue
-      roughness: 0.62, // Matte granular biological fat
-      metalness: 0.01,
-      clearcoat: 0.22,
-      clearcoatRoughness: 0.35,
+      color: 0xc89842, // Natural yellowish-ivory biological adipose tissue
+      roughness: 0.72, // Diffuse matte granular biological lipid
+      metalness: 0.0,
+      clearcoat: 0.08,
+      clearcoatRoughness: 0.50,
     });
 
     // AV Groove Fat Collar
@@ -601,13 +653,13 @@ export const Realistic3DHeart: React.FC<Realistic3DHeartProps> = ({
     // 4D. TRUE 3D GREAT VESSELS (Arching Tubes with Sinuses of Valsalva & Branches)
     // =========================================================================
 
-    // Aortic Material: Thick fibroelastic arterial wall (cream/pinkish-tan tint, not plastic red!)
+    // Aortic Material: Thick fibroelastic arterial adventitia (fibrous ivory-buff, realistic vascular tone)
     const aortaMat = new THREE.MeshPhysicalMaterial({
-      color: 0xba6868, // Natural anatomical aorta tone
-      roughness: 0.36,
-      metalness: 0.02,
-      clearcoat: 0.48,
-      clearcoatRoughness: 0.22,
+      color: 0xa85d5d, // Natural anatomical aorta tone
+      roughness: 0.54,
+      metalness: 0.0,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.38,
     });
 
     // 1. AORTIC BULB & SINUSES OF VALSALVA (3 Anatomical Bulges at Aortic Root)
@@ -652,11 +704,11 @@ export const Realistic3DHeart: React.FC<Realistic3DHeartProps> = ({
 
     // 2. PULMONARY TRUNK & BIFURCATION (Arises anteriorly from RV infundibulum and crosses aorta)
     const pulmMat = new THREE.MeshPhysicalMaterial({
-      color: 0x3d507a, // Deoxygenated deep venous/pulmonary slate blue
-      roughness: 0.40,
-      metalness: 0.02,
-      clearcoat: 0.44,
-      clearcoatRoughness: 0.24,
+      color: 0x36486c, // Deoxygenated pulmonary arterial adventitia
+      roughness: 0.52,
+      metalness: 0.0,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.38,
     });
 
     const pulmCurve = new THREE.CatmullRomCurve3([
@@ -688,11 +740,11 @@ export const Realistic3DHeart: React.FC<Realistic3DHeartProps> = ({
 
     // 3. VENA CAVA (Superior & Inferior Vena Cava)
     const vcMat = new THREE.MeshPhysicalMaterial({
-      color: 0x27395e, // Dark systemic venous blue
-      roughness: 0.44,
-      metalness: 0.02,
-      clearcoat: 0.38,
-      clearcoatRoughness: 0.25,
+      color: 0x22324f, // Dark systemic venous blue-grey
+      roughness: 0.55,
+      metalness: 0.0,
+      clearcoat: 0.15,
+      clearcoatRoughness: 0.40,
     });
 
     // Superior Vena Cava (SVC) entering Right Atrium from above
@@ -715,10 +767,10 @@ export const Realistic3DHeart: React.FC<Realistic3DHeartProps> = ({
 
     // 4. PULMONARY VEINS (4 vessels entering Left Atrium posteriorly)
     const pvMat = new THREE.MeshPhysicalMaterial({
-      color: 0x933842, // Oxygenated pulmonary venous red
-      roughness: 0.40,
-      metalness: 0.02,
-      clearcoat: 0.40,
+      color: 0x7a2c34, // Oxygenated pulmonary venous dark crimson
+      roughness: 0.52,
+      metalness: 0.0,
+      clearcoat: 0.16,
     });
     const pvPositions = [
       { start: new THREE.Vector3(-0.35, 0.56, -0.32), end: new THREE.Vector3(-0.52, 0.60, -0.36) }, // Left Superior
@@ -737,19 +789,19 @@ export const Realistic3DHeart: React.FC<Realistic3DHeartProps> = ({
     // 4E. 3D CORONARY ARTERY & VEIN TREE (Physical Relief in Sulci)
     // =========================================================================
     const coronaryArteryMat = new THREE.MeshPhysicalMaterial({
-      color: 0xd62828, // Bright oxygenated arterial scarlet
-      roughness: 0.32,
-      metalness: 0.03,
-      clearcoat: 0.65,
-      clearcoatRoughness: 0.18,
+      color: 0xb92424, // Organic coronary arterial scarlet
+      roughness: 0.48,
+      metalness: 0.0,
+      clearcoat: 0.25,
+      clearcoatRoughness: 0.32,
     });
 
     const veinMat = new THREE.MeshPhysicalMaterial({
-      color: 0x1d4ed8, // Venous deep blue
-      roughness: 0.34,
-      metalness: 0.03,
-      clearcoat: 0.60,
-      clearcoatRoughness: 0.20,
+      color: 0x1e3a8a, // Venous deep blue
+      roughness: 0.50,
+      metalness: 0.0,
+      clearcoat: 0.22,
+      clearcoatRoughness: 0.35,
     });
 
     // Left Anterior Descending Artery (LAD - "Widowmaker")

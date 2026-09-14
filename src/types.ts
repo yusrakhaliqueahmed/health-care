@@ -16,7 +16,9 @@ export type RecordCategory =
   | 'lab_report'
   | 'prescription'
   | 'consultation'
-  | 'search_history';
+  | 'search_history'
+  | 'vitals'
+  | 'telemetry_vitals';
 
 export interface DiagnosticTestItem {
   testName: string;
@@ -24,13 +26,14 @@ export interface DiagnosticTestItem {
   referenceRange: string;
   unit?: string;
   isAbnormal?: boolean;
+  flag?: 'normal' | 'low' | 'high' | 'critical' | 'borderline';
   notes?: string;
 }
 
 export interface UnifiedHealthRecord {
   id: string; // e.g. "SS-2026-89421"
-  referenceNumber: string; // "R No: SS-2026-89421"
-  labCaseNumber: string; // "Lab No: LB-77491"
+  referenceNumber?: string; // "R No: SS-2026-89421"
+  labCaseNumber?: string; // "Lab No: LB-77491"
   userId: string; // user email or account ID
   patientProfileId: string;
   patientName: string;
@@ -38,6 +41,8 @@ export interface UnifiedHealthRecord {
   patientGender: 'male' | 'female' | 'other';
   category: RecordCategory;
   title: string;
+  summary?: string;
+  isDoctorReviewed?: boolean;
   panelName: string; // e.g. "SYMPTOM SUMMARY", "MEDICINE CHECK RESULT", "COMPLETE BLOOD COUNT (CBC)"
   date: string;
   status: 'ai_preliminary' | 'doctor_approved' | 'escalated';
@@ -150,6 +155,15 @@ export interface Doctor {
   isOnlineAvailable: boolean;
   avatarUrl: string;
   experienceYears: number;
+  isDemoPlaceholder?: boolean;
+  isVerified?: boolean;
+  verificationStatus?: 'pending' | 'verified' | 'rejected';
+  rejectionReason?: string;
+  degreeDocumentUrl?: string;
+  pmdcCertificateUrl?: string;
+  registeredAt?: string;
+  email?: string;
+  clinicAffiliation?: string;
 }
 
 export interface Hospital {
@@ -192,7 +206,87 @@ export type NavigationTab =
   | 'care'
   | 'emergency'
   | 'records'
+  | 'vitals'
   | 'doctor_portal';
+
+export type VitalSignType = 'sugar' | 'bp' | 'heart_rate';
+export type SugarTestTiming = 'fasting' | 'random' | 'post_meal' | 'hba1c';
+export type SugarUnit = 'mg/dL' | 'mmol/L';
+
+export interface VitalsReading {
+  id: string;
+  patientProfileId: string;
+  patientName: string;
+  patientAge?: string;
+  date: string;
+  timestamp: number;
+  dayOfWeek?: string;
+  dayNameUrdu?: string;
+  dayNameRoman?: string;
+  timeOfDay?: string;
+  vitalType: 'sugar' | 'bp' | 'heart_rate' | 'all';
+  // Sugar
+  sugarValue?: number;
+  sugarUnit?: SugarUnit;
+  sugarTiming?: SugarTestTiming;
+  // Blood Pressure
+  systolic?: number;
+  diastolic?: number;
+  // Heart Rate
+  heartRateBpm?: number;
+  heartRateSource?: 'manual' | 'camera_sensor';
+  // Detailed Per-Vital Statuses
+  sugarStatus?: {
+    category: string;
+    categoryUrdu: string;
+    categoryRoman: string;
+    urgency: 'GREEN' | 'YELLOW' | 'RED';
+    suggestion: string;
+    suggestionUrdu: string;
+    suggestionRoman: string;
+  };
+  bpStatus?: {
+    category: string;
+    categoryUrdu: string;
+    categoryRoman: string;
+    urgency: 'GREEN' | 'YELLOW' | 'RED';
+    suggestion: string;
+    suggestionUrdu: string;
+    suggestionRoman: string;
+  };
+  heartRateStatus?: {
+    category: string;
+    categoryUrdu: string;
+    categoryRoman: string;
+    urgency: 'GREEN' | 'YELLOW' | 'RED';
+    suggestion: string;
+    suggestionUrdu: string;
+    suggestionRoman: string;
+  };
+  dailyDoctorSummary?: {
+    en: string;
+    ur: string;
+    roman: string;
+  };
+  // Clinical Interpretation
+  urgency: 'GREEN' | 'YELLOW' | 'RED';
+  categoryTitle: string;
+  referenceRangeText: string;
+  interpretationText: {
+    en: string;
+    ur: string;
+    roman: string;
+  };
+  guidanceText: {
+    en: string;
+    ur: string;
+    roman: string;
+  };
+  lifestyleTips: string[];
+  isDoctorReviewed: boolean;
+  reviewedByDoctor?: string;
+  doctorPmdc?: string;
+}
 
 export interface Prescription {
   id: string;

@@ -10,9 +10,11 @@ import {
 } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager, createSpeechRecognizer } from '../services/voice';
+import { validateMedicalInput } from '../services/inputValidation';
 import { AudioPlayerControls } from './AudioPlayerControls';
 import { SymptomIntakeForm } from './SymptomIntakeForm';
 import { ClinicalOutputCard } from './ClinicalOutputCard';
+import { SmartValidationAlert } from './SmartValidationAlert';
 import {
   Mic,
   MicOff,
@@ -131,6 +133,13 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
   const speechRecognizer = useRef(createSpeechRecognizer());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Smart Input validation alert state
+  const [validationAlert, setValidationAlert] = useState<{
+    alertText: string;
+    spokenText: string;
+    suggestion?: string;
+  } | null>(null);
+
   // Initialize welcome message
   useEffect(() => {
     const welcomeByLang: Record<string, string> = {
@@ -212,6 +221,22 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       speechRecognizer.current.stop();
       setIsRecording(false);
     }
+
+    // Smart Validation: Detect random numbers, emails, gibberish, and unrecognized symptoms
+    if (textToSend) {
+      const valResult = validateMedicalInput(textToSend, 'symptom', currentLanguage);
+      if (!valResult.isValid) {
+        const langKey = currentLanguage === 'ur' ? 'ur' : currentLanguage === 'roman' ? 'roman' : 'en';
+        setValidationAlert({
+          alertText: valResult.alertMessage[langKey],
+          spokenText: valResult.spokenAlert[langKey],
+          suggestion: valResult.suggestion,
+        });
+        return;
+      }
+    }
+
+    setValidationAlert(null);
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -860,10 +885,27 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
         </div>
       )}
 
+      {/* Smart Input Validation Alert */}
+      {validationAlert && (
+        <div className="mb-3">
+          <SmartValidationAlert
+            alertText={validationAlert.alertText}
+            spokenText={validationAlert.spokenText}
+            currentLanguage={currentLanguage}
+            suggestion={validationAlert.suggestion}
+            onApplySuggestion={(sug) => {
+              setInputText(sug);
+              setValidationAlert(null);
+            }}
+            onDismiss={() => setValidationAlert(null)}
+          />
+        </div>
+      )}
+
       {/* Input Action Bar */}
       <form
         onSubmit={handleSendMessage}
-        className="w-full p-2 sm:p-2.5 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md flex items-center gap-1.5 sm:gap-2 mb-20 sm:mb-24 box-border relative z-10"
+        className="w-full p-2 sm:p-2.5 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md flex items-center gap-1.5 sm:gap-2 mb-6 sm:mb-8 box-border relative z-10"
       >
         {/* Hidden File Input for Camera/Gallery */}
         <input
@@ -907,7 +949,10 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           id="symptom-text-input"
           type="text"
           value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
+          onChange={(e) => {
+            setInputText(e.target.value);
+            if (validationAlert) setValidationAlert(null);
+          }}
           placeholder={isRecording ? t.listening : (currentLanguage === 'en' ? 'Describe your symptoms (e.g., headache, fever)...' : t.typeOrSpeak)}
           dir={currentLanguage === 'en' ? 'ltr' : 'auto'}
           className="flex-1 min-w-0 bg-transparent px-2.5 sm:px-3 py-2 text-sm sm:text-base text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden min-h-[44px]"

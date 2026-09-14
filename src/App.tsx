@@ -32,6 +32,7 @@ import { LoginModal } from './components/LoginModal';
 import { GlobalFooter } from './components/GlobalFooter';
 import { EmergencyCallModal } from './components/EmergencyCallModal';
 import { MedicalQuickMessageModal } from './components/MedicalQuickMessageModal';
+import { VitalsTracker } from './components/VitalsTracker';
 import {
   PhoneCall,
   MessageSquare,
@@ -45,14 +46,15 @@ import {
   LayoutDashboard,
   Pill,
   FileText,
+  Activity,
   MapPin,
   UserCheck,
 } from 'lucide-react';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
-  const [hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer] = useState<boolean>(true);
-  const [hasLoggedIn, setHasLoggedIn] = useState<boolean>(true);
+  const [hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer] = useState<boolean>(false);
+  const [hasLoggedIn, setHasLoggedIn] = useState<boolean>(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showEmergencyCallModal, setShowEmergencyCallModal] = useState(false);
@@ -221,16 +223,14 @@ export default function App() {
     }
   };
 
-  // RTL/LTR alignment handling
-  const isRTL = t.direction === 'rtl';
-
+  // Keep layout structure firmly anchored (never flip the layout shell)
   useEffect(() => {
     try {
       localStorage.setItem('sehat_saathi_language', currentLanguage);
     } catch {}
-    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+    document.documentElement.dir = 'ltr';
     document.documentElement.lang = currentLanguage;
-  }, [currentLanguage, isRTL]);
+  }, [currentLanguage]);
 
   // Dark mode class on html
   useEffect(() => {
@@ -447,11 +447,13 @@ export default function App() {
     }).catch((e) => console.warn('Sync error:', e));
   };
 
+  const isMainAppActive = !showSplash && hasAcknowledgedDisclaimer && hasLoggedIn;
+
   return (
     <div
-      dir={isRTL ? 'rtl' : 'ltr'}
+      dir="ltr"
       className={`min-h-screen flex font-sans transition-colors duration-200 overflow-x-hidden w-full max-w-[100vw] ${
-        isRTL ? 'font-urdu' : ''
+        currentLanguage === 'ur' ? 'font-urdu' : ''
       } ${
         isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'
       }`}
@@ -517,26 +519,29 @@ export default function App() {
       )}
 
       {/* High Density Pine Teal Sidebar */}
-      <Sidebar
-        currentLanguage={currentLanguage}
-        activeTab={activeTab}
-        onNavigate={setActiveTab}
-        pendingDoctorReviewsCount={pendingCases.length}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
-        voiceAutoPlay={voiceAutoPlay}
-        onToggleVoiceAutoPlay={toggleVoiceAutoPlay}
-        activeProfile={patientProfiles[0]}
-        currentUser={currentUser}
-        onSelectLanguage={setCurrentLanguage}
-        onOpenDisclaimer={() => setShowDisclaimer(true)}
-        onOpenLogin={() => setShowLoginModal(true)}
-        isOpenMobile={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-      />
+      {isMainAppActive && (
+        <Sidebar
+          currentLanguage={currentLanguage}
+          activeTab={activeTab}
+          onNavigate={setActiveTab}
+          pendingDoctorReviewsCount={pendingCases.length}
+          isDarkMode={isDarkMode}
+          onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+          voiceAutoPlay={voiceAutoPlay}
+          onToggleVoiceAutoPlay={toggleVoiceAutoPlay}
+          activeProfile={patientProfiles[0]}
+          currentUser={currentUser}
+          onSelectLanguage={setCurrentLanguage}
+          onOpenDisclaimer={() => setShowDisclaimer(true)}
+          onOpenLogin={() => setShowLoginModal(true)}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
 
       {/* High Density Main Content Container with Safe Bottom Clearance */}
-      <main className="flex-1 flex flex-col min-h-screen p-3 sm:p-6 lg:p-8 pb-36 lg:pb-12 min-w-0 overflow-y-auto">
+      {isMainAppActive && (
+        <main className="flex-1 flex flex-col min-h-screen p-3 sm:p-6 lg:p-8 pb-36 lg:pb-12 min-w-0 overflow-y-auto">
         <HighDensityHeader
           currentLanguage={currentLanguage}
           activeTab={activeTab}
@@ -563,6 +568,8 @@ export default function App() {
               prescriptionsCount={prescriptions.length}
               onNavigate={setActiveTab}
               onEmergencyCall={() => setActiveTab('emergency')}
+              onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
+              onOpenQuickMessage={() => setShowQuickMessageModal(true)}
               onOpenDisclaimer={() => setShowDisclaimer(true)}
               onReplaySplash={() => setShowSplash(true)}
               onSaveSearchRecord={handleSaveUnifiedRecord}
@@ -597,6 +604,39 @@ export default function App() {
               onSaveToRecords={handleSaveReport}
               onSaveUnifiedRecord={handleSaveUnifiedRecord}
               userName={currentUser?.name}
+            />
+          )}
+
+          {activeTab === 'vitals' && (
+            <VitalsTracker
+              language={currentLanguage}
+              activeProfile={
+                patientProfiles[0] || {
+                  id: 'prof-self',
+                  name: currentUser?.name || 'Patient',
+                  relation: 'Self',
+                  ageGroup: 'adult',
+                  exactAge: 32,
+                  gender: 'male',
+                  conditions: '',
+                  medications: '',
+                  allergies: '',
+                }
+              }
+              profiles={patientProfiles}
+              onSelectProfile={(p) => {
+                const idx = patientProfiles.findIndex((prof) => prof.id === p.id);
+                if (idx !== -1) {
+                  const reordered = [...patientProfiles];
+                  const [selected] = reordered.splice(idx, 1);
+                  reordered.unshift(selected);
+                  setPatientProfiles(reordered);
+                }
+              }}
+              onSaveRecord={handleSaveUnifiedRecord}
+              onNavigateToRecords={() => setActiveTab('records')}
+              onNavigateToEmergency={() => setActiveTab('emergency')}
+              onNavigateToCare={() => setActiveTab('care')}
             />
           )}
 
@@ -639,181 +679,144 @@ export default function App() {
           onOpenDisclaimer={() => setShowDisclaimer(true)}
         />
       </main>
+      )}
 
       {/* Mobile Bottom Navigation Bar (< lg screens) */}
-      <nav
-        id="mobile-bottom-nav"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0c2f28]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/70 shadow-lg px-2 py-1.5 flex items-center justify-around select-none safe-area-inset-bottom"
-        aria-label="Mobile Navigation"
-      >
-        <button
-          type="button"
-          onClick={() => setActiveTab('home')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-            activeTab === 'home'
-              ? 'text-teal-600 dark:text-teal-300 font-bold'
-              : 'text-slate-500 dark:text-teal-200/70'
-          }`}
+      {isMainAppActive && (
+        <nav
+          id="mobile-bottom-nav"
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0c2f28]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/70 shadow-lg px-2 py-1.5 flex items-center justify-around select-none safe-area-inset-bottom"
+          aria-label="Mobile Navigation"
         >
-          <LayoutDashboard className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] leading-tight">
-            {t.navHome}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('symptoms')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-            activeTab === 'symptoms'
-              ? 'text-teal-600 dark:text-teal-300 font-bold'
-              : 'text-slate-500 dark:text-teal-200/70'
-          }`}
-        >
-          <Stethoscope className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] leading-tight">
-            {t.navSymptoms}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('medicine')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-            activeTab === 'medicine'
-              ? 'text-teal-600 dark:text-teal-300 font-bold'
-              : 'text-slate-500 dark:text-teal-200/70'
-          }`}
-        >
-          <Pill className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] leading-tight">
-            {t.navMedicine}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('reports')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-            activeTab === 'reports'
-              ? 'text-teal-600 dark:text-teal-300 font-bold'
-              : 'text-slate-500 dark:text-teal-200/70'
-          }`}
-        >
-          <FileText className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] leading-tight">
-            {t.navReports}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('care')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-            activeTab === 'care'
-              ? 'text-teal-600 dark:text-teal-300 font-bold'
-              : 'text-slate-500 dark:text-teal-200/70'
-          }`}
-        >
-          <MapPin className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px] leading-tight">
-            {t.navNearby}
-          </span>
-        </button>
-      </nav>
-
-      {/* Floating Action Buttons: Dedicated Medical Message & Emergency Call Helplines */}
-      <div
-        id="floating-actions-dock"
-        className="fixed bottom-[74px] right-3 sm:bottom-[80px] sm:right-6 lg:bottom-8 lg:right-8 z-30 flex items-center gap-2.5 sm:gap-3 pointer-events-auto transition-all duration-300"
-      >
-        {/* Medical App Message Button (Side-by-side with Call button) */}
-        <button
-          type="button"
-          id="fab-quick-message-btn"
-          onClick={() => setShowQuickMessageModal(true)}
-          className="group relative w-12 h-12 sm:w-14 sm:h-14 bg-emerald-600 hover:bg-emerald-500 rounded-full shadow-2xl flex items-center justify-center text-white border-3 border-white dark:border-slate-800 active:scale-95 transition-all cursor-pointer shrink-0"
-          title="Medical Quick Message / WhatsApp & SMS Triage"
-          aria-label="Send Medical Message"
-        >
-          <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-white group-hover:scale-110 transition-transform" />
-          {/* Active status beacon */}
-          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 border-2 border-white dark:border-slate-900 rounded-full shadow-xs" />
-        </button>
-
-        {/* Rescue 1122 Emergency Ambulance Call & Heart Vitality Button */}
-        <button
-          type="button"
-          id="fab-emergency-helpline"
-          onClick={() => setShowEmergencyCallModal(true)}
-          className="group relative w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-rose-950 via-red-950 to-neutral-950 hover:from-red-900 hover:to-rose-950 rounded-full shadow-[0_8px_25px_rgba(225,29,72,0.45)] flex items-center justify-center text-white border-3 border-white dark:border-slate-800 active:scale-95 cursor-pointer shrink-0 transition-transform duration-200"
-          title={t.navEmergency}
-          aria-label="Call Emergency Helpline (1122)"
-        >
-          {/* Visually rich, CSS-rendered 3D volumetric heart shape with layered crimson radial gradients & inner depth shadow */}
-          <div
-            className="relative w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center transition-transform group-hover:scale-110"
-            style={{
-              filter: 'drop-shadow(0 3px 5px rgba(0, 0, 0, 0.45))',
-            }}
+          <button
+            type="button"
+            onClick={() => setActiveTab('home')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+              activeTab === 'home'
+                ? 'text-teal-600 dark:text-teal-300 font-bold'
+                : 'text-slate-500 dark:text-teal-200/70'
+            }`}
           >
-            <div className="relative w-4.5 h-4.5 sm:w-5 sm:h-5 -rotate-45">
-              {/* Conical base forming lower ventricular apex */}
-              <div
-                className="absolute inset-0 rounded-xs"
-                style={{
-                  background: 'radial-gradient(circle at 60% 60%, #ff4b6e 0%, #d90429 28%, #9b0a23 62%, #3d020c 100%)',
-                  boxShadow: 'inset -2px -2px 4px rgba(0,0,0,0.7), inset 2px 2px 3px rgba(255,200,215,0.45)',
-                }}
-              />
-              {/* Superior atrium/ventricular dome lobe */}
-              <div
-                className="absolute -top-[9px] sm:-top-[10px] left-0 right-0 h-[10px] sm:h-[11px] rounded-t-full"
-                style={{
-                  background: 'radial-gradient(circle at 45% 35%, #ff6b8b 0%, #d90429 35%, #850b20 75%, #3d020c 100%)',
-                  boxShadow: 'inset 0 2px 3px rgba(255,225,235,0.65), inset -1px 0 3px rgba(0,0,0,0.55)',
-                }}
-              />
-              {/* Lateral atrium/ventricular dome lobe */}
-              <div
-                className="absolute top-0 -right-[9px] sm:-right-[10px] bottom-0 w-[10px] sm:w-[11px] rounded-r-full"
-                style={{
-                  background: 'radial-gradient(circle at 65% 45%, #ff5277 0%, #c9082a 40%, #7a091c 80%, #3d020c 100%)',
-                  boxShadow: 'inset -2px 0 3px rgba(0,0,0,0.7), inset 0 2px 3px rgba(255,200,215,0.4)',
-                }}
-              />
-              {/* Specular high-gloss sheen reflection for 3D curved depth */}
-              <div
-                className="absolute -top-[7px] sm:-top-[8px] left-[1px] w-[7px] h-[6px] rounded-full pointer-events-none"
-                style={{
-                  background: 'radial-gradient(circle at 35% 35%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.25) 60%, transparent 100%)',
-                  filter: 'blur(0.3px)',
-                }}
-              />
-              {/* Inter-atrial sulcus depression shadow between lobes */}
-              <div
-                className="absolute -top-[4px] -right-[1px] w-1.5 h-1.5 rounded-full pointer-events-none"
-                style={{
-                  background: 'radial-gradient(circle, rgba(45, 2, 9, 0.8) 0%, transparent 80%)',
-                }}
-              />
-            </div>
-            {/* Micro Aortic Root arch atop cleft */}
-            <div
-              className="absolute -top-0.5 left-[48%] -translate-x-1/2 w-1.5 h-1.5 rounded-t-xs pointer-events-none"
-              style={{
-                background: 'linear-gradient(to top, #850b20, #ff4d6d)',
-                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.5)',
-              }}
-            />
-          </div>
-          {/* SOS beacon */}
-          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-80"></span>
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 border-2 border-white dark:border-slate-900 shadow-xs"></span>
-          </span>
-        </button>
-      </div>
+            <LayoutDashboard className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">
+              {t.navHome}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('symptoms')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+              activeTab === 'symptoms'
+                ? 'text-teal-600 dark:text-teal-300 font-bold'
+                : 'text-slate-500 dark:text-teal-200/70'
+            }`}
+          >
+            <Stethoscope className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">
+              {t.navSymptoms}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('medicine')}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
+              activeTab === 'medicine'
+                ? 'text-teal-600 dark:text-teal-300 font-bold'
+                : 'text-slate-500 dark:text-teal-200/70'
+            }`}
+          >
+            <Pill className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">
+              {t.navMedicine}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('reports')}
+            className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] ${
+              activeTab === 'reports'
+                ? 'text-teal-600 dark:text-teal-300 font-bold'
+                : 'text-slate-500 dark:text-teal-200/70'
+            }`}
+          >
+            <FileText className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">
+              {t.navReports}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('vitals')}
+            className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] ${
+              activeTab === 'vitals'
+                ? 'text-teal-600 dark:text-teal-300 font-bold'
+                : 'text-slate-500 dark:text-teal-200/70'
+            }`}
+          >
+            <Activity className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">
+              {currentLanguage === 'ur' ? 'وائٹلز' : currentLanguage === 'roman' ? 'Vitals' : 'Vitals'}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('care')}
+            className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] ${
+              activeTab === 'care'
+                ? 'text-teal-600 dark:text-teal-300 font-bold'
+                : 'text-slate-500 dark:text-teal-200/70'
+            }`}
+          >
+            <MapPin className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] leading-tight">
+              {t.navNearby}
+            </span>
+          </button>
+        </nav>
+      )}
+
+      {/* Floating Action Buttons: Refined Clinical Support & Emergency 1122 Dispatch */}
+      {isMainAppActive && !showDisclaimer && (
+        <div
+          id="floating-actions-dock"
+          className="fixed bottom-[74px] right-3 sm:bottom-[78px] sm:right-6 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 pointer-events-auto transition-all duration-200"
+        >
+          {/* Medical Support / Quick Message */}
+          <button
+            type="button"
+            id="fab-quick-message-btn"
+            onClick={() => setShowQuickMessageModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer border border-teal-400/40 text-xs font-bold"
+            title={currentLanguage === 'ur' ? 'طبی سپورٹ اور فوری پیغام' : 'Quick Medical Message & Triage Support'}
+            aria-label="Medical Support"
+          >
+            <MessageSquare className="w-4 h-4 text-white shrink-0" />
+            <span>
+              {currentLanguage === 'ur' ? 'طبی مدد' : currentLanguage === 'roman' ? 'Madad' : 'Support'}
+            </span>
+          </button>
+
+          {/* Rescue 1122 Emergency SOS Hotline */}
+          <button
+            type="button"
+            id="fab-emergency-helpline"
+            onClick={() => setShowEmergencyCallModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer border border-rose-400/40 text-xs font-bold"
+            title={t.navEmergency}
+            aria-label="Call Emergency Helpline (1122)"
+          >
+            <PhoneCall className="w-4 h-4 shrink-0 animate-pulse" />
+            <span>
+              {currentLanguage === 'ur' ? '1122 ایمرجنسی' : '1122 SOS'}
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Emergency Call Modal */}
       <EmergencyCallModal
