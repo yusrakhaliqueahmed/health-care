@@ -388,7 +388,7 @@ Rescue 1122 and emergency contacts dispatched. Please send immediate help!`;
             type="button"
             onClick={detectLocation}
             disabled={isDetectingLocation}
-            className="px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold transition-all disabled:opacity-50 shrink-0 cursor-pointer"
           >
             {isDetectingLocation
               ? (isUrdu ? 'جی پی ایس تلاش ہو رہا ہے...' : 'Detecting GPS...')

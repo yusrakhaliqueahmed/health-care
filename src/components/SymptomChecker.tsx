@@ -287,6 +287,10 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
         const data = await res.json();
         replyText = data.text || data.fallbackText || 'Your symptoms have been recorded.';
         urgency = (data.urgency as UrgencyLevel) || 'GREEN';
+        if (data.isInvalidPhoto && data.spokenAlert) {
+          voiceManager.stop();
+          voiceManager.speak(data.spokenAlert, currentLanguage);
+        }
       } else {
         replyText =
           currentLanguage === 'ur'

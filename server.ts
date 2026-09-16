@@ -7,6 +7,14 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// Global process exception safety to prevent unexpected container crashes
+process.on("unhandledRejection", (reason) => {
+  console.warn("Unhandled promise rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught exception:", err);
+});
+
 // Lazy initialization of Gemini
 let aiClient: GoogleGenAI | null = null;
 function getAI(): GoogleGenAI {
@@ -451,6 +459,18 @@ PATIENT CONTEXT:
 - Known Conditions/Allergies: ${patientProfile.conditions || "None reported"}
 - Current Medications: ${patientProfile.medications || "None reported"}
 
+MANDATORY ATTACHED IMAGE VALIDATION (IF PHOTO IS PROVIDED):
+- If the user has attached a photo, you must examine it carefully first:
+- Does it show a genuine human medical symptom, skin lesion, rash, wound, swelling, burn, eye/throat infection, medical report, diagnostic scan, or medicine?
+- If the photo is CLEARLY UNRELATED to human health or medicine (e.g. a random selfie/portrait with no symptoms, pet/animal, vehicle/car, landscape/scenery, food, clothes, meme, household furniture, games, cartoon, wallpaper, or non-medical object):
+  You MUST output on the very first line:
+  STATUS: INVALID_NOT_MEDICAL_PHOTO
+  followed by a clear, polite explanation in ${targetLanguage}:
+  - In Urdu: "آپ نے جو تصویر بھیجی ہے وہ کسی طبی مسئلے، بیماری، زخم یا علامت سے متعلق نہیں لگ رہی۔ برائے مہربانی صرف اپنے مرض یا طبی علامت کی اصل تصویر اپلوڈ کریں۔"
+  - In Roman Urdu: "Aap ny jo picture dali hai wo kisi tibbi maslay, beemari, zakham ya alamat se mutaliq nahi lagti. Baraye meherbani sirf apne medical issue ya alamat ki saaf photo provide karein."
+  - In English: "The uploaded image does not appear to show a medical symptom, wound, rash, or health issue. Please upload a clear photo of your actual medical condition."
+  Never invent symptoms, pretend to see ailments, or make up medical guidance for an unrelated photo!
+
 BEHAVIOR & ANTI-HALLUCINATION RULES:
 1. Warm, respectful, highly professional tone like a reputable clinical portal (Mayo Clinic, WebMD, NHS) combined with an empathetic family physician's assistant.
 2. If patient age or who this is for has not been confirmed yet, gently confirm who this consultation is for and their approximate age (Infant 0-2, Child 2-12, Teen 12-18, Adult 18-60, Elderly 60+) so guidance can be safely age-calibrated.
@@ -569,9 +589,32 @@ If Roman Urdu:
         },
       });
 
+      const upper = (text || "").toUpperCase();
+
+      // Check if uploaded photo was flagged as non-medical
+      if (
+        text.includes("STATUS: INVALID_NOT_MEDICAL_PHOTO") ||
+        upper.includes("INVALID_NOT_MEDICAL_PHOTO") ||
+        upper.includes("NOT_MEDICAL_PHOTO")
+      ) {
+        const notMedicalMsg =
+          language === "ur" || language === "Urdu"
+            ? "آپ نے جو تصویر اپلوڈ کی ہے وہ کسی طبی مسئلے، بیماری، زخم یا علامت سے متعلق نہیں لگ رہی۔ برائے مہربانی صرف اپنے مرض، زخم یا طبی مسئلے کی اصل تصویر اپلوڈ کریں۔"
+            : language === "roman" || language === "Roman Urdu"
+            ? "Aap ny jo picture dali hai wo kisi tibbi maslay, beemari, zakham ya alamat se mutaliq nahi lagti. Baraye meherbani sirf apne medical issue ya alamat ki saaf photo provide karein."
+            : "The uploaded image does not appear to show a medical symptom, wound, rash, or health issue. Please upload a clear photo of your actual medical condition.";
+        const cleanMsg = text.replace(/^STATUS:\s*INVALID_NOT_MEDICAL_PHOTO\s*\n?/i, "").trim() || notMedicalMsg;
+        return res.json({
+          text: cleanMsg,
+          urgency: "YELLOW",
+          language,
+          isInvalidPhoto: true,
+          spokenAlert: notMedicalMsg,
+        });
+      }
+
       // Determine urgency tag
       let urgency: "GREEN" | "YELLOW" | "RED" = "GREEN";
-      const upper = (text || "").toUpperCase();
       if (
         upper.includes("RED") ||
         upper.includes("EMERGENCY") ||
@@ -1324,13 +1367,26 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
 
       const upper = text.toUpperCase();
 
-      if (text.includes("STATUS: INVALID_NOT_MEDICAL") || upper.includes("INVALID_NOT_MEDICAL")) {
+      const isInvalidNonMedical =
+        text.includes("STATUS: INVALID_NOT_MEDICAL") ||
+        upper.includes("INVALID_NOT_MEDICAL") ||
+        upper.includes("NOT_MEDICAL") ||
+        upper.includes("NOT A MEDICAL REPORT") ||
+        upper.includes("NOT AN X-RAY") ||
+        upper.includes("NOT A LAB REPORT") ||
+        upper.includes("DOES NOT APPEAR TO BE A MEDICAL") ||
+        upper.includes("UNRELATED IMAGE") ||
+        upper.includes("NOT MEDICAL RELATED") ||
+        upper.includes("RANDOM PICTURE") ||
+        upper.includes("NON-MEDICAL");
+
+      if (isInvalidNonMedical) {
         const notMedReportMsg =
           language === "Urdu"
-            ? "یہ تصویر یا ویڈیو کوئی میڈیکل رپورٹ، ایکسرے یا دوا کی تصویر معلوم نہیں ہوتی۔ برائے مہربانی درست میڈیکل دستاویز یا دوا اپلوڈ کریں۔"
+            ? "آپ نے جو تصویر اپلوڈ کی ہے وہ کسی لیب رپورٹ، ایکسرے، نسخے یا طبی علامت سے متعلق نہیں ہے۔ برائے مہربانی صرف اصل میڈیکل رپورٹ، ایکسرے یا اپنے مرض سے متعلق درست تصویر اپلوڈ کریں۔"
             : language === "Roman Urdu"
-            ? "Yeh picture ya video koi medical report, X-ray ya medicine ki photo nahi lagti. Baraye meherbani sahi medical image ya video upload karein."
-            : "This doesn't appear to be a medical report, X-ray, or medicine photo. Please upload or capture the correct image/video.";
+            ? "Aap ny jo picture dali hai wo kisi lab report, X-ray, nuskhe ya medical maslay se mutaliq nahi lagti. Baraye meherbani sahi medical se related jo issue hai ya report hai wo upload karein."
+            : "The uploaded image does not appear to be a medical report, X-ray, prescription, or health issue. Please upload a genuine medical document, X-ray, or photo of your actual medical condition.";
         return res.json({
           isRelevant: false,
           relevanceReason: "not_medical",
@@ -1342,13 +1398,19 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
         });
       }
 
-      if (text.includes("STATUS: INVALID_UNCLEAR_BLURRY") || upper.includes("INVALID_UNCLEAR_BLURRY")) {
+      if (
+        text.includes("STATUS: INVALID_UNCLEAR_BLURRY") ||
+        upper.includes("INVALID_UNCLEAR_BLURRY") ||
+        upper.includes("UNCLEAR_BLURRY") ||
+        upper.includes("TOO BLURRY") ||
+        upper.includes("UNREADABLE")
+      ) {
         const blurryReportMsg =
           language === "Urdu"
-            ? "یہ میڈیکل تصویر بہت دھندلی یا اندھیرے میں ہے اور پڑھی نہیں جا رہی۔ برائے مہربانی اچھی روشنی میں صاف تصویر یا ویڈیو دوبارہ لیں۔"
+            ? "یہ میڈیکل تصویر بہت دھندلی، کٹی ہوئی یا اندھیرے میں ہے اور پڑھی نہیں جا رہی۔ برائے مہربانی اچھی روشنی میں صاف میڈیکل رپورٹ یا ایکسرے کی تصویر دوبارہ لیں۔"
             : language === "Roman Urdu"
-            ? "Yeh picture bohat dhundli ya andheray mein hai. Baraye meherbani achi roshni mein saaf photo ya video dobara lein."
-            : "This image is too blurry or dark to read clearly. Please retake a clear, steady photo or video with good lighting.";
+            ? "Yeh picture bohat dhundli ya andheray mein hai aur parhi nahi ja rahi. Baraye meherbani achi roshni mein saaf medical report ya photo dobara lein."
+            : "This image is too blurry, cropped, or dark to read clearly. Please retake a clear, steady photo or video of your medical document in good lighting.";
         return res.json({
           isRelevant: false,
           relevanceReason: "unclear_blurry",
@@ -1388,6 +1450,115 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
   // Audio cache for instant replay & high-performance playback
   const ttsAudioCache = new Map<string, Buffer>();
 
+  // Full-featured Roman Urdu to Urdu Script transliteration engine for authentic TTS voice
+  const ROMAN_TO_URDU_PHRASES: Record<string, string> = {
+    "ahem paigham. doctor ki tasdeeq lazmi hai. yeh app aapki rehnumai ke liye hai, lekin yeh kisi asli doctor ka mutabadil nahi hai. koi bhi dawa lene ya ilaaj shuru karne se pehle hamesha licensed doctor se mashwara karein.":
+      "اہم پیغام۔ ڈاکٹر کی تصدیق لازمی ہے۔ یہ ایپ آپ کی رہنمائی کے لیے ہے، لیکن یہ کسی اصل ڈاکٹر کا متبادل نہیں ہے۔ کوئی بھی دوا لینے یا علاج شروع کرنے سے پہلے ہمیشہ مستند ڈاکٹر سے مشورہ کریں۔",
+    "ahem paigham. doctor ki tasdeeq lazmi hai": "اہم پیغام۔ ڈاکٹر کی تصدیق لازمی ہے",
+    "yeh app aapki rehnumai ke liye hai": "یہ ایپ آپ کی رہنمائی کے لیے ہے",
+    "doctor ki tasdeeq lazmi hai": "ڈاکٹر کی تصدیق لازمی ہے",
+    "main samajh gaya, aage barhein": "میں سمجھ گیا، آگے بڑھیں",
+    "main samajh gaya, jaari rakhein": "میں سمجھ گیا، جاری رکھیں",
+    "foran rescue 1122 par call karein": "فوراً ریسکیو 1122 پر کال کریں",
+    "foran rescue 1122 call karein ya qareebi hospital emergency trauma center jayein.":
+      "فوراً ریسکیو 1122 کال کریں یا قریبی ہسپتال ایمرجنسی ٹراما سینٹر جائیں۔",
+    "pani zyada piyein aur mukammal aaram karein": "پانی زیادہ پیئیں اور مکمل آرام کریں",
+    "baraye meherbani dawai ki photo upload karein": "برائے مہربانی دوائی کی فوٹو اپ لوڈ کریں",
+    "baraye meherbani dawai ki photo upload karein.": "برائے مہربانی دوائی کی فوٹو اپ لوڈ کریں۔",
+  };
+
+  const ROMAN_URDU_DICT: Record<string, string> = {
+    yeh: "یہ", woh: "وہ", is: "اس", us: "اس", in: "ان", un: "ان",
+    aap: "آپ", aapka: "آپ کا", aapki: "آپ کی", aapke: "آپ کے", aapko: "آپ کو",
+    main: "میں", mera: "میرا", meri: "میری", mere: "میرے", mujhe: "مجھے", mujhko: "مجھ کو",
+    hum: "ہم", hamara: "ہمارا", hamari: "ہماری", hamare: "ہمارے",
+    tum: "تم", tumhara: "تمہارا", tumhari: "تمہاری", tumhare: "تمہارے", tumhein: "تمہیں",
+    unka: "ان کا", unki: "ان کی", unke: "ان کے", unhein: "انہیں", unko: "ان کو",
+    inka: "ان کا", inki: "ان کی", inke: "ان کے", inhein: "انہیں", inko: "ان کو",
+    apna: "اپنا", apni: "اپنی", apne: "اپنے",
+    kisi: "کسی", koi: "کوئی", sab: "سب", sabhi: "سبھی",
+    kya: "کیا", kyu: "کیوں", kyun: "کیوں", kaise: "کیسے", kaisi: "کیسی", kaisa: "کیسا",
+    kab: "کب", kahan: "کہاں", kon: "کون",
+    aur: "اور", ya: "یا", lekin: "لیکن", magar: "مگر", agar: "اگر",
+    to: "تو", toh: "تو", bhi: "بھی", tak: "تک", se: "سے", say: "سے",
+    ko: "کو", ka: "کا", ki: "کی", ke: "کے", kay: "کے",
+    mein: "میں", par: "پر", pe: "پر", sath: "ساتھ", saath: "ساتھ",
+    baad: "بعد", pehle: "پہلے", qabal: "قبل", bina: "بغیر", baghair: "بغیر",
+    hai: "ہے", hain: "ہیں", tha: "تھا", thi: "تھی", the: "تھے", thay: "تھے",
+    hoga: "ہوگا", hogi: "ہوگی", honge: "ہوں گے", hongee: "ہوں گی", hona: "ہونا",
+    karein: "کریں", karo: "کرو", karna: "کرنا", karta: "کرتا", karti: "کرتی", karte: "کرتے", kijiye: "کیجیے",
+    lene: "لینے", lena: "لینا", lein: "لیں", leta: "لیتا", leti: "لیتی", lete: "لیتے",
+    dein: "دیں", dena: "دینا", deta: "دیتا", deti: "دیتی", dete: "دیتے",
+    khana: "کھانا", khayein: "کھائیں", khata: "کھاتا", khati: "کھاتی", khate: "کھاتے",
+    peena: "پینا", piyein: "پیئیں", peeta: "پیتا", peeti: "پیتی", peete: "پیتے",
+    rakhein: "رکھیں", rakhna: "رکھنا", rakho: "رکھو",
+    aana: "آنا", aayein: "آئیں", aata: "آتا", aati: "آتی", aate: "آتے",
+    jana: "جانا", jayein: "جائیں", jata: "جاتا", jati: "جاتی", jate: "جاتے",
+    dekhein: "دیکھیں", dekhna: "دیکھنا",
+    batayein: "بتائیں", batana: "بتانا",
+    samjhein: "سمجھیں", samajh: "سمجھ", samjha: "سمجھا", samjhe: "سمجھے",
+    lagna: "لگنا", lagta: "لگتا", lagti: "لگتی", lagte: "لگتے",
+    nahi: "نہیں", nahin: "نہیں", mat: "مت", na: "نہ",
+    doctor: "ڈاکٹر", dactar: "ڈاکٹر", hospital: "ہسپتال",
+    dispensary: "ڈسپنسری", clinic: "کلینک",
+    emergency: "ایمرجنسی", rescue: "ریسکیو", ambulance: "ایمبولینس",
+    mareez: "مریض", bimari: "بیماری", beemari: "بیماری", bemari: "بیماری",
+    takleef: "تکلیف", dard: "درد",
+    shadeed: "شدید", halka: "ہلکا", halki: "ہلکی",
+    tez: "تیز", darmiyana: "درمیانہ", darmiyani: "درمیانی",
+    bukhar: "بخار", tap: "تاپ", khansi: "کھانسی", balgham: "بلغم",
+    saans: "سانس", seenay: "سینے", seena: "سینہ",
+    dil: "دل", dhadkan: "دھڑکن", blood: "بلڈ", pressure: "پریشر",
+    sugar: "شوگر", khoon: "خون",
+    dawa: "دوا", dawai: "دوائی", dawaiyan: "دوائیاں", dawaein: "دوائیں",
+    goli: "گولی", goliyan: "گولیاں", tablet: "ٹیبلٹ", tablets: "ٹیبلٹس",
+    capsule: "کیپسول", syrup: "شربت", sharbat: "شربت",
+    injection: "انجیکشن", drops: "قطرے", qatray: "قطرے",
+    aaram: "آرام", araam: "آرام", ehtiyat: "احتیاط", parhez: "پرہیز",
+    pani: "پانی", paani: "پانی", garam: "گرم", thanda: "ٹھنڈا", thandi: "ٹھنڈی",
+    kamzori: "کمزوری", chakar: "چکر", chakkar: "چکر",
+    ulti: "الٹی", matli: "متلی", dast: "دست", pait: "پیٹ",
+    sozish: "سوزش", soojan: "سوجن", zakham: "زخم", kharash: "خراش",
+    infection: "انفیکشن", allergy: "الرجی",
+    bachay: "بچے", bacha: "بچہ", buzurg: "بزرگ",
+    hamesha: "ہمیشہ", mustanad: "مستند", mashwara: "مشورہ", tasdeeq: "تصدیق", lazmi: "لازمی",
+    zaroori: "ضروری", mutabadil: "متبادل", asal: "اصل", asli: "اصل",
+    rehnumai: "رہنمائی", app: "ایپ",
+    shuru: "شروع", khatam: "ختم", check: "چیک", report: "رپورٹ",
+    subah: "صبح", dopahar: "دوپہر", shaam: "شام", sham: "شام", raat: "رات",
+    rozana: "روزانہ", roz: "روز", waqt: "وقت",
+    ghanta: "گھنٹہ", ghante: "گھنٹے", ghanton: "گھنٹوں",
+    din: "دن", hafta: "ہفتہ", haftay: "ہفتے", mahina: "مہینہ", maah: "ماہ",
+    foran: "فوراً", fauri: "فوری", jald: "جلد", jaldi: "جلدی",
+    aaj: "آج", kal: "کل", abhi: "ابھی",
+    ek: "ایک", do: "دو", teen: "تین", char: "چار", chaar: "چار", paanch: "پانچ", panch: "پانچ",
+    che: "چھ", cheh: "چھ", saat: "سات", aath: "آٹھ", nau: "نو", no: "نو", das: "دس",
+    zyada: "زیادہ", kam: "کم", bohat: "بہت", bohot: "بہت", thora: "تھوڑا", thori: "تھوڑی",
+  };
+
+  function convertRomanUrduToUrduScript(text: string): string {
+    const trimmed = text.trim();
+    const lowerTrimmed = trimmed.toLowerCase();
+    if (ROMAN_TO_URDU_PHRASES[lowerTrimmed]) {
+      return ROMAN_TO_URDU_PHRASES[lowerTrimmed];
+    }
+
+    // Tokenize preserving spaces and punctuation
+    return trimmed
+      .split(/(\s+|[.,!?;:()،؛؟]+)/)
+      .map((token) => {
+        const clean = token.toLowerCase().trim();
+        if (!clean) return token;
+        // Already Urdu/Arabic script
+        if (/[\u0600-\u06FF]/.test(token)) return token;
+        if (ROMAN_URDU_DICT[clean]) {
+          return ROMAN_URDU_DICT[clean];
+        }
+        return token;
+      })
+      .join("");
+  }
+
   function fetchTTSChunk(text: string, tl: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=${encodeURIComponent(tl)}&client=tw-ob`;
@@ -1413,7 +1584,7 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
 
   async function generateSpeechAudio(rawText: string, lang: string): Promise<Buffer> {
     // Clean text: strip markdown symbols, URLs, asterisks, brackets
-    const clean = rawText
+    let clean = rawText
       .replace(/[*_#`~[\]()]/g, "")
       .replace(/https?:\/\/\S+/g, "")
       .replace(/\s+/g, " ")
@@ -1429,15 +1600,17 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
       return ttsAudioCache.get(cacheKey)!;
     }
 
-    // Determine Google TTS target language tag (tl)
+    // Determine Google TTS target language tag (tl) & convert text for optimal voice quality
     let tl = "en";
     const hasUrduScript = /[\u0600-\u06FF]/.test(clean);
 
     if (normalizedLang === "ur" || normalizedLang === "urdu" || hasUrduScript) {
       tl = "ur";
     } else if (normalizedLang === "roman" || normalizedLang === "roman urdu") {
-      // Roman Urdu: tl='hi' natively pronounces Romanized South Asian / Urdu / Hindi syllables with authentic accent!
-      tl = "hi";
+      // Roman Urdu: Transliterate to Urdu script and use Google's native Urdu voice (tl='ur')
+      // This produces crystal-clear, authentic Pakistani Urdu spoken pronunciation that every patient understands!
+      clean = convertRomanUrduToUrduScript(clean);
+      tl = "ur";
     } else {
       tl = "en";
     }
@@ -1592,7 +1765,12 @@ CRITICAL: Output ONLY the exact transcribed text string. Do NOT add any preamble
   });
 
   // Vite middleware in development, static files in production
-  if (process.env.NODE_ENV !== "production") {
+  const isCompiledBundle =
+    typeof __filename !== "undefined" &&
+    (__filename.endsWith(".cjs") || __filename.includes("dist"));
+  const isProduction = process.env.NODE_ENV === "production" || isCompiledBundle;
+
+  if (!isProduction) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -1604,6 +1782,7 @@ CRITICAL: Output ONLY the exact transcribed text string. Do NOT add any preamble
       path.join(process.cwd(), "dist"),
       path.join(__dirname, "dist"),
       __dirname,
+      process.cwd(),
     ];
     const distPath =
       candidatePaths.find((p) => fs.existsSync(path.join(p, "index.html"))) ||
@@ -1621,12 +1800,15 @@ CRITICAL: Output ONLY the exact transcribed text string. Do NOT add any preamble
   }
 
   const PORT = 3000;
-
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`SehatSaathi Pro server running on port ${PORT}`);
+  const server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`SehatSaathi Pro server running on http://localhost:${PORT}`);
+  });
+  server.on("error", (err: any) => {
+    console.error(`Server listen error on port ${PORT}:`, err);
   });
 }
 
 startServer().catch((err) => {
   console.error("Failed to start server:", err);
 });
+

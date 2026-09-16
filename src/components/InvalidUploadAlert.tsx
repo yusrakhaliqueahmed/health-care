@@ -36,27 +36,27 @@ export const InvalidUploadAlert: React.FC<InvalidUploadAlertProps> = ({
     if (reason === 'not_medicine') {
       alertText =
         currentLanguage === 'ur'
-          ? 'یہ تصویر کسی دوا کی ڈبیا، پتی یا نسخہ معلوم نہیں ہوتی۔ برائے مہربانی دوا کی درست تصویر یا ویڈیو اپلوڈ کریں۔'
+          ? 'یہ تصویر کسی دوا کی ڈبیا، پتی، شربت یا نسخہ معلوم نہیں ہوتی۔ برائے مہربانی صرف دوا، نسخے یا میڈیکل سے متعلق درست تصویر اپلوڈ کریں۔'
           : currentLanguage === 'roman'
-          ? 'Yeh picture kisi dawai ki packaging ya prescription nahi lagti. Baraye meherbani sahi medicine ki photo ya video upload karein.'
-          : "This doesn't appear to be a medicine bottle, tablet strip, or prescription. Please upload the correct medicine picture or video.";
+          ? 'Yeh picture kisi dawai ki packaging, patti ya prescription nahi lagti. Baraye meherbani sirf dawai ya medical issue se related sahi photo upload karein.'
+          : "This image does not appear to be a medicine package, blister strip, or prescription. Please upload a clear photo of the actual medicine or medical issue.";
       spokenText = alertText;
     } else if (reason === 'unclear_blurry') {
       alertText =
         currentLanguage === 'ur'
-          ? 'یہ میڈیکل تصویر بہت دھندلی یا اندھیرے میں ہے اور پڑھی نہیں جا رہی۔ برائے مہربانی اچھی روشنی میں صاف تصویر یا ویڈیو دوبارہ لیں۔'
+          ? 'یہ میڈیکل تصویر بہت دھندلی یا اندھیرے میں ہے اور پڑھی نہیں جا رہی۔ برائے مہربانی اچھی روشنی میں صاف میڈیکل رپورٹ، ایکسرے یا دوا کی تصویر دوبارہ لیں۔'
           : currentLanguage === 'roman'
-          ? 'Yeh picture bohat dhundli ya andheray mein hai. Baraye meherbani achi roshni mein saaf photo ya video dobara lein.'
-          : 'This image is too blurry or dark to read clearly. Please retake a clear, steady photo or video with good lighting.';
+          ? 'Yeh picture bohat dhundli ya andheray mein hai. Baraye meherbani achi roshni mein saaf medical report ya dawai ki photo dobara lein.'
+          : 'This image is too blurry or dark to read clearly. Please retake a clear, steady photo of your medical report or medicine in good lighting.';
       spokenText = alertText;
     } else {
       // General not medical report/X-ray/medicine photo
       alertText =
         currentLanguage === 'ur'
-          ? 'یہ تصویر یا ویڈیو کوئی میڈیکل رپورٹ، ایکسرے یا دوا کی تصویر معلوم نہیں ہوتی۔ برائے مہربانی درست میڈیکل رپورٹ یا دوا کی تصویر یا ویڈیو اپلوڈ کریں۔'
+          ? 'آپ نے جو تصویر اپلوڈ کی ہے وہ کسی لیب رپورٹ، ایکسرے، نسخے یا طبی علامت سے متعلق نہیں لگ رہی۔ برائے مہربانی درست میڈیکل رپورٹ، ایکسرے یا اپنے مرض سے متعلق اصل تصویر اپلوڈ کریں۔'
           : currentLanguage === 'roman'
-          ? 'Yeh picture ya video koi medical report, X-ray ya medicine ki photo nahi lagti. Baraye meherbani sahi medicine ya medical report ki photo ya video upload karein.'
-          : "This doesn't appear to be a medical report, X-ray, or medicine photo. Please upload or capture the correct medicine or medical report picture or video.";
+          ? 'Aap ny jo picture dali hai wo kisi lab report, X-ray, nuskhe ya medical maslay se mutaliq nahi lagti. Baraye meherbani sahi medical se related jo issue hai ya report hai wo upload karein.'
+          : "The uploaded image does not appear to be a medical report, X-ray, prescription, or health issue. Please upload a genuine medical report, X-ray, or a photo of your actual medical condition.";
       spokenText = alertText;
     }
   }

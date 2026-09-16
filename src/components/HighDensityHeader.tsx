@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import { SupportedLanguage, PatientProfile, NavigationTab, UserAccount } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager } from '../services/voice';
@@ -92,19 +93,25 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
       {/* Top Mobile Bar for screens < lg */}
       <div className="lg:hidden flex items-center justify-between p-2.5 sm:p-3 bg-white dark:bg-slate-900 text-slate-800 dark:text-white rounded-2xl shadow-xs gap-2 border border-slate-200/90 dark:border-slate-800 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <button
+          <motion.button
             type="button"
             onClick={onOpenMobileMenu}
-            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-slate-700 dark:text-slate-200 transition-colors shrink-0"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.92 }}
+            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl text-slate-700 dark:text-slate-200 transition-colors shrink-0 cursor-pointer"
             aria-label="Open Navigation Menu"
           >
             <Menu className="w-5 h-5" />
-          </button>
+          </motion.button>
           <div className="flex items-center gap-2 cursor-pointer min-w-0" onClick={() => onNavigate('home')}>
-            <div className="relative w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-2xs"
+            >
               <ClinicalHeartIcon className="w-4 h-4 text-white" />
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-slate-900" />
-            </div>
+            </motion.div>
             <span className="font-bold text-sm tracking-tight truncate text-slate-900 dark:text-white">SehatSaathi</span>
           </div>
         </div>
@@ -145,11 +152,11 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
               type="button"
               id="header-mobile-msg-btn"
               onClick={onOpenQuickMessage}
-              className="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs min-h-[38px] cursor-pointer transition-transform"
+              className="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-xs min-h-[38px] cursor-pointer transition-transform"
               title="Quick Medical Message / WhatsApp"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span className="text-[11px] sm:text-xs">Msg</span>
+              <span className="text-[11px] sm:text-xs">{currentLanguage === 'ur' ? 'پیغام' : 'Msg'}</span>
             </button>
           </div>
         </div>
@@ -233,11 +240,11 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
               type="button"
               id="header-btn-medical-message"
               onClick={onOpenQuickMessage}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all min-h-[40px] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-bold shadow-xs transition-all min-h-[40px] cursor-pointer"
               title="Quick Medical Message / WhatsApp & SMS Triage"
             >
               <MessageSquare className="w-3.5 h-3.5" />
-              <span>Message</span>
+              <span>{currentLanguage === 'ur' ? 'پیغام' : currentLanguage === 'roman' ? 'Message' : 'Message'}</span>
             </button>
           </div>
 
@@ -274,7 +281,7 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
           <button
             type="button"
             onClick={onOpenDisclaimer}
-            className="w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-2xs hover:border-teal-400 transition-colors"
+            className="w-10 h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-2xs hover:border-teal-400 transition-colors cursor-pointer"
             title="Safety Disclaimer & PMDC Guidelines"
           >
             <Bell className="w-4 h-4 text-slate-600 dark:text-slate-300" />

@@ -342,7 +342,7 @@ export const DiagnosticLabReportModal: React.FC<DiagnosticLabReportModalProps> =
             <button
               id="report-print-btn"
               onClick={handlePrint}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-md font-medium shadow-xs transition-colors"
+              className="flex items-center space-x-1 px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white rounded-md font-medium shadow-xs transition-colors cursor-pointer"
               title="Print or Save as PDF"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -676,7 +676,7 @@ export const DiagnosticLabReportModal: React.FC<DiagnosticLabReportModalProps> =
                 <button
                   type="button"
                   onClick={addTestRow}
-                  className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center space-x-1"
+                  className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center space-x-1 cursor-pointer"
                 >
                   <span>+ Add Test Parameter Row</span>
                 </button>
@@ -793,14 +793,14 @@ export const DiagnosticLabReportModal: React.FC<DiagnosticLabReportModalProps> =
             <button
               id="report-modal-bottom-close"
               onClick={onClose}
-              className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium rounded-lg text-xs transition-colors"
+              className="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium rounded-lg text-xs transition-colors cursor-pointer"
             >
               Close
             </button>
             <button
               id="report-modal-bottom-print"
               onClick={handlePrint}
-              className="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white font-medium rounded-lg text-xs flex items-center space-x-1.5 shadow-xs transition-colors"
+              className="px-4 py-1.5 bg-teal-700 hover:bg-teal-800 text-white font-medium rounded-lg text-xs flex items-center space-x-1.5 shadow-xs transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Official Lab Report</span>

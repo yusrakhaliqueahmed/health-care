@@ -335,7 +335,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="relative overflow-hidden rounded-3xl sm:rounded-[32px] bg-gradient-to-br from-[#ebf3f9] via-[#e1ecf5] to-[#d4e4f2] dark:from-slate-900 dark:via-slate-900 dark:to-teal-950 text-slate-900 dark:text-white p-6 sm:p-8 lg:p-10 shadow-sm border border-blue-100/90 dark:border-slate-800"
+        className="relative overflow-hidden rounded-3xl sm:rounded-[32px] bg-gradient-to-br from-[#f0fdf9] via-[#e6f7f2] to-[#d1fae5] dark:from-slate-900 dark:via-slate-900 dark:to-teal-950 text-slate-900 dark:text-white p-6 sm:p-8 lg:p-10 shadow-sm border border-teal-100/90 dark:border-slate-800"
       >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center relative z-10">
           {/* Left Column (7 Cols): Headline, Value Prop, CTAs & Live Widgets */}
@@ -380,7 +380,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('care')}
-                className="px-6 py-3.5 rounded-full bg-blue-600 hover:bg-blue-700 dark:bg-teal-600 dark:hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-blue-500/25 active:scale-95 transition-all flex items-center gap-2.5 cursor-pointer"
+                className="px-6 py-3.5 rounded-full bg-teal-600 hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-teal-500/25 active:scale-95 transition-all flex items-center gap-2.5 cursor-pointer"
               >
                 <Video className="w-4 h-4" />
                 <span>{heroContent.bookAppointment}</span>
@@ -400,7 +400,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
 
             {/* Clinical Query & Voice Triage Search Bar */}
             <form onSubmit={handleSearchSubmit} className="pt-2">
-              <div className="relative flex items-center bg-white dark:bg-slate-900/90 rounded-2xl shadow-sm border border-slate-200/90 dark:border-slate-700 p-1.5 focus-within:ring-2 focus-within:ring-blue-500 dark:focus-within:ring-teal-400 transition-all max-w-xl">
+              <div className="relative flex items-center bg-white dark:bg-slate-900/90 rounded-2xl shadow-sm border border-slate-200/90 dark:border-slate-700 p-1.5 focus-within:ring-2 focus-within:ring-teal-500 dark:focus-within:ring-teal-400 transition-all max-w-xl">
                 <Search className="w-5 h-5 text-slate-400 ml-3 shrink-0" />
                 <input
                   type="text"
@@ -429,7 +429,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
 
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-teal-600 dark:hover:bg-teal-700 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 dark:bg-teal-600 dark:hover:bg-teal-700 text-white text-xs sm:text-sm font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
                 >
                   {t.searchButton}
                 </button>
@@ -467,7 +467,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
                     logSearchToRecords(item.label, 'symptom');
                     onNavigate(item.tab);
                   }}
-                  className="text-xs px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-colors font-medium hover:bg-white hover:border-blue-300 cursor-pointer shadow-2xs"
+                  className="text-xs px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 transition-colors font-medium hover:bg-white hover:border-teal-300 cursor-pointer shadow-2xs"
                 >
                   {item.label}
                 </button>
@@ -488,7 +488,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
 
         {/* Subtle decorative medical pulse wave in background */}
         <div className="absolute right-0 bottom-0 opacity-5 pointer-events-none translate-x-10 translate-y-6">
-          <Activity className="w-72 h-72 text-blue-500" />
+          <Activity className="w-72 h-72 text-teal-500" />
         </div>
       </motion.section>
 
@@ -506,7 +506,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           <button
             type="button"
             onClick={onOpenDisclaimer}
-            className="text-xs font-semibold text-teal-700 dark:text-teal-300 hover:underline flex items-center gap-1"
+            className="text-xs font-semibold text-teal-700 dark:text-teal-300 hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>{t.safetyGuidelines}</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -575,19 +575,19 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           {/* Card 3: Vitals & Sugar/BP Tracker */}
           <div
             onClick={() => onNavigate('vitals')}
-            className="group relative p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+            className="group relative p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center text-amber-700 dark:text-amber-300 group-hover:scale-105 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-700 dark:text-emerald-300 group-hover:scale-105 transition-transform">
                   <Activity className="w-5 h-5" />
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {isUrdu ? 'فوری ٹیسٹ' : isRoman ? 'Fori Test' : 'Instant Check'}
                 </span>
               </div>
 
-              <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+              <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                 {isUrdu ? 'وائٹلز (شوگر، بی پی، نبض)' : isRoman ? 'Sugar, BP & Pulse' : 'Sugar, BP & Pulse'}
               </h4>
               <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
@@ -599,7 +599,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
               </p>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400">
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
               <span>{isUrdu ? 'ابھی چیک کریں' : isRoman ? 'Abhi Check Karein' : 'Check Vitals'}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
@@ -687,7 +687,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
             <button
               type="button"
               onClick={() => onNavigate('records')}
-              className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline"
+              className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline cursor-pointer"
             >
               {t.viewEhr}
             </button>
@@ -873,7 +873,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
         <button
           type="button"
           onClick={onOpenDisclaimer}
-          className="text-teal-600 dark:text-teal-400 font-semibold hover:underline shrink-0"
+          className="text-teal-600 dark:text-teal-400 font-semibold hover:underline shrink-0 cursor-pointer"
         >
           {t.readDisclaimers}
         </button>

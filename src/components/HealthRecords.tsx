@@ -421,7 +421,7 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
       case 'medicine':
         return <Pill className="w-5 h-5 text-emerald-600" />;
       case 'symptom':
-        return <Stethoscope className="w-5 h-5 text-blue-600" />;
+        return <Stethoscope className="w-5 h-5 text-teal-600" />;
       case 'prescription':
         return <FileCheck className="w-5 h-5 text-purple-600" />;
       case 'consultation':
@@ -442,7 +442,7 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
       case 'medicine':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'symptom':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-teal-50 text-teal-700 border-teal-200';
       case 'prescription':
         return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'consultation':
@@ -755,7 +755,7 @@ export const HealthRecords: React.FC<HealthRecordsProps> = ({
                 </button>
                 <button
                   onClick={() => onNavigateToTab('reports')}
-                  className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
+                  className="px-4 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                 >
                   + Analyze Lab Report / X-Ray
                 </button>

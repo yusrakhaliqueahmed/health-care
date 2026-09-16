@@ -86,7 +86,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
           <a
             href="tel:1122"
             onClick={onEmergencyClick}
-            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0"
+            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0 cursor-pointer"
           >
             Call 1122
           </a>
@@ -97,7 +97,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
           id="disclaimer-agree-button"
           type="button"
           onClick={onClose}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white font-bold text-base shadow-md shadow-teal-600/20 transition-all min-h-[48px]"
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white font-bold text-base shadow-md shadow-teal-600/20 transition-all min-h-[48px] cursor-pointer"
         >
           <CheckCircle2 className="w-5 h-5" />
           <span>{t.disclaimerAgree}</span>

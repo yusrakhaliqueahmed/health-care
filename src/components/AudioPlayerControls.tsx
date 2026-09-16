@@ -100,7 +100,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
           <button
             type="button"
             onClick={handlePlayOrResume}
-            className="flex items-center gap-1 font-medium hover:text-teal-600 dark:hover:text-teal-300"
+            className="flex items-center gap-1 font-medium hover:text-teal-600 dark:hover:text-teal-300 cursor-pointer"
             title={t.audioPlay}
           >
             <Volume2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -140,7 +140,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
               <button
                 type="button"
                 onClick={handlePlayOrResume}
-                className="flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
                 <span>{t.audioResume}</span>
@@ -149,7 +149,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
               <button
                 type="button"
                 onClick={handlePause}
-                className="flex items-center gap-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer"
               >
                 <Pause className="w-3.5 h-3.5 fill-current" />
                 <span>{t.audioPause}</span>
@@ -158,7 +158,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
             <button
               type="button"
               onClick={handleStop}
-              className="flex items-center gap-1 px-2.5 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-medium transition-colors cursor-pointer"
             >
               <Square className="w-3.5 h-3.5 fill-current" />
               <span>{t.audioStop}</span>
@@ -168,7 +168,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
           <button
             type="button"
             onClick={handlePlayOrResume}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium shadow-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-medium shadow-xs transition-colors cursor-pointer"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>{t.audioPlay}</span>
@@ -178,7 +178,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
         <button
           type="button"
           onClick={handlePlayOrResume}
-          className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-slate-700 rounded-lg text-xs transition-colors"
+          className="p-1.5 text-slate-600 dark:text-slate-300 hover:bg-teal-100 dark:hover:bg-slate-700 rounded-lg text-xs transition-colors cursor-pointer"
           title="Replay from start"
         >
           <RotateCcw className="w-3.5 h-3.5" />
@@ -187,7 +187,7 @@ export const AudioPlayerControls: React.FC<AudioPlayerControlsProps> = ({
         <button
           type="button"
           onClick={cycleSpeed}
-          className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-700/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-mono font-semibold transition-colors"
+          className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-700/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-mono font-semibold transition-colors cursor-pointer"
           title="Adjust speech speed"
         >
           <Gauge className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />

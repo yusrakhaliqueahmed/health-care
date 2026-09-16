@@ -28,7 +28,9 @@ import {
   Check,
   Award,
   ChevronDown,
+  HelpCircle,
 } from 'lucide-react';
+import { VitalsMeasurementGuide } from './VitalsMeasurementGuide';
 import {
   SupportedLanguage,
   PatientProfile,
@@ -62,7 +64,7 @@ interface VitalsTrackerProps {
   onNavigateToCare: () => void;
 }
 
-type TrackerMode = 'sugar' | 'bp' | 'heart' | 'all' | 'history';
+type TrackerMode = 'sugar' | 'bp' | 'heart' | 'all' | 'history' | 'guide';
 
 export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
   language,
@@ -98,9 +100,13 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
     new Date().toISOString().split('T')[0]
   );
 
-  // Diagnostic history tags
+  // Diagnostic history tags & choices
   const [hasDiabetes, setHasDiabetes] = useState<boolean>(false);
   const [hasHypertension, setHasHypertension] = useState<boolean>(false);
+  // null indicates user has not yet actively clicked/confirmed diagnosis status
+  const [diabetesChoice, setDiabetesChoice] = useState<'yes' | 'no' | null>(null);
+  const [hypertensionChoice, setHypertensionChoice] = useState<'yes' | 'no' | null>(null);
+  const [diagnosisValidationAlert, setDiagnosisValidationAlert] = useState<string | null>(null);
 
   // Camera pulse detector state
   const [isCameraScanning, setIsCameraScanning] = useState<boolean>(false);
@@ -344,6 +350,42 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
     const sysNum = parseInt(systolic, 10);
     const diaNum = parseInt(diastolic, 10);
     const hrNum = parseInt(heartRate, 10);
+
+    // MANDATORY CLINICAL DIAGNOSIS SELECTION CHECK:
+    // "jo diagnosed diabetic diagnosed hypertensive per click na kare to analyzed na ho sugar wagera"
+    // The user/patient MUST click/confirm their diagnosis status before analysis can proceed!
+    if (activeTab === 'sugar' || (activeTab === 'all' && !isNaN(sNum) && sNum > 0)) {
+      if (diabetesChoice === null) {
+        const errorText = isUrdu
+          ? '⚠️ لازمی طبی تصدیق: کیا مریض شوگر کے باقاعدہ تشخیص شدہ مریض ہیں (Diagnosed Diabetic) یا نہیں؟ برائے مہربانی نیچے دیے گئے آپشن پر کلک کر کے تصدیق فرمائیں تاکہ درست تجزیہ کیا جا سکے۔ اس کے بغیر شوگر کا تجزیہ نہیں ہو سکتا۔'
+          : isRoman
+          ? '⚠️ Zaroori tibbi tasdeeq: Kya mareez Diagnosed Diabetic hain ya nahi? Barah-e-karam neechay "Diagnosed Diabetic" ya "Non-Diabetic" par click karein. Is ke baghair sugar analyze nahi hogi.'
+          : '⚠️ Mandatory Clinical Status: Please select whether the patient is a Diagnosed Diabetic or Non-Diabetic. Clinical analysis cannot proceed without this confirmation.';
+        setDiagnosisValidationAlert(errorText);
+        voiceManager.speak(errorText, language);
+        // Scroll to diagnosis section if needed
+        const diagEl = document.getElementById('diagnosis-selection-card');
+        if (diagEl) diagEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
+    if (activeTab === 'bp' || (activeTab === 'all' && !isNaN(sysNum) && sysNum > 0)) {
+      if (hypertensionChoice === null) {
+        const errorText = isUrdu
+          ? '⚠️ لازمی طبی تصدیق: کیا مریض ہائی بلڈ پریشر کے باقاعدہ تشخیص شدہ مریض ہیں (Diagnosed Hypertensive) یا نہیں؟ برائے مہربانی نیچے دیے گئے آپشن پر کلک کر کے تصدیق فرمائیں تاکہ درست تجزیہ کیا جا سکے۔ اس کے بغیر بی پی کا تجزیہ نہیں ہو سکتا۔'
+          : isRoman
+          ? '⚠️ Zaroori tibbi tasdeeq: Kya mareez Diagnosed Hypertensive hain ya nahi? Barah-e-karam neechay "Diagnosed Hypertensive" ya "Normal BP" par click karein. Is ke baghair BP analyze nahi hoga.'
+          : '⚠️ Mandatory Clinical Status: Please select whether the patient is Diagnosed Hypertensive or Non-Hypertensive. Clinical analysis cannot proceed without this confirmation.';
+        setDiagnosisValidationAlert(errorText);
+        voiceManager.speak(errorText, language);
+        const diagEl = document.getElementById('diagnosis-selection-card');
+        if (diagEl) diagEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
+    setDiagnosisValidationAlert(null);
 
     // Validation according to activeTab
     if (activeTab === 'sugar') {
@@ -631,6 +673,9 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
     setSystolic('');
     setDiastolic('');
     setHeartRate('');
+    setDiabetesChoice(null);
+    setHypertensionChoice(null);
+    setDiagnosisValidationAlert(null);
     setEvaluationResult(null);
     setDetectedBpm(null);
     voiceManager.stop();
@@ -688,6 +733,14 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
               </div>
             </div>
             <button
+              type="button"
+              onClick={() => setActiveTab('guide')}
+              className="px-3 py-1.5 rounded-xl bg-teal-500/20 hover:bg-teal-500/30 text-teal-300 text-xs font-bold border border-teal-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5 text-teal-400" />
+              <span>{isUrdu ? 'کیسے چیک کریں؟ آواز میں سنیں' : isRoman ? 'Check Kaise Karein? Audio' : 'How to Test? Voice Guide'}</span>
+            </button>
+            <button
               onClick={() => setActiveTab('history')}
               className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
             >
@@ -698,18 +751,18 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
         </div>
       </div>
 
-      {/* Primary Mode Tabs: Sugar Only, BP Only, Heart Rate Only, All Vitals, Day-by-Day History */}
+      {/* Primary Mode Tabs: Sugar Only, BP Only, Heart Rate Only, All Vitals, Day-by-Day History, How to Test Guide */}
       <div className="flex flex-wrap items-center gap-2 mb-6 bg-slate-100 dark:bg-slate-900/80 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
         <button
           type="button"
           onClick={() => setActiveTab('sugar')}
           className={`flex-1 min-w-[130px] py-3 px-3.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'sugar'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
           }`}
         >
-          <Flame className="w-4 h-4 text-amber-600 dark:text-amber-950" />
+          <Flame className={`w-4 h-4 ${activeTab === 'sugar' ? 'text-white' : 'text-teal-600 dark:text-teal-400'}`} />
           <span>{isUrdu ? 'صرف شوگر ٹیسٹ' : 'Sugar Test Only'}</span>
         </button>
 
@@ -767,6 +820,19 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
             {vitalsHistory.length}
           </span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('guide')}
+          className={`flex-1 min-w-[140px] py-3 px-3.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeTab === 'guide'
+              ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 font-extrabold shadow-md shadow-teal-500/20'
+              : 'text-teal-700 dark:text-teal-300 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30'
+          }`}
+        >
+          <HelpCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <span>{isUrdu ? 'کیسے چیک کریں؟ رہنمائی و آواز' : isRoman ? 'Kaise Check Karein? Guide' : 'How to Test? Guide & Voice'}</span>
+        </button>
       </div>
 
       {/* ========================================================================= */}
@@ -804,15 +870,15 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
             {/* Stat Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               {/* Sugar Average */}
-              <div className="bg-amber-500/5 dark:bg-amber-950/20 border border-amber-500/20 rounded-2xl p-4">
-                <div className="flex items-center justify-between text-xs font-semibold text-amber-700 dark:text-amber-300 mb-1">
+              <div className="bg-teal-500/10 dark:bg-teal-950/20 border border-teal-500/30 rounded-2xl p-4">
+                <div className="flex items-center justify-between text-xs font-semibold text-teal-700 dark:text-teal-300 mb-1">
                   <span className="flex items-center gap-1.5">
-                    <Flame className="w-4 h-4 text-amber-500" />
+                    <Flame className="w-4 h-4 text-teal-500" />
                     {isUrdu ? 'ہفتہ وار اوسط شوگر' : '7-Day Avg Sugar'}
                   </span>
                   <span className="text-[11px] font-mono">mg/dL</span>
                 </div>
-                <div className="text-2xl font-black font-mono text-slate-900 dark:text-amber-200">
+                <div className="text-2xl font-black font-mono text-slate-900 dark:text-teal-200">
                   {weeklyAverages.avgSugar ? `${weeklyAverages.avgSugar}` : '--'}
                 </div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
@@ -944,7 +1010,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                 onClick={() => setHistoryMetricFilter('sugar')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${
                   historyMetricFilter === 'sugar'
-                    ? 'bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40'
+                    ? 'bg-teal-500/20 text-teal-600 dark:text-teal-300 border border-teal-500/40'
                     : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1100,12 +1166,12 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
-                          <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold">
+                          <span className="flex items-center gap-1.5 text-teal-600 dark:text-teal-400 font-bold">
                             <Flame className="w-4 h-4" />
                             {isUrdu ? 'بلڈ شوگر' : 'Blood Sugar'}
                           </span>
                           {item.sugarTiming && (
-                            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-300">
+                            <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-600 dark:text-teal-300">
                               {item.sugarTiming === 'fasting'
                                 ? isUrdu ? 'نہار منہ' : 'Fasting'
                                 : item.sugarTiming === 'post_meal'
@@ -1221,7 +1287,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                       <p className="text-slate-700 dark:text-slate-200 leading-relaxed">
                         {item.sugarStatus?.suggestionUrdu && isUrdu && (
                           <span className="block mb-1">
-                            <strong className="text-amber-500">• شوگر:</strong> {item.sugarStatus.suggestionUrdu}
+                            <strong className="text-teal-600 dark:text-teal-400">• شوگر:</strong> {item.sugarStatus.suggestionUrdu}
                           </span>
                         )}
                         {item.bpStatus?.suggestionUrdu && isUrdu && (
@@ -1312,7 +1378,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                         onClick={() => setManualAddMetric('sugar')}
                         className={`py-2 rounded-xl text-xs font-bold cursor-pointer ${
                           manualAddMetric === 'sugar'
-                            ? 'bg-amber-500 text-slate-950'
+                            ? 'bg-teal-600 text-white shadow-xs'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                         }`}
                       >
@@ -1356,8 +1422,8 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
 
                   {/* Conditional inputs */}
                   {(manualAddMetric === 'sugar' || manualAddMetric === 'all') && (
-                    <div className="bg-amber-50/60 dark:bg-amber-950/20 p-3.5 rounded-2xl border border-amber-200 dark:border-amber-900/40">
-                      <div className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-2">
+                    <div className="bg-teal-50/60 dark:bg-teal-950/20 p-3.5 rounded-2xl border border-teal-200 dark:border-teal-900/40">
+                      <div className="text-xs font-bold text-teal-700 dark:text-teal-300 mb-2">
                         {isUrdu ? 'بلڈ شوگر کی ریڈنگ (mg/dL)' : 'Blood Sugar (mg/dL)'}
                       </div>
                       <div className="grid grid-cols-2 gap-2">
@@ -1366,7 +1432,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                           placeholder="e.g. 105"
                           value={manualSugar}
                           onChange={(e) => setManualSugar(e.target.value)}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-amber-300"
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-teal-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <select
                           value={manualSugarTiming}
@@ -1393,14 +1459,14 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                           placeholder="120"
                           value={manualSystolic}
                           onChange={(e) => setManualSystolic(e.target.value)}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-rose-300 text-center"
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-rose-300 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <input
                           type="number"
                           placeholder="80"
                           value={manualDiastolic}
                           onChange={(e) => setManualDiastolic(e.target.value)}
-                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-rose-300 text-center"
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-rose-300 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
                     </div>
@@ -1416,7 +1482,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                         placeholder="72"
                         value={manualPulse}
                         onChange={(e) => setManualPulse(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-red-300"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-mono font-bold text-slate-900 dark:text-red-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
                   )}
@@ -1447,7 +1513,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
       {/* ========================================================================= */}
       {/* VIEW 2: ACTIVE INPUT CARDS FOR SUGAR / BP / HEART / ALL                   */}
       {/* ========================================================================= */}
-      {activeTab !== 'history' && (
+      {activeTab !== 'history' && activeTab !== 'guide' && (
         <div className="space-y-6">
           {/* Day & Date Selector Bar for the Current Test */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1527,10 +1593,10 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
           >
             {/* 1. BLOOD SUGAR CARD */}
             {(activeTab === 'all' || activeTab === 'sugar') && (
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:border-amber-400 transition-all">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 shadow-sm hover:border-teal-400 transition-all">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                    <div className="w-10 h-10 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400">
                       <Flame className="w-5 h-5" />
                     </div>
                     <div>
@@ -1555,7 +1621,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                       }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer ${
                         sugarUnit === 'mg/dL'
-                          ? 'bg-amber-500 text-slate-950 shadow-xs'
+                          ? 'bg-teal-600 text-white shadow-xs'
                           : 'text-slate-500'
                       }`}
                     >
@@ -1571,7 +1637,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                       }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer ${
                         sugarUnit === 'mmol/L'
-                          ? 'bg-amber-500 text-slate-950 shadow-xs'
+                          ? 'bg-teal-600 text-white shadow-xs'
                           : 'text-slate-500'
                       }`}
                     >
@@ -1598,7 +1664,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                         onClick={() => setSugarTiming(item.key as SugarTestTiming)}
                         className={`py-2 px-1 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
                           sugarTiming === item.key
-                            ? 'bg-amber-500 text-slate-950 shadow-sm'
+                            ? 'bg-teal-600 text-white shadow-sm'
                             : 'bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
                         }`}
                       >
@@ -1608,7 +1674,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                   </div>
                 </div>
 
-                {/* Sugar Input */}
+                {/* Sugar Input - Spin buttons disabled, right padding prevents unit collision */}
                 <div className="relative mb-3">
                   <input
                     type="number"
@@ -1622,11 +1688,11 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                     }
                     value={sugarValue}
                     onChange={(e) => setSugarValue(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl px-4 py-3 text-2xl font-mono font-black text-slate-900 dark:text-amber-300 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl pl-4 pr-24 py-3 text-2xl font-mono font-black text-slate-900 dark:text-teal-300 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <span className="absolute right-4 top-4 text-xs font-bold text-slate-400 uppercase">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none px-2.5 py-1 rounded-xl bg-slate-200/90 dark:bg-slate-800 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider border border-slate-300/60 dark:border-slate-700 shadow-2xs">
                     {sugarTiming === 'hba1c' ? '%' : sugarUnit}
-                  </span>
+                  </div>
                 </div>
 
                 {/* Quick Chips */}
@@ -1725,7 +1791,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                       placeholder="120"
                       value={systolic}
                       onChange={(e) => setSystolic(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 py-3 text-2xl font-mono font-black text-slate-900 dark:text-rose-300 text-center focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 py-3 text-2xl font-mono font-black text-slate-900 dark:text-rose-300 text-center focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
 
@@ -1738,7 +1804,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                       placeholder="80"
                       value={diastolic}
                       onChange={(e) => setDiastolic(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 py-3 text-2xl font-mono font-black text-slate-900 dark:text-rose-300 text-center focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl px-3 py-3 text-2xl font-mono font-black text-slate-900 dark:text-rose-300 text-center focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
                 </div>
@@ -1826,11 +1892,11 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                     placeholder="72"
                     value={heartRate}
                     onChange={(e) => setHeartRate(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl px-4 py-3 text-2xl font-mono font-black text-slate-900 dark:text-red-300 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-2xl pl-4 pr-20 py-3 text-2xl font-mono font-black text-slate-900 dark:text-red-300 focus:outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <span className="absolute right-4 top-4 text-xs font-bold text-slate-400">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none px-2.5 py-1 rounded-xl bg-slate-200/90 dark:bg-slate-800 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider border border-slate-300/60 dark:border-slate-700 shadow-2xs">
                     BPM
-                  </span>
+                  </div>
                 </div>
 
                 {/* Camera Pulse Sensor Button */}
@@ -1859,7 +1925,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                     <button
                       type="button"
                       onClick={() => setHeartRate('56')}
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-100 cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-cyan-50 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800 hover:bg-cyan-100 cursor-pointer"
                     >
                       56 ({isUrdu ? 'کم / ایتھلیٹ' : 'Low'})
                     </button>
@@ -1882,42 +1948,199 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
             )}
           </div>
 
+          {/* MANDATORY DIAGNOSIS CONFIRMATION SECTION */}
+          <div
+            id="diagnosis-selection-card"
+            className={`rounded-3xl p-5 border transition-all ${
+              diagnosisValidationAlert
+                ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 ring-2 ring-rose-500/30 shadow-lg'
+                : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <h4 className="text-sm font-black text-slate-900 dark:text-white">
+                  {isUrdu
+                    ? 'باقاعدہ طبی تشخیص کی لازمی تصدیق (Mandatory Clinical Status)'
+                    : isRoman
+                    ? 'Baqayeda Tibbi Tashkhees Ki Lazmi Tasdeeq'
+                    : 'Mandatory Clinical Diagnosis Confirmation'}
+                </h4>
+              </div>
+              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-teal-100 text-teal-900 dark:bg-teal-900/50 dark:text-teal-200 border border-teal-300 dark:border-teal-700">
+                {isUrdu ? 'تجزیہ کرنے کے لیے کلک کرنا لازمی ہے' : 'Click required to analyze'}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+              {isUrdu
+                ? 'صحیح طبی رہنمائی کے لیے مریض کی سابقہ تشخیص کی تصدیق فرمائیں۔ جب تک آپ تصدیق نہیں کریں گے، سسٹم شوگر یا بی پی کا تجزیہ نہیں کرے گا۔'
+                : isRoman
+                ? 'Sahi tibbi rehnumai ke liye tasdeeq karein. Jab tak aap click nahi karein gy, sugar ya BP analyze nahi hoga.'
+                : 'To deliver clinically accurate ADA/AHA medical evaluation, confirm prior diagnosis. System will not analyze until confirmed.'}
+            </p>
+
+            {/* Validation Alert Box if user attempted to analyze without clicking */}
+            {diagnosisValidationAlert && (
+              <div className="mb-4 p-3.5 bg-rose-100 dark:bg-rose-900/60 border border-rose-300 dark:border-rose-700 rounded-2xl flex items-start gap-2.5 text-xs text-rose-900 dark:text-rose-100 font-bold animate-pulse">
+                <AlertOctagon className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div className="flex-1">{diagnosisValidationAlert}</div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Question 1: Diabetic Status */}
+              {(activeTab === 'all' || activeTab === 'sugar') && (
+                <div className={`p-3.5 rounded-2xl border transition-all ${
+                  diabetesChoice === null
+                    ? 'bg-teal-50/60 dark:bg-teal-950/20 border-teal-300 dark:border-teal-800/60'
+                    : diabetesChoice === 'yes'
+                    ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-400 dark:border-emerald-700'
+                    : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-700'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                      {isUrdu ? '۱. شوگر (ذیابیطس) کی تشخیص:' : '1. Diabetes Diagnosis:'}
+                    </span>
+                    {diabetesChoice === null ? (
+                      <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 animate-pulse">
+                        {isUrdu ? 'انتخاب باقی ہے ⚠️' : 'Selection pending ⚠️'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {isUrdu ? 'تصدیق شدہ' : 'Confirmed'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      id="btn-diagnosed-diabetic-yes"
+                      onClick={() => {
+                        setDiabetesChoice('yes');
+                        setHasDiabetes(true);
+                        setDiagnosisValidationAlert(null);
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                        diabetesChoice === 'yes'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-500/30'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${diabetesChoice === 'yes' ? 'text-white' : 'text-slate-400'}`} />
+                      <span>{isUrdu ? 'شوگر کا مریض ہوں' : 'Diagnosed Diabetic'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="btn-diagnosed-diabetic-no"
+                      onClick={() => {
+                        setDiabetesChoice('no');
+                        setHasDiabetes(false);
+                        setDiagnosisValidationAlert(null);
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                        diabetesChoice === 'no'
+                          ? 'bg-teal-700 text-white border-teal-700 shadow-sm ring-2 ring-teal-500/30'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <span>{isUrdu ? 'شوگر نہیں ہے (عام فرد)' : 'Non-Diabetic'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Question 2: Hypertensive Status */}
+              {(activeTab === 'all' || activeTab === 'bp') && (
+                <div className={`p-3.5 rounded-2xl border transition-all ${
+                  hypertensionChoice === null
+                    ? 'bg-amber-50/60 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60'
+                    : hypertensionChoice === 'yes'
+                    ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-400 dark:border-emerald-700'
+                    : 'bg-slate-50 dark:bg-slate-950 border-slate-300 dark:border-slate-700'
+                }`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-extrabold text-slate-900 dark:text-white">
+                      {isUrdu ? '۲. ہائی بلڈ پریشر کی تشخیص:' : '2. Hypertension Diagnosis:'}
+                    </span>
+                    {hypertensionChoice === null ? (
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 animate-pulse">
+                        {isUrdu ? 'انتخاب باقی ہے ⚠️' : 'Selection pending ⚠️'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {isUrdu ? 'تصدیق شدہ' : 'Confirmed'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      id="btn-diagnosed-hypertensive-yes"
+                      onClick={() => {
+                        setHypertensionChoice('yes');
+                        setHasHypertension(true);
+                        setDiagnosisValidationAlert(null);
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                        hypertensionChoice === 'yes'
+                          ? 'bg-rose-600 text-white border-rose-600 shadow-sm ring-2 ring-rose-500/30'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${hypertensionChoice === 'yes' ? 'text-white' : 'text-slate-400'}`} />
+                      <span>{isUrdu ? 'ہائی بی پی کا مریض ہوں' : 'Diagnosed Hypertensive'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="btn-diagnosed-hypertensive-no"
+                      onClick={() => {
+                        setHypertensionChoice('no');
+                        setHasHypertension(false);
+                        setDiagnosisValidationAlert(null);
+                      }}
+                      className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border ${
+                        hypertensionChoice === 'no'
+                          ? 'bg-teal-700 text-white border-teal-700 shadow-sm ring-2 ring-teal-500/30'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <span>{isUrdu ? 'نارمل / بی پی نہیں ہے' : 'Non-Hypertensive'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Action Row */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4 flex-wrap">
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasDiabetes}
-                  onChange={(e) => setHasDiabetes(e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                <span>{isUrdu ? 'شوگر (ذیابیطس) کا مریض' : 'Diagnosed Diabetic'}</span>
-              </label>
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasHypertension}
-                  onChange={(e) => setHasHypertension(e.target.checked)}
-                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
-                />
-                <span>{isUrdu ? 'ہائی بلڈ پریشر کا مریض' : 'Diagnosed Hypertensive'}</span>
-              </label>
+              <span className="text-xs font-bold text-slate-500">
+                {isUrdu ? 'فوری ری سیٹ:' : 'Quick Controls:'}
+              </span>
+              <button
+                type="button"
+                onClick={clearForm}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
+              >
+                {isUrdu ? 'تمام خانے صاف کریں' : 'Clear Form'}
+              </button>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
                 type="button"
-                onClick={clearForm}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
-              >
-                {isUrdu ? 'صاف کریں' : 'Clear'}
-              </button>
-
-              <button
-                type="button"
+                id="btn-analyze-vitals-action"
                 onClick={handleAnalyze}
-                className="flex-1 sm:flex-none px-6 py-3 rounded-2xl text-sm font-extrabold text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-2xl text-sm font-extrabold text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>
@@ -2176,7 +2399,31 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
               </div>
             </div>
           )}
+
+          {/* Inline Step-by-Step Testing Guide with Audio */}
+          <VitalsMeasurementGuide
+            currentLanguage={language}
+            defaultSection={activeTab === 'all' ? 'app' : (activeTab as 'sugar' | 'bp' | 'heart')}
+            onSelectVitalToTest={(type) => {
+              setActiveTab(type);
+              window.scrollTo({ top: 380, behavior: 'smooth' });
+            }}
+          />
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 3: DEDICATED HOW-TO-TEST VOICE & MULTI-LINGUAL GUIDE                  */}
+      {/* ========================================================================= */}
+      {activeTab === 'guide' && (
+        <VitalsMeasurementGuide
+          currentLanguage={language}
+          defaultSection="sugar"
+          onSelectVitalToTest={(type) => {
+            setActiveTab(type);
+            window.scrollTo({ top: 380, behavior: 'smooth' });
+          }}
+        />
       )}
 
       {/* Honest Transparency Notice */}

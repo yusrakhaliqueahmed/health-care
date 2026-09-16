@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   SupportedLanguage,
   NavigationTab,
@@ -595,6 +596,8 @@ export default function App() {
               }}
               onSaveRecord={handleSaveUnifiedRecord}
               userName={currentUser?.name}
+              onNavigateToTab={setActiveTab}
+              currentUser={currentUser}
             />
           )}
 
@@ -681,142 +684,114 @@ export default function App() {
       </main>
       )}
 
-      {/* Mobile Bottom Navigation Bar (< lg screens) */}
-      {isMainAppActive && (
-        <nav
-          id="mobile-bottom-nav"
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#0c2f28]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/70 shadow-lg px-2 py-1.5 flex items-center justify-around select-none safe-area-inset-bottom"
-          aria-label="Mobile Navigation"
-        >
-          <button
-            type="button"
-            onClick={() => setActiveTab('home')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-              activeTab === 'home'
-                ? 'text-teal-600 dark:text-teal-300 font-bold'
-                : 'text-slate-500 dark:text-teal-200/70'
-            }`}
+      {/* Mobile Bottom Navigation Bar (< lg screens) with Fluid Framer Motion */}
+      <AnimatePresence>
+        {isMainAppActive && (
+          <motion.nav
+            id="mobile-bottom-nav"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#071a16]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/60 shadow-lg px-2 py-1.5 flex items-center justify-around select-none safe-area-inset-bottom"
+            aria-label="Mobile Navigation"
           >
-            <LayoutDashboard className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] leading-tight">
-              {t.navHome}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('symptoms')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-              activeTab === 'symptoms'
-                ? 'text-teal-600 dark:text-teal-300 font-bold'
-                : 'text-slate-500 dark:text-teal-200/70'
-            }`}
-          >
-            <Stethoscope className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] leading-tight">
-              {t.navSymptoms}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('medicine')}
-            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-colors min-w-[54px] ${
-              activeTab === 'medicine'
-                ? 'text-teal-600 dark:text-teal-300 font-bold'
-                : 'text-slate-500 dark:text-teal-200/70'
-            }`}
-          >
-            <Pill className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] leading-tight">
-              {t.navMedicine}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('reports')}
-            className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] ${
-              activeTab === 'reports'
-                ? 'text-teal-600 dark:text-teal-300 font-bold'
-                : 'text-slate-500 dark:text-teal-200/70'
-            }`}
-          >
-            <FileText className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] leading-tight">
-              {t.navReports}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('vitals')}
-            className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] ${
-              activeTab === 'vitals'
-                ? 'text-teal-600 dark:text-teal-300 font-bold'
-                : 'text-slate-500 dark:text-teal-200/70'
-            }`}
-          >
-            <Activity className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] leading-tight">
-              {currentLanguage === 'ur' ? 'وائٹلز' : currentLanguage === 'roman' ? 'Vitals' : 'Vitals'}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('care')}
-            className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] ${
-              activeTab === 'care'
-                ? 'text-teal-600 dark:text-teal-300 font-bold'
-                : 'text-slate-500 dark:text-teal-200/70'
-            }`}
-          >
-            <MapPin className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] leading-tight">
-              {t.navNearby}
-            </span>
-          </button>
-        </nav>
-      )}
+            {[
+              { id: 'home', label: t.navHome, icon: LayoutDashboard },
+              { id: 'symptoms', label: t.navSymptoms, icon: Stethoscope },
+              { id: 'medicine', label: t.navMedicine, icon: Pill },
+              { id: 'reports', label: t.navReports, icon: FileText },
+              {
+                id: 'vitals',
+                label: currentLanguage === 'ur' ? 'وائٹلز' : currentLanguage === 'roman' ? 'Vitals' : 'Vitals',
+                icon: Activity,
+              },
+              { id: 'care', label: t.navNearby, icon: MapPin },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <motion.button
+                  key={item.id}
+                  id={`mobile-nav-btn-${item.id}`}
+                  type="button"
+                  onClick={() => setActiveTab(item.id as NavigationTab)}
+                  whileTap={{ scale: 0.92 }}
+                  className={`relative flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] cursor-pointer ${
+                    isActive
+                      ? 'text-teal-700 dark:text-teal-300 font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="mobile-bottom-active-pill"
+                      className="absolute inset-0 bg-teal-50 dark:bg-teal-950/70 border border-teal-200/70 dark:border-teal-800/70 rounded-xl -z-10 shadow-2xs"
+                      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    />
+                  )}
+                  <Icon
+                    className={`w-5 h-5 mb-0.5 transition-transform ${
+                      isActive ? 'scale-110 text-teal-600 dark:text-teal-300' : ''
+                    }`}
+                  />
+                  <span className="text-[10px] leading-tight truncate">
+                    {item.label}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </motion.nav>
+        )}
+      </AnimatePresence>
 
       {/* Floating Action Buttons: Refined Clinical Support & Emergency 1122 Dispatch */}
-      {isMainAppActive && !showDisclaimer && (
-        <div
-          id="floating-actions-dock"
-          className="fixed bottom-[74px] right-3 sm:bottom-[78px] sm:right-6 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 pointer-events-auto transition-all duration-200"
-        >
-          {/* Medical Support / Quick Message */}
-          <button
-            type="button"
-            id="fab-quick-message-btn"
-            onClick={() => setShowQuickMessageModal(true)}
-            className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer border border-teal-400/40 text-xs font-bold"
-            title={currentLanguage === 'ur' ? 'طبی سپورٹ اور فوری پیغام' : 'Quick Medical Message & Triage Support'}
-            aria-label="Medical Support"
+      <AnimatePresence>
+        {isMainAppActive && !showDisclaimer && (
+          <motion.div
+            id="floating-actions-dock"
+            initial={{ y: 20, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 300, delay: 0.1 }}
+            className="fixed bottom-[74px] right-3 sm:bottom-[78px] sm:right-6 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 pointer-events-auto"
           >
-            <MessageSquare className="w-4 h-4 text-white shrink-0" />
-            <span>
-              {currentLanguage === 'ur' ? 'طبی مدد' : currentLanguage === 'roman' ? 'Madad' : 'Support'}
-            </span>
-          </button>
+            {/* Medical Support / Quick Message */}
+            <motion.button
+              type="button"
+              id="fab-quick-message-btn"
+              onClick={() => setShowQuickMessageModal(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white rounded-full shadow-lg shadow-teal-600/25 hover:shadow-xl transition-shadow cursor-pointer border border-teal-400/40 text-xs font-bold"
+              title={currentLanguage === 'ur' ? 'طبی سپورٹ اور فوری پیغام' : 'Quick Medical Message & Triage Support'}
+              aria-label="Medical Support"
+            >
+              <MessageSquare className="w-4 h-4 text-white shrink-0" />
+              <span>
+                {currentLanguage === 'ur' ? 'طبی مدد' : currentLanguage === 'roman' ? 'Madad' : 'Support'}
+              </span>
+            </motion.button>
 
-          {/* Rescue 1122 Emergency SOS Hotline */}
-          <button
-            type="button"
-            id="fab-emergency-helpline"
-            onClick={() => setShowEmergencyCallModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer border border-rose-400/40 text-xs font-bold"
-            title={t.navEmergency}
-            aria-label="Call Emergency Helpline (1122)"
-          >
-            <PhoneCall className="w-4 h-4 shrink-0 animate-pulse" />
-            <span>
-              {currentLanguage === 'ur' ? '1122 ایمرجنسی' : '1122 SOS'}
-            </span>
-          </button>
-        </div>
-      )}
+            {/* Rescue 1122 Emergency SOS Hotline */}
+            <motion.button
+              type="button"
+              id="fab-emergency-helpline"
+              onClick={() => setShowEmergencyCallModal(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow cursor-pointer border border-rose-400/40 text-xs font-bold"
+              title={t.navEmergency}
+              aria-label="Call Emergency Helpline (1122)"
+            >
+              <PhoneCall className="w-4 h-4 shrink-0 animate-pulse" />
+              <span>
+                {currentLanguage === 'ur' ? '1122 ایمرجنسی' : '1122 SOS'}
+              </span>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Emergency Call Modal */}
       <EmergencyCallModal

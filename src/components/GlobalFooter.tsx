@@ -30,7 +30,7 @@ export const GlobalFooter: React.FC<GlobalFooterProps> = ({
   return (
     <footer
       id="sehatsaathi-global-footer"
-      className="mt-16 border-t border-slate-200 dark:border-slate-800/80 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-[#081d18] text-slate-700 dark:text-slate-300 transition-colors"
+      className="mt-16 border-t border-slate-200 dark:border-slate-800/80 bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-[#0a0f1d] text-slate-700 dark:text-slate-300 transition-colors"
     >
       {/* Top Banner with Emergency Helpline & 24/7 Doctor Network */}
       <div className="border-b border-slate-800 bg-slate-900 text-slate-100 px-4 py-3">
@@ -209,7 +209,7 @@ export const GlobalFooter: React.FC<GlobalFooterProps> = ({
                 <button
                   type="button"
                   onClick={() => onNavigateTab('doctor_portal')}
-                  className="text-teal-700 dark:text-teal-400 font-bold hover:underline flex items-center space-x-1 rtl:space-x-reverse"
+                  className="text-teal-700 dark:text-teal-400 font-bold hover:underline flex items-center space-x-1 rtl:space-x-reverse cursor-pointer"
                 >
                   <span>{t.navDoctorPortal}</span>
                 </button>
@@ -286,7 +286,7 @@ export const GlobalFooter: React.FC<GlobalFooterProps> = ({
             <button
               type="button"
               onClick={onOpenDisclaimer}
-              className="text-teal-700 dark:text-teal-400 underline hover:text-teal-800"
+              className="text-teal-700 dark:text-teal-400 underline hover:text-teal-800 cursor-pointer"
             >
               {isUrdu
                 ? 'مکمل طبی دستبرداری و شرائط استعمال'

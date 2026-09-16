@@ -682,6 +682,37 @@ class VoiceService {
       'بہتر': 'behtar',
       'شدید': 'shadeed',
       'ہلکا': 'halka',
+      'ہلکی': 'halki',
+      'الٹی': 'ulti',
+      'متلی': 'matli',
+      'پیٹ': 'pait',
+      'گلا': 'gala',
+      'خراب': 'kharab',
+      'جسم': 'jism',
+      'تھکن': 'thakan',
+      'الرجی': 'allergy',
+      'نزلا': 'nazla',
+      'نزلہ': 'nazla',
+      'زکام': 'zukaam',
+      'اینٹی بائیوٹک': 'antibiotic',
+      'پیناڈول': 'panadol',
+      'بروفین': 'brufen',
+      'ڈسپرین': 'disprin',
+      'گولیاں': 'goliyan',
+      'ایک': 'ek',
+      'دو': 'do',
+      'تین': 'teen',
+      'چار': 'chaar',
+      'پانچ': 'paanch',
+      'دن': 'din',
+      'ہفتے': 'haftay',
+      'گھنٹے': 'ghantay',
+      'مجھے': 'mujhe',
+      'میرا': 'mera',
+      'میری': 'meri',
+      'میرے': 'mere',
+      'ہم': 'hum',
+      'تم': 'tum',
     };
 
     return urduText
@@ -895,9 +926,13 @@ export function createSpeechRecognizer(): SpeechRecognitionHelper {
             }
             if (current.trim()) {
               accumulatedTranscript = current.trim();
-              // For English and Urdu, emit browser result immediately
               if (lang === 'en' || lang === 'ur') {
                 onResult(accumulatedTranscript);
+              } else if (lang === 'roman') {
+                // Instantly transliterate browser Urdu speech result into clean Roman Urdu
+                // so the patient gets live feedback in their input field in real time!
+                const liveRoman = voiceManager.transliterateUrduScriptToRoman(accumulatedTranscript);
+                onResult(liveRoman || accumulatedTranscript);
               }
             }
           };
@@ -912,7 +947,7 @@ export function createSpeechRecognizer(): SpeechRecognitionHelper {
           };
 
           recognitionInstance.onend = () => {
-            if (isListening && accumulatedTranscript.trim() && (lang === 'en' || lang === 'ur')) {
+            if (isListening && accumulatedTranscript.trim()) {
               stopAll();
               if (onEnd) onEnd();
             }

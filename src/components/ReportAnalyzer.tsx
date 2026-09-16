@@ -452,8 +452,8 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
       {analysisResult && (
         <div className="space-y-4 animate-in fade-in duration-300">
           {/* Permanent Record Confirmation Alert */}
-          <div className="flex items-center gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-950/70 border border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-100 shadow-xs">
-            <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0" />
+          <div className="flex items-center gap-2.5 p-3 sm:p-3.5 rounded-2xl bg-teal-50 dark:bg-teal-950/70 border border-teal-300 dark:border-teal-700 text-teal-950 dark:text-teal-100 shadow-xs">
+            <CheckCircle2 className="w-5 h-5 text-teal-600 dark:text-teal-400 shrink-0" />
             <div className="text-xs sm:text-sm font-semibold">
               {currentLanguage === 'ur' ? (
                 <span>

@@ -644,7 +644,7 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
             {[
               { id: 'worsening', label: 'Worsening', ur: 'وقت کے ساتھ بڑھ رہا ہے', roman: 'Barh raha hai', color: 'text-red-600' },
               { id: 'constant', label: 'Constant / Same', ur: 'ایک جیسا برقرار ہے', roman: 'Waisa hi hai', color: 'text-amber-600' },
-              { id: 'fluctuating', label: 'Comes & Goes', ur: 'آتا جاتا رہتا ہے', roman: 'Aata jaata rehta hai', color: 'text-blue-600' },
+              { id: 'fluctuating', label: 'Comes & Goes', ur: 'آتا جاتا رہتا ہے', roman: 'Aata jaata rehta hai', color: 'text-teal-600' },
               { id: 'improving', label: 'Improving', ur: 'پہلے سے بہتر ہو رہا ہے', roman: 'Behtar ho raha hai', color: 'text-emerald-600' },
             ].map((p) => (
               <button
