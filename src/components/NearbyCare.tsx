@@ -271,6 +271,10 @@ export const NearbyCare: React.FC<NearbyCareProps> = ({
                         alt={doc.name}
                         className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-slate-800 shadow-xs shrink-0"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80';
+                        }}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">

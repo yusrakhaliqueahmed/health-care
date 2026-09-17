@@ -117,17 +117,6 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Mobile Top User Button */}
-          <button
-            type="button"
-            onClick={onOpenLogin}
-            className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-2 py-1.5 sm:px-2.5 sm:py-2 rounded-xl text-xs font-semibold min-h-[38px] shrink-0 border border-slate-200/80 dark:border-slate-700"
-            title={`Logged in as ${displayName}. Click to switch user`}
-          >
-            <User className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
-            <span className="hidden sm:inline max-w-[60px] truncate">{displayName.split(' ')[0]}</span>
-          </button>
-
           {/* Mobile Top Language Switcher */}
           <LanguageSelector
             currentLanguage={currentLanguage}
@@ -135,47 +124,44 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
             compact
           />
 
-          {/* Dual Action: Emergency Call & Quick Message (Mobile) */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              id="header-mobile-call-btn"
-              onClick={onOpenEmergencyCall || (() => { window.location.href = 'tel:1122'; })}
-              className="flex items-center gap-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs min-h-[38px] cursor-pointer transition-transform"
-              title="Call Rescue 1122 Ambulance"
-            >
-              <PhoneCall className="w-3.5 h-3.5" />
-              <span className="text-[11px] sm:text-xs">1122</span>
-            </button>
+          {/* Emergency 1122 Call (Mobile) */}
+          <button
+            type="button"
+            id="header-mobile-call-btn"
+            onClick={onOpenEmergencyCall || (() => { window.location.href = 'tel:1122'; })}
+            className="flex items-center gap-1 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-2xs min-h-[38px] cursor-pointer transition-transform shrink-0"
+            title="Call Rescue 1122 Ambulance"
+          >
+            <PhoneCall className="w-3.5 h-3.5 shrink-0" />
+            <span className="text-[11px] font-bold">1122</span>
+          </button>
 
-            <button
-              type="button"
-              id="header-mobile-msg-btn"
-              onClick={onOpenQuickMessage}
-              className="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold shadow-xs min-h-[38px] cursor-pointer transition-transform"
-              title="Quick Medical Message / WhatsApp"
-            >
-              <MessageSquare className="w-3.5 h-3.5" />
-              <span className="text-[11px] sm:text-xs">{currentLanguage === 'ur' ? 'پیغام' : 'Msg'}</span>
-            </button>
-          </div>
+          {/* Mobile User Avatar Button */}
+          <button
+            type="button"
+            onClick={onOpenLogin}
+            className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center text-xs font-bold shrink-0 border border-slate-200/80 dark:border-slate-700 cursor-pointer"
+            title={`Logged in as ${displayName}. Click to switch user`}
+          >
+            <span className="text-teal-700 dark:text-teal-300 font-bold text-xs">{displayName.charAt(0).toUpperCase()}</span>
+          </button>
         </div>
       </div>
 
       {/* Main Executive Medical Application Bar */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-2 px-1">
-        <div>
+      <header className="flex items-center justify-between gap-3 py-1 sm:py-2 px-1">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200/60 dark:border-teal-800/60">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/60 px-2 py-0.5 rounded-md border border-teal-200/60 dark:border-teal-800/60 shrink-0">
               {getTabLabel(activeTab)}
             </span>
             <span className="text-slate-300 dark:text-slate-700">•</span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
               {new Date().toLocaleDateString('en-PK', { weekday: 'short', day: 'numeric', month: 'short' })}
             </span>
           </div>
 
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white tracking-tight mt-1">
+          <h1 className="text-lg sm:text-2xl font-bold text-slate-800 dark:text-white tracking-tight mt-1 truncate">
             {currentLanguage === 'ur'
               ? `السلام علیکم، ${displayName}!`
               : currentLanguage === 'roman'
@@ -184,8 +170,45 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
           </h1>
         </div>
 
-        {/* Top-Right Controls: Doctor Status, Voice, Emergency, Language, User Badge */}
-        <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap sm:flex-nowrap">
+        {/* Mobile & Tablet Quick Controls (< lg) */}
+        <div className="flex lg:hidden items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            id="guidance-voice-btn-mobile"
+            onClick={() => {
+              const greeting =
+                currentLanguage === 'ur'
+                  ? `السلام علیکم، ${displayName}!`
+                  : currentLanguage === 'roman'
+                  ? `Assalam-o-Alaikum, ${displayName}!`
+                  : `Welcome, ${displayName}!`;
+              const question =
+                currentLanguage === 'ur'
+                  ? 'آپ کی صحت کے لیے صحت ساتھی حاضر ہے۔'
+                  : currentLanguage === 'roman'
+                  ? 'Aapki sehat ke liye SehatSaathi hazir hai.'
+                  : 'Your digital health companion is ready to assist you.';
+              voiceManager.speak(`${greeting} ${question}`, currentLanguage);
+            }}
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs cursor-pointer flex items-center gap-1 min-h-[38px]"
+            title={t.audioPlay}
+          >
+            <Volume2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span className="hidden sm:inline text-xs">{t.audioPlay}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenDisclaimer}
+            className="w-9 h-9 sm:w-10 sm:h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-2xs hover:border-teal-400 transition-colors cursor-pointer shrink-0"
+            title="Safety Disclaimer & PMDC Guidelines"
+          >
+            <Bell className="w-4 h-4 text-slate-600 dark:text-slate-300" />
+          </button>
+        </div>
+
+        {/* Desktop-Only Full Controls (>= lg) */}
+        <div className="hidden lg:flex items-center gap-2.5 shrink-0">
           {/* Teleconsultation Duty Status Badge */}
           <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 text-xs font-semibold text-teal-800 dark:text-teal-300 shadow-2xs">
             <span className="relative flex h-2 w-2">

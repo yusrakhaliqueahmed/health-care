@@ -58,6 +58,10 @@ export const TeleconsultBookingModal: React.FC<TeleconsultBookingModalProps> = (
               alt={doctor.name}
               className="w-14 h-14 rounded-2xl object-cover border border-teal-200"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80';
+              }}
             />
             <div>
               <h3 className="text-base font-extrabold text-slate-900 dark:text-white">

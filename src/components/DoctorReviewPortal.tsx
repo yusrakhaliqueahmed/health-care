@@ -421,6 +421,10 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
                         alt={doc.name}
                         className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                         referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src =
+                            'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80';
+                        }}
                       />
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">

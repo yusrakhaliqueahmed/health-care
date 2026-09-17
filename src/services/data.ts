@@ -64,7 +64,7 @@ export const INITIAL_DOCTORS: Doctor[] = [
     languages: ['Urdu', 'English'],
     phone: '+92-333-7819201',
     isOnlineAvailable: true,
-    avatarUrl: 'https://images.unsplash.com/photo-1594824813581-2c676fef30e5?w=400&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://images.unsplash.com/photo-1551601651-2a8555f1a136?w=400&auto=format&fit=crop&q=80',
     experienceYears: 12,
     isDemoPlaceholder: true,
     isVerified: false,

@@ -448,6 +448,40 @@ export default function App() {
     }).catch((e) => console.warn('Sync error:', e));
   };
 
+  const getMobileNavLabel = (tabId: string): string => {
+    if (currentLanguage === 'ur') {
+      switch (tabId) {
+        case 'home': return 'ہوم';
+        case 'symptoms': return 'علامات';
+        case 'medicine': return 'ادویات';
+        case 'reports': return 'رپورٹس';
+        case 'vitals': return 'وائٹلز';
+        case 'care': return 'ڈاکٹرز';
+        default: return '';
+      }
+    }
+    if (currentLanguage === 'roman') {
+      switch (tabId) {
+        case 'home': return 'Home';
+        case 'symptoms': return 'Alamaat';
+        case 'medicine': return 'Dawa';
+        case 'reports': return 'Reports';
+        case 'vitals': return 'Vitals';
+        case 'care': return 'Doctors';
+        default: return '';
+      }
+    }
+    switch (tabId) {
+      case 'home': return 'Home';
+      case 'symptoms': return 'Symptoms';
+      case 'medicine': return 'Medicine';
+      case 'reports': return 'Reports';
+      case 'vitals': return 'Vitals';
+      case 'care': return 'Doctors';
+      default: return '';
+    }
+  };
+
   const isMainAppActive = !showSplash && hasAcknowledgedDisclaimer && hasLoggedIn;
 
   return (
@@ -693,23 +727,20 @@ export default function App() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 80, opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-            className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#071a16]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/60 shadow-lg px-2 py-1.5 flex items-center justify-around select-none safe-area-inset-bottom"
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#071a16]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/60 shadow-lg px-1 py-1.5 flex items-center justify-between select-none safe-area-inset-bottom"
             aria-label="Mobile Navigation"
           >
             {[
-              { id: 'home', label: t.navHome, icon: LayoutDashboard },
-              { id: 'symptoms', label: t.navSymptoms, icon: Stethoscope },
-              { id: 'medicine', label: t.navMedicine, icon: Pill },
-              { id: 'reports', label: t.navReports, icon: FileText },
-              {
-                id: 'vitals',
-                label: currentLanguage === 'ur' ? 'وائٹلز' : currentLanguage === 'roman' ? 'Vitals' : 'Vitals',
-                icon: Activity,
-              },
-              { id: 'care', label: t.navNearby, icon: MapPin },
+              { id: 'home', icon: LayoutDashboard },
+              { id: 'symptoms', icon: Stethoscope },
+              { id: 'medicine', icon: Pill },
+              { id: 'reports', icon: FileText },
+              { id: 'vitals', icon: Activity },
+              { id: 'care', icon: MapPin },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
+              const label = getMobileNavLabel(item.id);
               return (
                 <motion.button
                   key={item.id}
@@ -717,7 +748,7 @@ export default function App() {
                   type="button"
                   onClick={() => setActiveTab(item.id as NavigationTab)}
                   whileTap={{ scale: 0.92 }}
-                  className={`relative flex flex-col items-center justify-center py-1 px-1.5 rounded-xl transition-colors min-w-[50px] cursor-pointer ${
+                  className={`relative flex-1 min-w-0 max-w-[16.666%] flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-colors cursor-pointer ${
                     isActive
                       ? 'text-teal-700 dark:text-teal-300 font-bold'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -731,12 +762,12 @@ export default function App() {
                     />
                   )}
                   <Icon
-                    className={`w-5 h-5 mb-0.5 transition-transform ${
+                    className={`w-5 h-5 mb-0.5 shrink-0 transition-transform ${
                       isActive ? 'scale-110 text-teal-600 dark:text-teal-300' : ''
                     }`}
                   />
-                  <span className="text-[10px] leading-tight truncate">
-                    {item.label}
+                  <span className="text-[10px] sm:text-[11px] font-medium leading-tight truncate w-full block text-center mt-0.5 px-0.5">
+                    {label}
                   </span>
                 </motion.button>
               );
