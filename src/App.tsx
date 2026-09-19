@@ -52,6 +52,18 @@ import {
   UserCheck,
 } from 'lucide-react';
 
+const TAB_INDEX_MAP: Record<NavigationTab, number> = {
+  home: 0,
+  symptoms: 1,
+  medicine: 2,
+  reports: 3,
+  vitals: 4,
+  care: 5,
+  emergency: 6,
+  records: 7,
+  doctor_portal: 8,
+};
+
 export default function App() {
   const [showSplash, setShowSplash] = useState<boolean>(true);
   const [hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer] = useState<boolean>(false);
@@ -69,6 +81,21 @@ export default function App() {
   });
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const [activeTab, setActiveTab] = useState<NavigationTab>('home');
+  const [tabDirection, setTabDirection] = useState<number>(1);
+
+  const navigateToTab = (newTab: NavigationTab) => {
+    if (newTab === activeTab) return;
+    const currentIdx = TAB_INDEX_MAP[activeTab] ?? 0;
+    const nextIdx = TAB_INDEX_MAP[newTab] ?? 0;
+    setTabDirection(nextIdx >= currentIdx ? 1 : -1);
+    setActiveTab(newTab);
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const isDarkModeDefault = false;
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -484,6 +511,32 @@ export default function App() {
 
   const isMainAppActive = !showSplash && hasAcknowledgedDisclaimer && hasLoggedIn;
 
+  const isRTL = currentLanguage === 'ur';
+
+  // Smooth slide-in page transition variants with directional & RTL awareness
+  const tabVariants = {
+    initial: (dir: number) => ({
+      opacity: 0,
+      x: (isRTL ? -1 : 1) * (dir >= 0 ? 32 : -32),
+    }),
+    animate: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        x: { type: 'spring', stiffness: 340, damping: 32, mass: 0.8 },
+        opacity: { duration: 0.22, ease: 'easeOut' },
+      },
+    },
+    exit: (dir: number) => ({
+      opacity: 0,
+      x: (isRTL ? -1 : 1) * (dir >= 0 ? -28 : 28),
+      transition: {
+        x: { duration: 0.16, ease: [0.4, 0, 1, 1] },
+        opacity: { duration: 0.16, ease: 'easeIn' },
+      },
+    }),
+  };
+
   return (
     <div
       dir="ltr"
@@ -558,7 +611,7 @@ export default function App() {
         <Sidebar
           currentLanguage={currentLanguage}
           activeTab={activeTab}
-          onNavigate={setActiveTab}
+          onNavigate={navigateToTab}
           pendingDoctorReviewsCount={pendingCases.length}
           isDarkMode={isDarkMode}
           onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
@@ -585,7 +638,7 @@ export default function App() {
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           onOpenDisclaimer={() => setShowDisclaimer(true)}
           onOpenLogin={() => setShowLoginModal(true)}
-          onNavigate={setActiveTab}
+          onNavigate={navigateToTab}
           voiceAutoPlay={voiceAutoPlay}
           onToggleVoiceAutoPlay={toggleVoiceAutoPlay}
           onSelectLanguage={setCurrentLanguage}
@@ -593,126 +646,138 @@ export default function App() {
           onOpenQuickMessage={() => setShowQuickMessageModal(true)}
         />
 
-        <div className="flex-1 min-h-0">
-          {activeTab === 'home' && (
-            <HeroLanding
-              currentLanguage={currentLanguage}
-              pendingDoctorReviewsCount={pendingCases.length}
-              currentUser={currentUser}
-              patientProfiles={patientProfiles}
-              prescriptionsCount={prescriptions.length}
-              onNavigate={setActiveTab}
-              onEmergencyCall={() => setActiveTab('emergency')}
-              onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
-              onOpenQuickMessage={() => setShowQuickMessageModal(true)}
-              onOpenDisclaimer={() => setShowDisclaimer(true)}
-              onReplaySplash={() => setShowSplash(true)}
-              onSaveSearchRecord={handleSaveUnifiedRecord}
-            />
-          )}
+        <div className="flex-1 min-h-0 relative overflow-x-hidden">
+          <AnimatePresence mode="wait" custom={tabDirection}>
+            <motion.div
+              key={activeTab}
+              custom={tabDirection}
+              variants={tabVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="w-full flex-1"
+            >
+              {activeTab === 'home' && (
+                <HeroLanding
+                  currentLanguage={currentLanguage}
+                  pendingDoctorReviewsCount={pendingCases.length}
+                  currentUser={currentUser}
+                  patientProfiles={patientProfiles}
+                  prescriptionsCount={prescriptions.length}
+                  onNavigate={navigateToTab}
+                  onEmergencyCall={() => navigateToTab('emergency')}
+                  onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
+                  onOpenQuickMessage={() => setShowQuickMessageModal(true)}
+                  onOpenDisclaimer={() => setShowDisclaimer(true)}
+                  onReplaySplash={() => setShowSplash(true)}
+                  onSaveSearchRecord={handleSaveUnifiedRecord}
+                />
+              )}
 
-          {activeTab === 'symptoms' && (
-            <SymptomChecker
-              currentLanguage={currentLanguage}
-              patientProfiles={patientProfiles}
-              currentUser={currentUser}
-              onAddCaseForDoctorReview={handleAddCaseForDoctorReview}
-              onEmergencyCall={() => setActiveTab('emergency')}
-            />
-          )}
+              {activeTab === 'symptoms' && (
+                <SymptomChecker
+                  currentLanguage={currentLanguage}
+                  patientProfiles={patientProfiles}
+                  currentUser={currentUser}
+                  onAddCaseForDoctorReview={handleAddCaseForDoctorReview}
+                  onEmergencyCall={() => navigateToTab('emergency')}
+                />
+              )}
 
-          {activeTab === 'medicine' && (
-            <MedicineChecker
-              currentLanguage={currentLanguage}
-              patientProfiles={patientProfiles}
-              onNavigateToCare={(filter) => {
-                setActiveTab('care');
-              }}
-              onSaveRecord={handleSaveUnifiedRecord}
-              userName={currentUser?.name}
-              onNavigateToTab={setActiveTab}
-              currentUser={currentUser}
-            />
-          )}
+              {activeTab === 'medicine' && (
+                <MedicineChecker
+                  currentLanguage={currentLanguage}
+                  patientProfiles={patientProfiles}
+                  onNavigateToCare={(filter) => {
+                    navigateToTab('care');
+                  }}
+                  onSaveRecord={handleSaveUnifiedRecord}
+                  userName={currentUser?.name}
+                  onNavigateToTab={navigateToTab}
+                  currentUser={currentUser}
+                />
+              )}
 
-          {activeTab === 'reports' && (
-            <ReportAnalyzer
-              currentLanguage={currentLanguage}
-              onSaveToRecords={handleSaveReport}
-              onSaveUnifiedRecord={handleSaveUnifiedRecord}
-              userName={currentUser?.name}
-            />
-          )}
+              {activeTab === 'reports' && (
+                <ReportAnalyzer
+                  currentLanguage={currentLanguage}
+                  onSaveToRecords={handleSaveReport}
+                  onSaveUnifiedRecord={handleSaveUnifiedRecord}
+                  userName={currentUser?.name}
+                />
+              )}
 
-          {activeTab === 'vitals' && (
-            <VitalsTracker
-              language={currentLanguage}
-              activeProfile={
-                patientProfiles[0] || {
-                  id: 'prof-self',
-                  name: currentUser?.name || 'Patient',
-                  relation: 'Self',
-                  ageGroup: 'adult',
-                  exactAge: 32,
-                  gender: 'male',
-                  conditions: '',
-                  medications: '',
-                  allergies: '',
-                }
-              }
-              profiles={patientProfiles}
-              onSelectProfile={(p) => {
-                const idx = patientProfiles.findIndex((prof) => prof.id === p.id);
-                if (idx !== -1) {
-                  const reordered = [...patientProfiles];
-                  const [selected] = reordered.splice(idx, 1);
-                  reordered.unshift(selected);
-                  setPatientProfiles(reordered);
-                }
-              }}
-              onSaveRecord={handleSaveUnifiedRecord}
-              onNavigateToRecords={() => setActiveTab('records')}
-              onNavigateToEmergency={() => setActiveTab('emergency')}
-              onNavigateToCare={() => setActiveTab('care')}
-            />
-          )}
+              {activeTab === 'vitals' && (
+                <VitalsTracker
+                  language={currentLanguage}
+                  activeProfile={
+                    patientProfiles[0] || {
+                      id: 'prof-self',
+                      name: currentUser?.name || 'Patient',
+                      relation: 'Self',
+                      ageGroup: 'adult',
+                      exactAge: 32,
+                      gender: 'male',
+                      conditions: '',
+                      medications: '',
+                      allergies: '',
+                    }
+                  }
+                  profiles={patientProfiles}
+                  onSelectProfile={(p) => {
+                    const idx = patientProfiles.findIndex((prof) => prof.id === p.id);
+                    if (idx !== -1) {
+                      const reordered = [...patientProfiles];
+                      const [selected] = reordered.splice(idx, 1);
+                      reordered.unshift(selected);
+                      setPatientProfiles(reordered);
+                    }
+                  }}
+                  onSaveRecord={handleSaveUnifiedRecord}
+                  onNavigateToRecords={() => navigateToTab('records')}
+                  onNavigateToEmergency={() => navigateToTab('emergency')}
+                  onNavigateToCare={() => navigateToTab('care')}
+                />
+              )}
 
-          {activeTab === 'care' && (
-            <NearbyCare
-              currentLanguage={currentLanguage}
-              onBookDoctor={(doc) => setBookingDoctor(doc)}
-            />
-          )}
+              {activeTab === 'care' && (
+                <NearbyCare
+                  currentLanguage={currentLanguage}
+                  onBookDoctor={(doc) => setBookingDoctor(doc)}
+                />
+              )}
 
-          {activeTab === 'emergency' && (
-            <EmergencyCare currentLanguage={currentLanguage} />
-          )}
+              {activeTab === 'emergency' && (
+                <EmergencyCare currentLanguage={currentLanguage} />
+              )}
 
-          {activeTab === 'records' && (
-            <HealthRecords
-              currentLanguage={currentLanguage}
-              patientProfiles={patientProfiles}
-              prescriptions={prescriptions}
-              reports={reports}
-              onAddProfile={handleAddProfile}
-              currentUser={currentUser}
-              onNavigateToTab={(tab) => setActiveTab(tab as any)}
-            />
-          )}
+              {activeTab === 'records' && (
+                <HealthRecords
+                  currentLanguage={currentLanguage}
+                  patientProfiles={patientProfiles}
+                  prescriptions={prescriptions}
+                  reports={reports}
+                  onAddProfile={handleAddProfile}
+                  currentUser={currentUser}
+                  onNavigateToTab={(tab) => navigateToTab(tab as any)}
+                />
+              )}
 
-          {activeTab === 'doctor_portal' && (
-            <DoctorReviewPortal
-              currentLanguage={currentLanguage}
-              pendingCases={pendingCases}
-              onApproveCase={handleApproveDoctorCase}
-            />
-          )}
+              {activeTab === 'doctor_portal' && (
+                <DoctorReviewPortal
+                  currentLanguage={currentLanguage}
+                  pendingCases={pendingCases}
+                  onApproveCase={handleApproveDoctorCase}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         {/* Global Multi-Column Professional Footer */}
         <GlobalFooter
           currentLanguage={currentLanguage}
-          onNavigateTab={(tab) => setActiveTab(tab as any)}
+          onNavigateTab={(tab) => navigateToTab(tab as any)}
           onOpenDisclaimer={() => setShowDisclaimer(true)}
         />
       </main>
@@ -746,7 +811,7 @@ export default function App() {
                   key={item.id}
                   id={`mobile-nav-btn-${item.id}`}
                   type="button"
-                  onClick={() => setActiveTab(item.id as NavigationTab)}
+                  onClick={() => navigateToTab(item.id as NavigationTab)}
                   whileTap={{ scale: 0.92 }}
                   className={`relative flex-1 min-w-0 max-w-[16.666%] flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-colors cursor-pointer ${
                     isActive
@@ -837,7 +902,7 @@ export default function App() {
         onClose={() => setShowQuickMessageModal(false)}
         currentLanguage={currentLanguage}
         patientName={currentUser?.name || 'Ahmed Raza'}
-        onNavigateToTab={(tab) => setActiveTab(tab as any)}
+        onNavigateToTab={(tab) => navigateToTab(tab as any)}
       />
     </div>
   );

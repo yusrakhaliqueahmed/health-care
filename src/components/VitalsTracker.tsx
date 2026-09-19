@@ -29,8 +29,15 @@ import {
   Award,
   ChevronDown,
   HelpCircle,
+  Bell,
+  BellRing,
+  Download,
+  FileSpreadsheet,
+  X,
 } from 'lucide-react';
 import { VitalsMeasurementGuide } from './VitalsMeasurementGuide';
+import { VitalsReminderManager } from './VitalsReminderManager';
+import { downloadVitalsCSVReport } from '../services/vitalsExportService';
 import {
   SupportedLanguage,
   PatientProfile,
@@ -38,9 +45,17 @@ import {
   SugarUnit,
   VitalsReading,
   UnifiedHealthRecord,
+  VitalsReminder,
 } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager } from '../services/voice';
+import {
+  loadProfileReminders,
+  saveProfileReminders,
+  playReminderChime,
+  triggerBrowserPushNotification,
+  getReminderNudgeMessage,
+} from '../services/vitalsReminderService';
 import {
   evaluateVitals,
   parseVitalsFromSpeech,
@@ -64,7 +79,7 @@ interface VitalsTrackerProps {
   onNavigateToCare: () => void;
 }
 
-type TrackerMode = 'sugar' | 'bp' | 'heart' | 'all' | 'history' | 'guide';
+type TrackerMode = 'sugar' | 'bp' | 'heart' | 'all' | 'history' | 'reminders' | 'guide';
 
 export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
   language,
@@ -171,6 +186,101 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
   const [manualDiastolic, setManualDiastolic] = useState<string>('80');
   const [manualPulse, setManualPulse] = useState<string>('72');
 
+  // Vitals Reminders Schedule & Nudge State
+  const [reminders, setReminders] = useState<VitalsReminder[]>(() => {
+    return loadProfileReminders(activeProfile?.id || 'prof-self');
+  });
+  const [activeNudgeReminder, setActiveNudgeReminder] = useState<VitalsReminder | null>(null);
+  const [snoozedUntil, setSnoozedUntil] = useState<number | null>(null);
+
+  // Sync reminders when active patient profile changes
+  useEffect(() => {
+    setReminders(loadProfileReminders(activeProfile?.id || 'prof-self'));
+  }, [activeProfile?.id]);
+
+  const handleUpdateReminders = (updated: VitalsReminder[]) => {
+    setReminders(updated);
+    saveProfileReminders(activeProfile?.id || 'prof-self', updated);
+  };
+
+  const handleLogReminderNow = (reminder: VitalsReminder) => {
+    if (reminder.metric === 'sugar') {
+      setActiveTab('sugar');
+      if (reminder.sugarTiming) {
+        setSugarTiming(reminder.sugarTiming);
+      }
+    } else if (reminder.metric === 'bp') {
+      setActiveTab('bp');
+    } else if (reminder.metric === 'heart') {
+      setActiveTab('heart');
+    } else {
+      setActiveTab('all');
+    }
+    setActiveNudgeReminder(null);
+  };
+
+  const handleSnoozeReminder = () => {
+    setSnoozedUntil(Date.now() + 10 * 60 * 1000); // Snooze for 10 minutes
+    setActiveNudgeReminder(null);
+  };
+
+  // Continuous background schedule listener to fire push & in-app nudges
+  useEffect(() => {
+    const checkSchedule = () => {
+      // Check if snoozed
+      if (snoozedUntil && Date.now() < snoozedUntil) {
+        return;
+      }
+
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTimeStr = `${hours}:${minutes}`;
+      const todayDateStr = now.toISOString().split('T')[0];
+
+      // Match any enabled reminder whose time matches current minute and hasn't triggered today
+      const dueReminder = reminders.find((r) => {
+        if (!r.enabled) return false;
+        if (r.time !== currentTimeStr) return false;
+        if (r.lastTriggeredDate === todayDateStr) return false;
+        return true;
+      });
+
+      if (dueReminder) {
+        // Mark as triggered today
+        const updated = reminders.map((r) =>
+          r.id === dueReminder.id ? { ...r, lastTriggeredDate: todayDateStr } : r
+        );
+        handleUpdateReminders(updated);
+
+        // Chime audio
+        if (dueReminder.soundEnabled) {
+          playReminderChime();
+        }
+
+        // Voice prompt
+        const nudgeMsg = getReminderNudgeMessage(dueReminder, language);
+        voiceManager.speak(nudgeMsg.spokenText, language);
+
+        // Native browser push notification
+        triggerBrowserPushNotification(nudgeMsg.title, {
+          body: nudgeMsg.body,
+          onClick: () => {
+            handleLogReminderNow(dueReminder);
+          },
+        });
+
+        // In-app alert banner
+        setActiveNudgeReminder(dueReminder);
+      }
+    };
+
+    // Run check once and every 20 seconds
+    checkSchedule();
+    const timerId = setInterval(checkSchedule, 20000);
+    return () => clearInterval(timerId);
+  }, [reminders, snoozedUntil, language]);
+
   // Auto-init diagnosed conditions if profile indicates
   useEffect(() => {
     if (activeProfile) {
@@ -211,6 +321,49 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
       return true;
     });
   }, [vitalsHistory, historyDayFilter, historyMetricFilter]);
+
+  // CSV Report Export State & Handler
+  const [isExportingCSV, setIsExportingCSV] = useState<boolean>(false);
+  const [exportSuccessMsg, setExportSuccessMsg] = useState<string | null>(null);
+
+  const handleDownloadReport = () => {
+    if (!vitalsHistory || vitalsHistory.length === 0) {
+      const emptyMsg = isUrdu
+        ? 'ڈاؤنلوڈ کے لیے کوئی ریکارڈ موجود نہیں ہے۔ برائے مہربانی پہلے وائٹلز درج کریں۔'
+        : isRoman
+        ? 'Download karne ke liye koi record nahi hai. Pehle vitals log karein.'
+        : 'No vitals history available to export. Please log your vitals first.';
+      setExportSuccessMsg(emptyMsg);
+      setTimeout(() => setExportSuccessMsg(null), 4000);
+      return;
+    }
+
+    setIsExportingCSV(true);
+    try {
+      const result = downloadVitalsCSVReport(vitalsHistory, activeProfile, language);
+      if (result.success) {
+        const successMsg = isUrdu
+          ? `ڈاکٹر کے لیے وائٹلز رپورٹ (${result.count} اندراجات) کامیابی سے ڈاؤنلوڈ ہو گئی!`
+          : isRoman
+          ? `Doctor ke liye vitals report (${result.count} records) CSV format mein download ho gayi!`
+          : `Doctor report exported successfully (${result.count} records) as CSV!`;
+        setExportSuccessMsg(successMsg);
+      } else {
+        const failMsg = isUrdu
+          ? 'رپورٹ ڈاؤنلوڈ کرنے میں خرابی پیش آئی۔'
+          : 'Failed to export CSV report. Please try again.';
+        setExportSuccessMsg(failMsg);
+      }
+    } catch (err) {
+      console.error('Export error:', err);
+      setExportSuccessMsg(
+        isUrdu ? 'رپورٹ برآمد کرنے میں خرابی ہوئی۔' : 'Error exporting CSV report.'
+      );
+    } finally {
+      setTimeout(() => setIsExportingCSV(false), 800);
+      setTimeout(() => setExportSuccessMsg(null), 6000);
+    }
+  };
 
   // Voice input recognition setup
   const startVoiceInput = () => {
@@ -692,6 +845,114 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
         </div>
       )}
 
+      {/* IN-APP SCHEDULED VITALS REMINDER NUDGE BANNER */}
+      {activeNudgeReminder && (
+        <div className="mb-6 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 text-slate-950 p-4 sm:p-5 rounded-3xl shadow-2xl border-2 border-amber-300 relative overflow-hidden animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-white/30 backdrop-blur-md flex items-center justify-center flex-shrink-0 text-slate-950 shadow-inner">
+                {activeNudgeReminder.metric === 'sugar' ? (
+                  <Flame className="w-6 h-6 animate-pulse" />
+                ) : activeNudgeReminder.metric === 'bp' ? (
+                  <Activity className="w-6 h-6 animate-pulse" />
+                ) : (
+                  <Heart className="w-6 h-6 animate-pulse" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-slate-950 text-amber-300 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {activeNudgeReminder.time} • {isUrdu ? 'وائٹلز الرٹ' : 'Scheduled Vitals Reminder'}
+                  </span>
+                  <span className="text-xs font-bold text-slate-900/90">
+                    {activeProfile?.name || 'Patient'}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-slate-950 mt-1">
+                  {getReminderNudgeMessage(activeNudgeReminder, language).title}
+                </h3>
+                <p className="text-xs sm:text-sm font-medium text-slate-900 mt-0.5 max-w-2xl leading-snug">
+                  {getReminderNudgeMessage(activeNudgeReminder, language).body}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleLogReminderNow(activeNudgeReminder)}
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 text-white font-extrabold text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer"
+              >
+                <span>
+                  {activeNudgeReminder.metric === 'sugar'
+                    ? isUrdu
+                      ? 'شوگر ابھی درج کریں'
+                      : isRoman
+                      ? 'Sugar Abhi Log Karein'
+                      : 'Log Blood Sugar Now'
+                    : activeNudgeReminder.metric === 'bp'
+                    ? isUrdu
+                      ? 'بی پی ابھی درج کریں'
+                      : isRoman
+                      ? 'BP Abhi Log Karein'
+                      : 'Log Blood Pressure Now'
+                    : isUrdu
+                    ? 'وائٹلز ابھی درج کریں'
+                    : 'Log Vitals Now'}
+                </span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSnoozeReminder}
+                className="px-3.5 py-2.5 rounded-xl bg-white/40 hover:bg-white/60 text-slate-950 text-xs font-bold transition-all cursor-pointer"
+                title="Snooze for 10 minutes"
+              >
+                {isUrdu ? '10 منٹ بعد' : isRoman ? '10m Baad' : 'Snooze 10m'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveNudgeReminder(null)}
+                className="p-2 rounded-xl bg-white/30 hover:bg-white/50 text-slate-950 transition-all cursor-pointer"
+                aria-label="Dismiss reminder"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EXPORT REPORT SUCCESS / STATUS BANNER */}
+      {exportSuccessMsg && (
+        <div className="mb-6 bg-cyan-950/90 border-2 border-cyan-400/50 text-cyan-100 p-4 rounded-2xl shadow-xl flex items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-cyan-300 flex-shrink-0 shadow-inner">
+              <FileSpreadsheet className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wider text-cyan-400">
+                {isUrdu ? 'وائٹلز میڈیکل رپورٹ برآمد' : 'Vitals Medical Report Exported'}
+              </div>
+              <p className="text-xs sm:text-sm font-semibold text-cyan-100 mt-0.5">
+                {exportSuccessMsg}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExportSuccessMsg(null)}
+            className="p-1.5 rounded-lg hover:bg-cyan-800/40 text-cyan-300 transition-all cursor-pointer"
+            aria-label="Close notification"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-emerald-900/90 via-slate-900 to-teal-950 border border-emerald-500/30 rounded-3xl p-6 sm:p-8 mb-6 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
@@ -720,7 +981,7 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
           </div>
 
           {/* Profile & History Badge */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-900/70 p-3.5 rounded-2xl border border-slate-800">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-900/70 p-3.5 rounded-2xl border border-slate-800 flex-wrap">
             <div>
               <div className="text-[11px] text-slate-400 font-medium">
                 {isUrdu ? 'مریض کا نام:' : 'Active Patient:'}
@@ -741,11 +1002,37 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
               <span>{isUrdu ? 'کیسے چیک کریں؟ آواز میں سنیں' : isRoman ? 'Check Kaise Karein? Audio' : 'How to Test? Voice Guide'}</span>
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab('history')}
               className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-400" />
               <span>{isUrdu ? 'روزانہ ریکارڈ لاگ بک' : 'Day-by-Day Logbook'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('reminders')}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Bell className="w-3.5 h-3.5 text-amber-400" />
+              <span>{isUrdu ? 'یاد دہانیاں' : isRoman ? 'Reminders' : 'Daily Reminders'}</span>
+              {reminders.filter((r) => r.enabled).length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadReport}
+              disabled={isExportingCSV}
+              className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 text-xs font-bold border border-cyan-500/40 flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+              title={isUrdu ? 'ڈاکٹر کے معائنے کے لیے وائٹلز رپورٹ (CSV) ڈاؤنلوڈ کریں' : 'Download Vitals History CSV Report for Doctor'}
+            >
+              <Download className={`w-3.5 h-3.5 text-cyan-400 ${isExportingCSV ? 'animate-bounce' : ''}`} />
+              <span>
+                {isExportingCSV
+                  ? isUrdu ? 'تیار ہو رہی ہے...' : 'Exporting...'
+                  : isUrdu ? 'رپورٹ ڈاؤنلوڈ (CSV)' : isRoman ? 'Download Report (CSV)' : 'Download Report'}
+              </span>
             </button>
           </div>
         </div>
@@ -823,6 +1110,24 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
 
         <button
           type="button"
+          onClick={() => setActiveTab('reminders')}
+          className={`flex-1 min-w-[140px] py-3 px-3.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeTab === 'reminders'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-md shadow-amber-500/20'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+          }`}
+        >
+          <Bell className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+          <span>{isUrdu ? 'روزانہ یاد دہانی' : isRoman ? 'Daily Reminders' : 'Vitals Reminders'}</span>
+          {reminders.filter((r) => r.enabled).length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-400/30 text-amber-800 dark:text-amber-200 font-mono font-bold">
+              {reminders.filter((r) => r.enabled).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('guide')}
           className={`flex-1 min-w-[140px] py-3 px-3.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'guide'
@@ -857,14 +1162,31 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowAddLogModal(true)}
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer self-start sm:self-auto"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{isUrdu ? 'کسی بھی دن کا ریکارڈ درج کریں' : 'Log New Day Reading'}</span>
-              </button>
+              <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleDownloadReport}
+                  disabled={isExportingCSV}
+                  className="px-3.5 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 text-xs font-bold border border-cyan-500/30 flex items-center gap-2 transition-all shadow-xs cursor-pointer hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                  title={isUrdu ? 'وائٹلز کا تفصیلی ریکارڈ CSV فائل میں ڈاؤنلوڈ کریں' : 'Download Complete Vitals History as CSV for Doctor'}
+                >
+                  <Download className={`w-4 h-4 text-cyan-600 dark:text-cyan-400 ${isExportingCSV ? 'animate-bounce' : ''}`} />
+                  <span>
+                    {isExportingCSV
+                      ? isUrdu ? 'تیار ہو رہی ہے...' : 'Generating...'
+                      : isUrdu ? 'ڈاکٹر رپورٹ ڈاؤنلوڈ کریں (CSV)' : isRoman ? 'Doctor Report CSV' : 'Download Report (CSV)'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddLogModal(true)}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{isUrdu ? 'کسی بھی دن کا ریکارڈ درج کریں' : 'Log New Day Reading'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Stat Cards Grid */}
@@ -2390,12 +2712,23 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
                       : `Saved to ${evaluationResult.dayOfWeek}'s daily record!`}
                   </span>
                 </span>
-                <button
-                  onClick={() => setActiveTab('history')}
-                  className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer"
-                >
-                  <span>{isUrdu ? 'تمام دنوں کا ریکارڈ دیکھیں →' : 'View Day-by-Day Logbook →'}</span>
-                </button>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={handleDownloadReport}
+                    className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1.5 cursor-pointer text-xs transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>{isUrdu ? 'رپورٹ ڈاؤنلوڈ (CSV)' : isRoman ? 'Report Download (CSV)' : 'Download Report (CSV)'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('history')}
+                    className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <span>{isUrdu ? 'تمام دنوں کا ریکارڈ دیکھیں →' : 'View Day-by-Day Logbook →'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2422,6 +2755,22 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
           onSelectVitalToTest={(type) => {
             setActiveTab(type);
             window.scrollTo({ top: 380, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 4: SCHEDULED PUSH NOTIFICATIONS & IN-APP VITALS REMINDERS            */}
+      {/* ========================================================================= */}
+      {activeTab === 'reminders' && (
+        <VitalsReminderManager
+          language={language}
+          activeProfile={activeProfile}
+          reminders={reminders}
+          onUpdateReminders={handleUpdateReminders}
+          onTriggerNudgeNow={(reminder) => {
+            setActiveNudgeReminder(reminder);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
         />
       )}

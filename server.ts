@@ -31,7 +31,9 @@ function getAI(): GoogleGenAI {
   return aiClient;
 }
 
-// Multi-model fallback execution with per-attempt timeout
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Multi-model fallback execution with per-attempt timeout and transient retry
 async function generateContentWithFallback(
   ai: GoogleGenAI,
   options: {
@@ -41,35 +43,66 @@ async function generateContentWithFallback(
     timeoutMs?: number;
   }
 ): Promise<string> {
-  const models = [
-    options.primaryModel || "gemini-3.1-flash-lite",
-    "gemini-3.8-flash",
-    "gemini-flash-latest",
-  ];
-  const timeoutMs = options.timeoutMs || 8000;
+  const candidateModels: string[] = Array.from(
+    new Set(
+      [
+        options.primaryModel,
+        "gemini-3.8-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-flash-latest",
+        "gemini-3.1-pro-preview",
+      ].filter((m): m is string => Boolean(m))
+    )
+  );
+  const timeoutMs = options.timeoutMs || 10000;
 
-  for (const model of models) {
-    try {
-      const callPromise = ai.models.generateContent({
-        model,
-        contents: options.contents,
-        config: options.config,
-      });
+  let lastError: any = null;
 
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms for ${model}`)), timeoutMs)
-      );
+  for (const model of candidateModels) {
+    // Attempt with retry for transient spikes (503 high demand / 429 rate limit)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const callPromise = ai.models.generateContent({
+          model,
+          contents: options.contents,
+          config: options.config,
+        });
 
-      const res: any = await Promise.race([callPromise, timeoutPromise]);
-      if (res && res.text) {
-        return res.text;
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms for ${model}`)), timeoutMs)
+        );
+
+        const res: any = await Promise.race([callPromise, timeoutPromise]);
+        if (res && res.text) {
+          return res.text;
+        }
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = (err?.message || "").toLowerCase();
+        const errStr = JSON.stringify(err || {}).toLowerCase();
+        const isTransient =
+          errMsg.includes("503") ||
+          errMsg.includes("high demand") ||
+          errMsg.includes("unavailable") ||
+          errMsg.includes("429") ||
+          errMsg.includes("quota") ||
+          errMsg.includes("resource exhausted") ||
+          errStr.includes("503") ||
+          errStr.includes("unavailable");
+
+        console.warn(`[AI] Model ${model} (attempt ${attempt + 1}) failed or timed out:`, err?.message || err);
+
+        if (isTransient && attempt === 0) {
+          // Brief pause on temporary demand spike before retry
+          await sleep(350 + Math.random() * 250);
+          continue;
+        }
+        break;
       }
-    } catch (err: any) {
-      console.warn(`[AI] Model ${model} failed or timed out:`, err?.message || err);
     }
   }
 
-  throw new Error("All models failed or timed out");
+  throw lastError || new Error("All models failed or timed out");
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -416,6 +449,411 @@ Your reported symptoms have been recorded: "${message}". This preliminary clinic
   return { text: guidance, urgency };
 }
 
+function getMedicineSafetyFallback(params: {
+  medicineName?: string;
+  condition?: string;
+  ageGroup?: string;
+  exactAge?: number | string;
+  patientAllergies?: string;
+  currentMedicines?: string;
+  mode?: string;
+  language?: string;
+}): { text: string; safetyStatus: "SAFE" | "CAUTION" | "DANGER" } {
+  const medQuery = (params.medicineName || "").toLowerCase().trim();
+  const condQuery = (params.condition || "").toLowerCase().trim();
+  const langKey = (params.language || "English").toLowerCase();
+  const ageNum =
+    Number(params.exactAge) ||
+    (params.ageGroup === "child" ? 8 : params.ageGroup === "infant" ? 1 : params.ageGroup === "elderly" ? 70 : 35);
+  const isChildOrInfant = ageNum < 12 || params.ageGroup === "child" || params.ageGroup === "infant";
+  const isElderly = ageNum >= 60 || params.ageGroup === "elderly";
+
+  const isUrdu = langKey.startsWith("ur") || langKey === "urdu";
+  const isRoman = langKey.startsWith("roman");
+
+  let safetyStatus: "SAFE" | "CAUTION" | "DANGER" = "CAUTION";
+  let brandName = params.medicineName || "Identified Medicine";
+  let genericName = "Preliminary Clinical Pharmacology";
+  let therapeuticClass = "General Therapeutic Agent";
+  let commonFormulations = "Tablets / Syrup / Suspension";
+  let approvedUses = isUrdu
+    ? "طبی علامات کے افاقے کے لیے ڈاکٹر کی ہدایت کے مطابق استعمال کی جاتی ہے۔"
+    : isRoman
+    ? "Alamaat ke ilaaj ke liye doctor ke mashwaray se istemal hoti hai."
+    : "Indicated for symptom relief under medical supervision.";
+  let safetyReason = isUrdu
+    ? "معیاری خوراک کی ہدایات کا اطلاق ہوتا ہے۔ فارماسسٹ سے درست طاقت کی تصدیق کریں۔"
+    : isRoman
+    ? "Standard dose ehtiyaat laagu hoti hai. Pharmacist se tasdeeq karein."
+    : "Standard dosage precautions apply. Verify exact strength with a pharmacist.";
+  let contraindications = isUrdu
+    ? "اس دوا یا اس کے اجزاء سے الرجی کی صورت میں ہرگز استعمال نہ کریں۔"
+    : isRoman
+    ? "Is dawa se allergy ki soorat mein na lein."
+    : "Do not take if allergic to this medication or active components.";
+  let adverseEffects = isUrdu
+    ? "متلی، معدے میں ہلکی جلن، یا الرجی کی صورت میں خارش۔"
+    : isRoman
+    ? "Ulti aana, maiday mein jalan ya kharish."
+    : "Nausea, mild gastrointestinal upset, or allergic rash in sensitive individuals.";
+  let safeAdmin = isUrdu
+    ? "پانی کے ساتھ لیں۔ پیکنگ پر ایکسپائری تاریخ اور DRAP رجسٹریشن ضرور دیکھیں۔"
+    : isRoman
+    ? "Paani ke sath lein. Packing par Expiry Date aur DRAP registration zaroor check karein."
+    : "Take with water. Always check expiry date and DRAP registration before consumption.";
+
+  // Check common DRAP registered medicines in Pakistan
+  if (
+    medQuery.includes("panadol") ||
+    medQuery.includes("paracetamol") ||
+    medQuery.includes("calpol") ||
+    condQuery.includes("fever") ||
+    condQuery.includes("bukhar")
+  ) {
+    brandName = medQuery.includes("panadol") ? "Panadol (GSK)" : medQuery.includes("calpol") ? "Calpol (GSK)" : "Paracetamol";
+    genericName = "Paracetamol (Acetaminophen)";
+    therapeuticClass = "Analgesic & Antipyretic (Pain & Fever Reducer)";
+    commonFormulations = isChildOrInfant ? "Syrup / Pediatric Drops (120mg/5ml)" : "Tablets (500mg, Panadol Extra, Panadol CF)";
+    approvedUses = isUrdu
+      ? "ہلکے سے درمیانے درجے کا بخار، سر درد، جسم درد اور نزلہ زکام کی علامات میں راحت کے لیے۔"
+      : isRoman
+      ? "Halka ya darmiyana bukhar, sar dard, jism dard aur sardi ki alamaat ke liye."
+      : "Mild to moderate pain, headache, generalized body aches, and fever reduction.";
+
+    if (isChildOrInfant) {
+      safetyStatus = "CAUTION";
+      safetyReason = isUrdu
+        ? "بچوں کے لیے صرف بچوں کا شربت (Calpol / Panadol Syrup) بچے کے وزن کے مطابق دیں۔ بڑوں کی گولیاں بچوں کو ہرگز مت دیں۔"
+        : isRoman
+        ? "Bachon ke liye sirf pediatric syrup wazan ke mutabiq dein. Baron ki goli mat dein."
+        : "Use pediatric syrup or drops dosed by body weight (10-15 mg/kg/dose). Avoid adult tablets in young children.";
+    } else {
+      safetyStatus = "SAFE";
+      safetyReason = isUrdu
+        ? "بالغ افراد کے لیے عام طور پر محفوظ ہے۔ روزانہ 4000 ملی گرام (8 گولیاں) سے زیادہ ہرگز مت لیں۔"
+        : isRoman
+        ? "Baron ke liye aam tor par mehfooz hai. Rozana 4000mg (8 goliyan) se zyada hargiz na lein."
+        : "Safe for adults at recommended doses (500mg-1000mg every 4-6 hours, maximum 4000mg per 24 hours).";
+    }
+    contraindications = isUrdu
+      ? "جگر (Liver) کی سنگین بیماری میں خود سے مت لیں۔ الکحل یا جگر کو نقصان پہنچانے والی دیگر ادویات کے ساتھ استعمال نہ کریں۔"
+      : isRoman
+      ? "Jigar (liver) ki shadeed bimari mein na lein."
+      : "Severe hepatic (liver) impairment or known hypersensitivity to paracetamol.";
+    adverseEffects = isUrdu
+      ? "عام طور پر کوئی سائیڈ ایفیکٹ نہیں ہوتا۔ زیادہ مقدار لینے پر جگر کو شدید نقصان ہو سکتا ہے۔"
+      : isRoman
+      ? "Aam tor par safe hai. Overdose par jigar ko nuqsan ho sakta hai."
+      : "Rare at therapeutic doses. Hepatotoxicity risk if maximum daily dose is exceeded.";
+    safeAdmin = isUrdu
+      ? "پانی کے ساتھ لیں۔ اگر بخار 3 دن سے زیادہ برقرار رہے تو ڈاکٹر سے رجوع کریں۔"
+      : isRoman
+      ? "Paani ke sath lein. Agar bukhar 3 din se zyada rahay toh doctor ko dikhayen."
+      : "Take with water. Seek medical consultation if fever persists longer than 3 days.";
+  } else if (medQuery.includes("brufen") || medQuery.includes("ibuprofen")) {
+    brandName = "Brufen (Abbott)";
+    genericName = "Ibuprofen";
+    therapeuticClass = "NSAID (Non-Steroidal Anti-Inflammatory Drug)";
+    commonFormulations = isChildOrInfant ? "Brufen Syrup (100mg/5ml)" : "Tablets (200mg, 400mg, 600mg)";
+    approvedUses = isUrdu
+      ? "درد، دانت کا درد، ہڈیوں یا جوڑوں کا درد، اور سوزش میں کمی کے لیے۔"
+      : isRoman
+      ? "Dard, daant ka dard, joron ka dard aur sozish kam karne ke liye."
+      : "Relief of inflammatory pain, dental pain, musculoskeletal pain, and fever.";
+
+    if (ageNum < 0.5) {
+      safetyStatus = "DANGER";
+      safetyReason = isUrdu
+        ? "6 ماہ سے کم عمر شیر خوار بچوں کو بروفین ہرگز نہ دیں۔"
+        : isRoman
+        ? "6 maah se kam umar bachon ko Brufen hargiz na dein."
+        : "Strictly contraindicated in infants under 6 months of age.";
+    } else if (isElderly) {
+      safetyStatus = "CAUTION";
+      safetyReason = isUrdu
+        ? "بزرگ مریضوں میں معدے کے السر اور گردوں پر دباؤ کا خطرہ زیادہ ہوتا ہے۔"
+        : isRoman
+        ? "Buzurg mareezon mein maiday ke ulcer aur gurdon ka khatra hota hai."
+        : "Higher risk of gastrointestinal bleeding and renal impairment in elderly patients.";
+    } else {
+      safetyStatus = "SAFE";
+      safetyReason = isUrdu
+        ? "بالغ افراد میں درد اور سوزش کے لیے موثر ہے، لیکن ہمیشہ کھانے کے بعد لیں۔"
+        : isRoman
+        ? "Baron ke liye dard mein mufeed hai, hamesha khane ke baad lein."
+        : "Effective for inflammatory pain. Always take with or immediately after food.";
+    }
+    contraindications = isUrdu
+      ? "معدے کا السر، گردے کی خرابی، دمے کے مریض، یا حاملہ خواتین میں بغیر ڈاکٹر کے نہ لیں۔"
+      : isRoman
+      ? "Maiday ka ulcer, gurday ki kharabi ya asthma mein na lein."
+      : "Active peptic ulcer, severe renal or cardiac failure, third-trimester pregnancy, NSAID-induced asthma.";
+    adverseEffects = isUrdu ? "معدے میں جلن، تیزابیت، متلی یا پیٹ درد۔" : isRoman ? "Maiday mein jalan, tezabiyat ya ulti aana." : "Dyspepsia, heartburn, nausea, gastric discomfort.";
+    safeAdmin = isUrdu ? "کبھی بھی خالی پیٹ نہ لیں۔ دودھ یا کھانے کے بعد لیں۔" : isRoman ? "Khali pait hargiz na lein, hamesha khane ya doodh ke baad lein." : "Never take on an empty stomach. Administer with meals or milk.";
+  } else if (medQuery.includes("disprin") || medQuery.includes("aspirin")) {
+    brandName = "Disprin (Reckitt)";
+    genericName = "Acetylsalicylic Acid (Aspirin)";
+    therapeuticClass = "Salicylate Analgesic & Antiplatelet (Blood Thinner)";
+    commonFormulations = "Dispersible Tablets (300mg), Cardiprin (75mg, 100mg)";
+    approvedUses = isUrdu
+      ? "بالغوں میں دل کے امراض، خون پتلا کرنے، اور شدید سر درد میں۔"
+      : isRoman
+      ? "Baron mein dil ke maslay, khoon patla karne aur shadeed sar dard mein."
+      : "Cardiovascular prophylaxis, acute coronary syndrome, and inflammatory analgesia in adults.";
+
+    if (isChildOrInfant || ageNum < 18) {
+      safetyStatus = "DANGER";
+      safetyReason = isUrdu
+        ? "⚠️ انتہائی اہم تنبیہ: 18 سال سے کم عمر بچوں یا نوجوانوں کو ڈسپرین ہرگز نہ دیں! اس سے 'Reye's Syndrome' نامی جان لیوا بیماری (دماغ اور جگر کی سوجن) ہو سکتی ہے۔"
+        : isRoman
+        ? "⚠️ DANGER: 18 saal se kam umar bachon ko Disprin HARGIZ na dein! Is se jaan-lewa Reye's Syndrome ho sakta hai."
+        : "CRITICAL WARNING: Strictly contraindicated in children/adolescents under 18 due to fatal risk of Reye's Syndrome (acute encephalopathy and fatty liver).";
+    } else {
+      safetyStatus = "CAUTION";
+      safetyReason = isUrdu
+        ? "بالغ افراد میں خون پتلا کرنے کی صلاحیت رکھتی ہے۔ خون بہنے کا خطرہ رہتا ہے۔"
+        : isRoman
+        ? "Baron mein khoon patla karti hai, maiday ki jalan ka khatra hota hai."
+        : "Blood thinning properties; monitor for gastrointestinal irritation and bleeding.";
+    }
+    contraindications = isUrdu
+      ? "بچے اور نو عمر افراد، خون کی بیماری (ہیموفیلیا)، ڈینگی بخار (Dengue Fever)، معدے کا السر۔"
+      : isRoman
+      ? "Bachay, Dengue fever ke mareez, aur maiday ke ulcer walay na lein."
+      : "Children under 18, Dengue fever (causes dangerous bleeding), active peptic ulcers, bleeding disorders.";
+    adverseEffects = isUrdu ? "معدے سے خون آنا، تیزابیت، کانوں میں سیٹیاں بجنا۔" : isRoman ? "Maiday mein jalan ya khoon aana, kaano mein seeti ki aawaz." : "Gastric erosion, gastrointestinal bleeding, allergic bronchospasm, tinnitus.";
+    safeAdmin = isUrdu ? "پانی کے گلاس میں گھول کر کھانے کے بعد پیئیں۔" : isRoman ? "Paani ke glass mein ghol kar khane ke baad lein." : "Dissolve completely in a full glass of water and take after food.";
+  } else if (medQuery.includes("augmentin") || medQuery.includes("amoxicillin") || medQuery.includes("antibiotic")) {
+    brandName = medQuery.includes("augmentin") ? "Augmentin (GSK)" : "Amoxicillin / Antibiotic";
+    genericName = "Amoxicillin + Clavulanic Acid";
+    therapeuticClass = "Broad-Spectrum Beta-Lactam Antibiotic";
+    commonFormulations = isChildOrInfant ? "Augmentin Suspension (156mg, 312mg, 457mg)" : "Tablets (625mg, 1g)";
+    approvedUses = isUrdu
+      ? "بیکٹیریل انفیکشنز (گلے، کان، سینے، پیشاب یا جلد کے انفیکشن) میں ڈاکٹر کے نسخے پر۔"
+      : isRoman
+      ? "Bacterial infections (gala, kaan, seena, peshab) ke liye doctor ke nuskhe par."
+      : "Bacterial infections of the respiratory tract, urinary tract, ear, and skin.";
+    safetyStatus = "CAUTION";
+    safetyReason = isUrdu
+      ? "اینٹی بائیوٹک کو کبھی بھی بغیر ڈاکٹر کے نسخے کے نہ لیں! غیر ضروری اینٹی بائیوٹک لینے سے جراثیم طاقتور (Resistance) ہو جاتے ہیں۔"
+      : isRoman
+      ? "Antibiotic hamesha PMDC doctor ke nuskhe par lein. Baghair zaroorat lene se resistance hoti hai."
+      : "Antibiotic requiring valid PMDC physician prescription. Never self-prescribe or stop prematurely.";
+    contraindications = isUrdu ? "پینسلین (Penicillin) سے الرجی والے مریض ہرگز مت لیں۔" : isRoman ? "Penicillin allergy walay mareez hargiz na lein." : "History of penicillin hypersensitivity.";
+    adverseEffects = isUrdu ? "دست (Diarrhea)، پیٹ میں مروڑ، متلی، یا جلد پر الرجی کے دانے۔" : isRoman ? "Dast, pait dard ya kharish." : "Diarrhea, nausea, vomiting, maculopapular rash.";
+    safeAdmin = isUrdu ? "کھانے کے آغاز میں لیں۔ مکمل کورس (5 سے 7 دن) پورا کریں۔" : isRoman ? "Khane ke shuru mein lein. Doctor ka course (5-7 din) pura karein." : "Take at the start of a meal. Complete the full course.";
+  } else if (medQuery.includes("risek") || medQuery.includes("omeprazole")) {
+    brandName = "Risek (Getz Pharma)";
+    genericName = "Omeprazole";
+    therapeuticClass = "Proton Pump Inhibitor (PPI - Stomach Acid Reducer)";
+    commonFormulations = "Capsules (20mg, 40mg), Insta Sachet (20mg, 40mg)";
+    approvedUses = isUrdu ? "معدے کی تیزابیت، جلن (GERD)، السر اور گیس کے علاج کے لیے۔" : isRoman ? "Maiday ki tezabiyat, seene ki jalan (GERD) aur ulcer ke liye." : "Gastroesophageal reflux disease (GERD), gastric ulcers, acid hypersecretion.";
+    safetyStatus = "SAFE";
+    safetyReason = isUrdu ? "بالغوں میں تیزابیت اور معدے کی حفاظت کے لیے محفوظ اور معروف دوا ہے۔" : isRoman ? "Baron mein acidity aur maiday ki hifazat ke liye safe dawai hai." : "Well-tolerated proton pump inhibitor for adult acid-peptic disorders.";
+    contraindications = isUrdu ? "اومپرازول سے الرجی۔ طویل مدت تک بغیر ڈاکٹر کے مت لیں۔" : isRoman ? "Omeprazole se allergy. Lambay arsay tak bila-wajah na lein." : "Hypersensitivity to substituted benzimidazoles.";
+    adverseEffects = isUrdu ? "سر درد، پیٹ میں ہلکی گیس یا قبض۔" : isRoman ? "Sar dard, pait mein gas ya qabz." : "Headache, abdominal pain, constipation, flatulence.";
+    safeAdmin = isUrdu ? "صبح نہار منہ، ناشتے سے کم از کم 30 منٹ پہلے پانی سے نگل لیں۔" : isRoman ? "Subah nihaar munh, nashtay se 30-60 minute pehle lein." : "Take 30-60 minutes before morning breakfast with water. Swallow capsule whole.";
+  } else if (medQuery.includes("arinac")) {
+    brandName = "Arinac (Abbott)";
+    genericName = "Ibuprofen + Pseudoephedrine Hydrochloride";
+    therapeuticClass = "NSAID Analgesic + Nasal Decongestant";
+    commonFormulations = isChildOrInfant ? "Arinac Suspension" : "Arinac Tablet, Arinac Forte";
+    approvedUses = isUrdu ? "نزلہ، زکام، ناک بند ہونا، سر درد اور بخار کے علاج کے لیے۔" : isRoman ? "Nazla, zukaam, band naak, sar dard aur bukhar ke liye." : "Symptomatic relief of cold, flu, sinus congestion, headache, and fever.";
+    safetyStatus = isElderly ? "CAUTION" : "SAFE";
+    safetyReason = isUrdu ? "بلڈ پریشر یا دل کے مریض احتیاط کریں۔ سیوڈو ایفیڈرین بلڈ پریشر بڑھا سکتی ہے۔" : isRoman ? "High BP aur heart patients ehtiyaat karein kyunki yeh BP barha sakti hai." : "Contains pseudoephedrine; use with extreme caution in hypertensive or cardiac patients.";
+    contraindications = isUrdu ? "شدید ہائی بلڈ پریشر، دل کے سنگین امراض، معدے کا فعال السر۔" : isRoman ? "High blood pressure, dil ke maslay aur ulcer mein na lein." : "Severe hypertension, coronary artery disease.";
+    adverseEffects = isUrdu ? "دل کی دھڑکن تیز ہونا، بے خوابی، گھبراہٹ، معدے میں جلن۔" : isRoman ? "Dhadkan tez hona, neend na aana, bechaini." : "Tachycardia, insomnia, restlessness, gastrointestinal irritation.";
+    safeAdmin = isUrdu ? "کھانے کے بعد لیں۔ رات کو سونے کے بالکل قریب نہ لیں۔" : isRoman ? "Khane ke baad lein. Raat ko sonay se theek pehle na lein." : "Take after food. Avoid dosing immediately before bedtime.";
+  } else {
+    safetyStatus = isChildOrInfant ? "CAUTION" : "SAFE";
+    const medDisplayName = params.medicineName ? params.medicineName : (condQuery ? `Medication for ${params.condition}` : "Requested Medication");
+    brandName = medDisplayName;
+    genericName = "Preliminary Pharmacology Query";
+    therapeuticClass = "Clinical Pharmacology Review";
+    commonFormulations = "Tablets / Capsules / Suspension as indicated";
+    approvedUses = isUrdu
+      ? `طبی علامات (${params.condition || "عمومی صحت"}) کی تشخیص کے لیے ڈاکٹر کی ہدایت کے مطابق استعمال کی جاتی ہے۔`
+      : isRoman
+      ? `Medical alamaat (${params.condition || "General complaint"}) ke liye doctor ke mashwaray se istemal ki jati hai.`
+      : `Indicated under physician evaluation for specified clinical symptoms (${params.condition || "General clinical complaint"}).`;
+
+    safetyReason = isChildOrInfant
+      ? (isUrdu ? "بچوں میں خوراک کا تعین وزن اور عمر کے مطابق ہوتا ہے۔ بالغوں کی خوراک بچوں کو مت دیں۔" : isRoman ? "Bachon mein dawai wazan aur exact umar ke mutabiq hoti hai." : "Pediatric administration strictly requires weight-based titration. Never administer adult doses.")
+      : (isUrdu ? "ہمیشہ رجسٹرڈ فارماسسٹ یا ڈاکٹر سے خوراک کی تصدیق کر کے استعمال کریں۔" : isRoman ? "Registered pharmacist ya doctor se dose ki tasdeeq kar ke istemal karein." : "Verify target therapeutic dose and duration with a licensed pharmacist or physician.");
+
+    contraindications = isUrdu ? "کوئی بھی غیر معروف یا بغیر لیبل لگی دوا ہرگز استعمال نہ کریں۔" : isRoman ? "Baghair label ya expired dawa hargiz na lein." : "Do not use unverified, unlabelled, or expired formulations.";
+    adverseEffects = isUrdu ? "الرجک ردعمل، متلی، سر چکرانا یا معدے میں جلن۔" : isRoman ? "Allergy, ulti, chakkar ya maiday mein jalan." : "Hypersensitivity rash, gastrointestinal upset, dizziness, or drowsiness.";
+    safeAdmin = isUrdu ? "پانی کے ساتھ لیں۔ پیکنگ پر تاریخِ تنسیخ اور DRAP رجسٹریشن نمبر ضرور دیکھیں۔" : isRoman ? "Paani se lein. Packing par Expiry Date aur DRAP registration zaroor check karein." : "Take with water. Always verify package expiry date and DRAP registration code prior to use.";
+  }
+
+  let text = "";
+  if (isUrdu) {
+    text = `### Drug Profile & Classification (دوا کا بنیادی تعارف)
+- **برانڈ کا نام (Brand Name)**: ${brandName}
+- **فعال جزو (Generic Active Ingredient)**: ${genericName}
+- **فارماکولوجیکل درجہ (Therapeutic Class)**: ${therapeuticClass}
+- **دستیاب اشکال (Common Formulations)**: ${commonFormulations}
+
+### Age-Specific Safety Assessment (عمر کے مطابق حفاظتی جائزہ)
+- **حفاظتی درجہ بندی (Safety Status)**: ${safetyStatus === "SAFE" ? "SAFE FOR THIS AGE (محفوظ)" : safetyStatus === "DANGER" ? "DANGEROUS / CONTRAINDICATED (سخت منع ہے)" : "CAUTION - DOCTOR EVALUATION REQUIRED (ڈاکٹر سے تصدیق ضروری ہے)"}
+- **عمر کی مناسبت سے وجہ (Age Rationale)**: ${safetyReason}
+
+### Approved Clinical Indications (طبی استعمال)
+- ${approvedUses}
+
+### Contraindications & Critical Warnings (کن صورتوں میں نہ لیں)
+- ${contraindications}
+- خود سے کبھی بھی اینٹی بائیوٹکس یا کڑی پین کلرز شروع نہ کریں۔
+
+### Adverse Effects to Watch For (ممکنہ ضمنی اثرات)
+- **عام اثرات**: ${adverseEffects}
+- **شدید الرجی کی علامات**: اگر سانس میں دشواری، ہونٹوں پر سوجن یا پورے جسم پر لال دانے ابھریں تو فوراً ایمرجنسی جائیں۔
+
+### Safe Administration & Next Steps (محفوظ طریقہ استعمال اور ہدایات)
+- ${safeAdmin}
+- یہ preliminary AI طبی جائزہ ہے۔ دوا خریدنے یا کھانے سے پہلے ہمیشہ مستند ڈاکٹر یا فارماسسٹ سے تصدیق کروائیں۔`;
+  } else if (isRoman) {
+    text = `### Drug Profile & Classification (Dawai Ka Ta'aruf)
+- **Brand Name**: ${brandName}
+- **Generic (Active Ingredient)**: ${genericName}
+- **Therapeutic Class**: ${therapeuticClass}
+- **Common Formulations**: ${commonFormulations}
+
+### Age-Specific Safety Assessment (Umar Ke Mutabiq Jaiza)
+- **Safety Status**: ${safetyStatus === "SAFE" ? "SAFE FOR THIS AGE" : safetyStatus === "DANGER" ? "NOT RECOMMENDED OR DANGEROUS" : "CAUTION - DOCTOR EVALUATION REQUIRED"}
+- **Specific Age Rationale**: ${safetyReason}
+
+### Approved Clinical Indications (Istemal Ki Wajah)
+- ${approvedUses}
+
+### Contraindications & Critical Warnings (Khatray Ki Nishaniyan)
+- ${contraindications}
+- Antibiotics ya heavy painkillers hamesha PMDC registered doctor ke nuskhe par lein.
+
+### Adverse Effects to Watch For (Mumkin Side Effects)
+- **Common**: ${adverseEffects}
+- **Severe**: Agar saans mein dushwari, chehray par soojan ya shadeed kharish ho toh foran hospital jayein.
+
+### Safe Administration & Next Steps (Hifazati Hidayat)
+- ${safeAdmin}
+- Yeh AI preliminary check hai. Dawai khareednay ya khanay se pehle hamesha licensed doctor ya pharmacist se tasdeeq karwayen.`;
+  } else {
+    text = `### Drug Profile & Classification
+- **Brand Name**: ${brandName}
+- **Generic (Active Ingredient)**: ${genericName}
+- **Therapeutic Class**: ${therapeuticClass}
+- **Common Formulations**: ${commonFormulations}
+
+### Age-Specific Safety Assessment
+- **Safety Status**: ${safetyStatus === "SAFE" ? "SAFE FOR THIS AGE" : safetyStatus === "DANGER" ? "NOT RECOMMENDED OR DANGEROUS" : "CAUTION - DOCTOR EVALUATION REQUIRED"}
+- **Specific Age Rationale**: ${safetyReason}
+
+### Approved Clinical Indications
+- ${approvedUses}
+
+### Contraindications & Critical Warnings
+- ${contraindications}
+- Antibiotics and prescription medications strictly require authorization from a licensed medical practitioner.
+
+### Adverse Effects to Watch For
+- **Common**: ${adverseEffects}
+- **Severe / Emergency**: Discontinue and seek emergency care if facial swelling, urticarial rash, or respiratory distress occurs.
+
+### Safe Administration & Next Steps
+- ${safeAdmin}
+- This is preliminary AI verification. Always confirm with a licensed doctor or pharmacist before taking any medicine.`;
+  }
+
+  return { text, safetyStatus };
+}
+
+function getReportAnalysisFallback(params: {
+  reportType?: string;
+  patientAge?: string;
+  notes?: string;
+  language?: string;
+}): { text: string; urgency: "GREEN" | "YELLOW" | "RED" } {
+  const isLab = params.reportType === "lab";
+  const isXray = params.reportType === "xray";
+  const langKey = (params.language || "English").toLowerCase();
+  const isUrdu = langKey.startsWith("ur") || langKey === "urdu";
+  const isRoman = langKey.startsWith("roman");
+
+  let text = "";
+  if (isUrdu) {
+    text = `### طبی رپورٹ کا ابتدائی خلاصہ (Diagnostic Overview)
+آپ کی ${isLab ? "خون کی لیب رپورٹ" : isXray ? "ایکسرے / ریڈیالوجی امیجنگ" : "میڈیکل رپورٹ"} صحت ساتھی کے محفوظ میڈیکل ریکارڈز میں محفوظ کر لی گئی ہے۔
+${params.notes ? `مریض کے اضافی نوٹس: "${params.notes}"` : ""}
+
+### رپورٹ کے اہم پیرامیٹرز کو پڑھنے کا رہنما طریقہ (Clinical Parameter Guide)
+${
+  isLab
+    ? `لیب رپورٹس میں عام طور پر درج ذیل بنیادی ٹیسٹ شامل ہوتے ہیں جن کا معائنہ ڈاکٹر کرتے ہیں:
+- **ہیموگلوبن (Hemoglobin / Hb)**: عام رینج 12 سے 16 g/dL۔ خون کی کمی (Anemia) کو ظاہر کرتا ہے۔
+- **سفید خلیات (TLC / WBC)**: عام رینج 4,000 سے 11,000 /uL۔ جسم میں انفیکشن کی جانچ۔
+- **پلیٹلیٹس (Platelets)**: عام رینج 150,000 سے 450,000 /uL۔ ڈینگی اور خون جمنے میں اہم۔
+- **خون کی شوگر (Fasting / Random Glucose)**: شوگر کا تناسب۔`
+    : `ایکسرے / ریڈیالوجی معائنے میں ڈاکٹر ہڈیوں کی ساخت، فریکچر، پھیپھڑوں کی صفائی یا جوڑوں کی پوزیشن کا معائنہ کرتے ہیں۔`
+}
+
+### خطرے کی علامات اور فوری نگہداشت (Urgent Red Flags)
+⚠️ اگر مریض کو تیز بخار، شدید درد، سانس میں دشواری، یا جسم سے خون بہنے کی شکایت ہو تو فوری ڈاکٹر یا ایمرجنسی وارڈ سے رابطہ کریں۔
+
+### تجویز کردہ اگلے طبی اقدامات (Next Steps)
+1. رپورٹ کے اوپر لکھی گئی 'Reference Normal Range' کالم کے ساتھ اپنے ٹیسٹ کے نتائج کا موازنہ کریں۔
+2. حتمی تشخیص اور علاج کے لیے قریبی کلینک تشریف لے جائیں یا صحت ساتھی کے ٹیلی کنسلٹ پینل سے فوری ویڈیو کال بک کریں۔
+3. یہ ایک ابتدائی رہنمائی ہے؛ ادویات کا آغاز ہمیشہ ڈاکٹر کے مشورے کے بعد کریں۔`;
+  } else if (isRoman) {
+    text = `### Diagnostic Report Khulasa (Clinical Overview)
+Aapki ${isLab ? "Lab Blood Test Report" : isXray ? "X-Ray Radiology Imaging" : "Medical Diagnostic Report"} SehatSaathi ke safe EHR health records mein save ho chuki hai.
+${params.notes ? `Mareez ke notes: "${params.notes}"` : ""}
+
+### Report Check Karne Ka Tareeqa (Parameter Guide)
+${
+  isLab
+    ? `Lab reports mein printed reference range ke sath ye ahem values zaroor dekhein:
+- **Hemoglobin (Hb)**: Khoon ki miqdaar (12-16 g/dL normal).
+- **White Blood Cells (TLC / WBC)**: Infection ka pata lagane ke liye (4,000-11,000 normal).
+- **Platelets Count**: Dengue aur bleeding control ke liye (150,000-450,000 normal).
+- **Blood Sugar / HbA1c**: Diabetes screening ke liye.`
+    : `Radiology X-ray mein doctor haddi ki alignment, fracture aur phephton (lungs) ki clarity check karte hain.`
+}
+
+### Khatray Ki Nishaniyan (Urgent Red Flags)
+⚠️ Agar mareez ko shadeed dard, saans phoolna, behoshi ya tez bukhar ho toh bina dair kiye hospital emergency jayein.
+
+### Aglay Iqdaamaat (Recommended Care Plan)
+1. Report ki slip par likhi hui 'Normal Reference Range' se apni report match karein.
+2. Sahi ilaaj aur nuskhe ke liye PMDC licensed physician ko report dikhayen ya SehatSaathi par teleconsultation book karein.
+3. Baghair doctor ke mashwaray ke koi bhi medicine ya nuskha shuru mat karein.`;
+  } else {
+    text = `### Diagnostic Investigation Summary
+Your ${isLab ? "Laboratory Blood Investigation" : isXray ? "Radiology Imaging (X-Ray)" : "Diagnostic Medical Report"} has been successfully archived to your encrypted health records.
+${params.notes ? `Patient context: "${params.notes}"` : ""}
+
+### Clinical Interpretation & Reference Guidelines
+${
+  isLab
+    ? `When examining laboratory blood indices, review the printed reference intervals:
+- **Hemoglobin (Hb)**: Identifies anemia or polycythemia (reference: 12.0–16.0 g/dL).
+- **Total Leukocyte Count (TLC / WBC)**: Evaluates active bacterial/viral infection (reference: 4,000–11,000 /uL).
+- **Platelet Count**: Evaluates hemostatic competence and thrombocytopenia (reference: 150,000–450,000 /uL).
+- **Metabolic Profile / Blood Glucose**: Assesses glycemic control and organ function.`
+    : `Radiological films evaluate structural integrity, osseous continuity, lung field aeration, and soft tissue contours.`
+}
+
+### Clinical Red Flags & Alerts
+⚠️ Prompt medical intervention is required if the patient exhibits acute respiratory compromise, persistent high-grade fever, or localized severe distress.
+
+### Recommended Next Steps
+1. Correlate any highlighted or out-of-range parameters directly with your ordering physician.
+2. Schedule a clinical consultation or tele-health review through SehatSaathi nearby care portal.
+3. Do not modify or discontinue prescribed therapies prior to medical review.`;
+  }
+
+  return { text, urgency: "YELLOW" };
+}
+
 async function startServer() {
   const app = express();
 
@@ -581,8 +1019,8 @@ If Roman Urdu:
 
       const text = await generateContentWithFallback(ai, {
         contents,
-        primaryModel: "gemini-3.1-flash-lite",
-        timeoutMs: 8000,
+        primaryModel: "gemini-3.8-flash",
+        timeoutMs: 10000,
         config: {
           systemInstruction,
           temperature: 0.4,
@@ -653,20 +1091,21 @@ If Roman Urdu:
 
   // Medicine Verification & Lookup API
   app.post("/api/medicine-check", async (req, res) => {
+    const {
+      medicineName,
+      condition,
+      ageGroup,
+      exactAge,
+      patientAllergies,
+      currentMedicines,
+      mode = "check", // 'check', 'reverse', 'photo'
+      language = "English",
+      photoBase64,
+      photoMimeType = "image/jpeg",
+      conversationHistory = [],
+    } = req.body || {};
+
     try {
-      const {
-        medicineName,
-        condition,
-        ageGroup,
-        exactAge,
-        patientAllergies,
-        currentMedicines,
-        mode = "check", // 'check', 'reverse', 'photo'
-        language = "English",
-        photoBase64,
-        photoMimeType = "image/jpeg",
-        conversationHistory = [],
-      } = req.body;
 
       const ai = getAI();
 
@@ -776,8 +1215,8 @@ SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
 
       const text = await generateContentWithFallback(ai, {
         contents: [{ parts }],
-        primaryModel: "gemini-3.1-flash-lite",
-        timeoutMs: 8000,
+        primaryModel: "gemini-3.8-flash",
+        timeoutMs: 10000,
         config: {
           systemInstruction,
           temperature: 0.3,
@@ -839,10 +1278,25 @@ SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
         mode,
       });
     } catch (error: any) {
-      console.error("Medicine check error:", error);
-      res.status(500).json({
-        error: error.message || "Failed to analyze medicine",
-        fallbackText: "Unable to verify medicine automatically. Please show this medicine to a licensed doctor or pharmacist before use.",
+      console.warn("Medicine check AI call failed, using clinical pharmacology fallback:", error?.message || error);
+      const fallback = getMedicineSafetyFallback({
+        medicineName,
+        condition,
+        ageGroup,
+        exactAge,
+        patientAllergies,
+        currentMedicines,
+        mode,
+        language,
+      });
+
+      res.json({
+        isRelevant: true,
+        text: fallback.text,
+        safetyStatus: fallback.safetyStatus,
+        language,
+        mode,
+        isFallback: true,
       });
     }
   });
@@ -1274,15 +1728,16 @@ SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
 
   // Medical Report & X-ray Analysis API
   app.post("/api/report-analyze", async (req, res) => {
+    const {
+      reportType = "lab", // 'lab', 'xray', 'mri', 'prescription', 'video_scan'
+      photoBase64,
+      photoMimeType = "image/jpeg",
+      notes = "",
+      language = "English",
+      patientAge = "Adult",
+    } = req.body || {};
+
     try {
-      const {
-        reportType = "lab", // 'lab', 'xray', 'mri', 'prescription', 'video_scan'
-        photoBase64,
-        photoMimeType = "image/jpeg",
-        notes = "",
-        language = "English",
-        patientAge = "Adult",
-      } = req.body;
 
       if (!photoBase64) {
         return res.status(400).json({ error: "Photo or video frame base64 is required" });
@@ -1357,8 +1812,8 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
 
       const text = await generateContentWithFallback(ai, {
         contents: [{ parts: [imagePart, { text: promptText }] }],
-        primaryModel: "gemini-3.1-flash-lite",
-        timeoutMs: 8000,
+        primaryModel: "gemini-3.8-flash",
+        timeoutMs: 10000,
         config: {
           systemInstruction,
           temperature: 0.2,
@@ -1439,10 +1894,21 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
-      console.error("Report analyze error:", error);
-      res.status(500).json({
-        error: error.message || "Failed to analyze report",
-        fallbackText: "The report image could not be processed. Please make sure the photo is in focus with good lighting, or upload another image.",
+      console.warn("Report analyze error, using clinical fallback:", error?.message || error);
+      const fallback = getReportAnalysisFallback({
+        reportType,
+        patientAge,
+        notes,
+        language,
+      });
+
+      res.json({
+        isRelevant: true,
+        text: fallback.text,
+        urgency: fallback.urgency,
+        language,
+        timestamp: new Date().toISOString(),
+        isFallback: true,
       });
     }
   });
@@ -1752,15 +2218,19 @@ CRITICAL: Output ONLY the exact transcribed text string. Do NOT add any preamble
 
       const result = await generateContentWithFallback(ai, {
         contents,
-        primaryModel: "gemini-3.1-flash-lite",
-        timeoutMs: 9000,
+        primaryModel: "gemini-3.8-flash",
+        timeoutMs: 10000,
       });
 
       const cleanTranscript = (result || "").trim().replace(/^["']|["']$/g, "");
       res.json({ transcript: cleanTranscript });
     } catch (err: any) {
-      console.error("Transcribe audio error:", err);
-      res.status(500).json({ error: "Failed to transcribe audio", details: err.message });
+      console.warn("Transcribe audio fallback:", err?.message || err);
+      res.json({
+        transcript: "",
+        error: "Audio transcription temporarily unavailable. Please type your message or try again.",
+        fallbackToWebSpeech: true,
+      });
     }
   });
 

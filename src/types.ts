@@ -212,6 +212,22 @@ export type NavigationTab =
 export type VitalSignType = 'sugar' | 'bp' | 'heart_rate';
 export type SugarTestTiming = 'fasting' | 'random' | 'post_meal' | 'hba1c';
 export type SugarUnit = 'mg/dL' | 'mmol/L';
+export type VitalsReminderMetric = 'sugar' | 'bp' | 'heart' | 'all';
+
+export interface VitalsReminder {
+  id: string;
+  patientProfileId: string;
+  metric: VitalsReminderMetric;
+  title: string;
+  titleUrdu: string;
+  titleRoman: string;
+  time: string; // 24h "HH:MM" e.g. "08:00"
+  days: string[]; // e.g. ['everyday'] or ['Saturday', 'Sunday', etc.]
+  enabled: boolean;
+  sugarTiming?: SugarTestTiming;
+  soundEnabled: boolean;
+  lastTriggeredDate?: string; // "YYYY-MM-DD"
+}
 
 export interface VitalsReading {
   id: string;
