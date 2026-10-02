@@ -205,6 +205,25 @@ export interface Translations {
   vitalsCriticalFeedback: string;
   sendVitalsToDoctor: string;
   adminPortalTitle: string;
+  doctorReviewPortalTitle: string;
+  vitalsChartTitle: string;
+  bpTrends30Days: string;
+  heartRateTrends30Days: string;
+  startVoice: string;
+  pauseVoice: string;
+  resumeVoice: string;
+  clinicalOverviewHeader: string;
+  potentialCausesHeader: string;
+  redFlagsHeader: string;
+  recommendedCarePlanHeader: string;
+  safeHomeCareHeader: string;
+  questionsForDoctorHeader: string;
+  reportAnalysisHeader: string;
+  keyFindingsHeader: string;
+  structuredIntakeDossier: string;
+  chiefComplaintLabel: string;
+  durationLabel: string;
+  severityLabel: string;
 }
 
 export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
@@ -353,6 +372,25 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     vitalsCriticalFeedback: 'Urgent Clinical Alert: This reading indicates a potential hypertensive or metabolic crisis. Please proceed to the nearest emergency trauma center or call 1122 right away.',
     sendVitalsToDoctor: 'Send Vitals Summary to Doctor Review Queue',
     adminPortalTitle: 'Admin & Doctor Verification Portal',
+    doctorReviewPortalTitle: 'Doctor Review & Clinical Governance Portal',
+    vitalsChartTitle: '30-Day Blood Pressure & Heart Rate Trends',
+    bpTrends30Days: 'Blood Pressure Trends (Systolic / Diastolic)',
+    heartRateTrends30Days: 'Heart Rate & Pulse Trends (BPM)',
+    startVoice: 'Start Voice Recording',
+    pauseVoice: 'Pause Recording',
+    resumeVoice: 'Resume Recording',
+    clinicalOverviewHeader: 'Clinical Summary & Presentation Assessment',
+    potentialCausesHeader: 'Potential Causes & Differentials for Doctor Review',
+    redFlagsHeader: 'Warning Signs & Critical Red Flags (Seek Urgent Care)',
+    recommendedCarePlanHeader: 'Recommended Next Clinical Steps',
+    safeHomeCareHeader: 'Safe Supportive Measures at Home',
+    questionsForDoctorHeader: 'Questions for Your Doctor',
+    reportAnalysisHeader: 'Diagnostic Imaging & Lab Report',
+    keyFindingsHeader: 'Key Clinical Parameters & Diagnostic Findings',
+    structuredIntakeDossier: 'Submitted Patient Clinical Intake Form',
+    chiefComplaintLabel: 'Chief Complaint',
+    durationLabel: 'Duration',
+    severityLabel: 'Pain / Severity Scale',
   },
   roman: {
     direction: 'ltr',
@@ -499,6 +537,25 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     vitalsCriticalFeedback: 'Khatray Ki Ghanti: Yeh reading intehai ghair mamooli hai. Baraye meherbani foran qareebi hospital emergency tashreef le jayein ya 1122 par call karein.',
     sendVitalsToDoctor: 'Vitals Doctor Review Queue Mein Bhejein',
     adminPortalTitle: 'Admin Aur Doctor Verification Portal',
+    doctorReviewPortalTitle: 'Doctor Review Aur Clinical Triage Portal',
+    vitalsChartTitle: '30-Roza Blood Pressure Aur Pulse Rate Ka Graph',
+    bpTrends30Days: 'Blood Pressure Ka Trend (Systolic / Diastolic)',
+    heartRateTrends30Days: 'Dil Ki Dharkan Aur Pulse Ka Trend (BPM)',
+    startVoice: 'Awaaz Record Shuru Karein',
+    pauseVoice: 'Awaaz Rokein (Pause)',
+    resumeVoice: 'Awaaz Jari Rakhein',
+    clinicalOverviewHeader: 'Mukammal Tibbi Khulasa aur Jaiza',
+    potentialCausesHeader: 'Mumkin Wajoohaat (Doctor se tasdeeq talab)',
+    redFlagsHeader: 'Khatray Ki Nishaniyan (Red Flags)',
+    recommendedCarePlanHeader: 'Tajweez Kardah Aglay Iqdaamaat',
+    safeHomeCareHeader: 'Ghar Par Mehfooz Dekhbhal',
+    questionsForDoctorHeader: 'Doctor se Poochne Walay Sawalaat',
+    reportAnalysisHeader: 'Lab & Radiology Report',
+    keyFindingsHeader: 'Ahem Tashkheesi Mushahidaat wa Parameters',
+    structuredIntakeDossier: 'Mareez Ka Jama Shuda Intake Form (Dossier)',
+    chiefComplaintLabel: 'Bunyaadi Alamat',
+    durationLabel: 'Muddat',
+    severityLabel: 'Shiddat Ka Darja',
   },
   ur: {
     direction: 'ltr',
@@ -645,5 +702,24 @@ export const TRANSLATIONS: Record<SupportedLanguage, Translations> = {
     vitalsCriticalFeedback: 'فوری توجہ فرمائیں! یہ ریڈنگ خطرناک حد تک غیر معمولی ہے۔ برائے مہربانی تاخیر کیے بغیر قریبی ہسپتال ایمرجنسی تشریف لے جائیں یا 1122 پر کال کریں۔',
     sendVitalsToDoctor: 'وائٹلز کا خلاصہ ڈاکٹر کے معائنے کے لیے بھیجیں',
     adminPortalTitle: 'ایڈمن اور ڈاکٹر توثیقی ڈیش بورڈ',
+    doctorReviewPortalTitle: 'ڈاکٹر ریویو و ایڈمن پورٹل',
+    vitalsChartTitle: '30 روزہ بلڈ پریشر اور نبض کا تفصیلی چارٹ',
+    bpTrends30Days: 'بلڈ پریشر کا 30 روزہ رجحان (سسٹولک اور ڈائیسٹولک)',
+    heartRateTrends30Days: 'نبض / دل کی دھڑکن کا 30 روزہ گراف (BPM)',
+    startVoice: 'بولنا شروع کریں',
+    pauseVoice: 'وقفہ کریں',
+    resumeVoice: 'جاری رکھیں',
+    clinicalOverviewHeader: 'جامع طبی خلاصہ اور جائزہ',
+    potentialCausesHeader: 'ممکنہ طبی وجوہات (ڈاکٹر سے تصدیق طلب)',
+    redFlagsHeader: 'خطرناک انتباہی علامات (Red Flags)',
+    recommendedCarePlanHeader: 'تجویز کردہ طبی لائحہ عمل',
+    safeHomeCareHeader: 'محفوظ گھریلو احتیاطی تدابیر',
+    questionsForDoctorHeader: 'ڈاکٹر سے پوچھنے والے سوالات',
+    reportAnalysisHeader: 'لیب و ریڈیالوجی تشخیصی رپورٹ',
+    keyFindingsHeader: 'اہم تشخیصی مشاہدات و پیرامیٹرز',
+    structuredIntakeDossier: 'مریض کا جمع کردہ منظم طبی ریکارڈ',
+    chiefComplaintLabel: 'بنیادی علامت',
+    durationLabel: 'دورانیہ',
+    severityLabel: 'شدت کا درجہ',
   },
 };

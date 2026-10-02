@@ -513,7 +513,7 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {/* Card 1: AI Symptom Assessment */}
           <div
             onClick={() => onNavigate('symptoms')}
@@ -659,6 +659,41 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
 
             <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-teal-600 dark:text-teal-400">
               <span>{t.findCareBtn}</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+
+          {/* Card 6: PMDC Doctor Review & Clinical Governance Portal */}
+          <div
+            onClick={() => onNavigate('doctor_portal')}
+            className="group relative p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/60 flex items-center justify-center text-emerald-700 dark:text-emerald-300 group-hover:scale-105 transition-transform">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800">
+                  {pendingDoctorReviewsCount > 0
+                    ? isUrdu ? `${pendingDoctorReviewsCount} کیسز` : `${pendingDoctorReviewsCount} Pending`
+                    : isUrdu ? 'پی ایم ڈی سی پورٹل' : 'PMDC Portal'}
+                </span>
+              </div>
+
+              <h4 className="font-bold text-base text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                {isUrdu ? 'ڈاکٹر ریویو و ایڈمن پورٹل' : isRoman ? 'Doctor Review Portal' : 'Doctor Review Portal'}
+              </h4>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
+                {isUrdu
+                  ? 'مستند ڈاکٹرز کے لیے ٹریاج کیسز کا معائنہ، ڈیجیٹل نسخوں پر دستخط اور توثیق۔'
+                  : isRoman
+                  ? 'Licensed doctors ke liye patient triage review aur digital prescription signing.'
+                  : 'Clinical governance, triage case approvals, and signed digital prescriptions.'}
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-emerald-600 dark:text-emerald-400">
+              <span>{isUrdu ? 'پورٹل کھولیں' : isRoman ? 'Portal Kholein' : 'Access Portal'}</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>

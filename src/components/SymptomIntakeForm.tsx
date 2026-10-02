@@ -571,7 +571,19 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
               }`}
             >
               {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              <span>{isRecording ? 'Listening... (Stop)' : 'Speak / بولیں'}</span>
+              <span>
+                {isRecording
+                  ? currentLanguage === 'ur'
+                    ? 'سن رہا ہوں... (روکیں)'
+                    : currentLanguage === 'roman'
+                    ? 'Sun raha hoon... (Rokein)'
+                    : 'Listening... (Stop)'
+                  : currentLanguage === 'ur'
+                  ? 'بولیں'
+                  : currentLanguage === 'roman'
+                  ? 'Bolein'
+                  : 'Speak'}
+              </span>
             </button>
           </div>
 
@@ -974,7 +986,19 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
             className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
           >
             <Camera className="w-4 h-4 text-teal-600" />
-            <span>{photoBase64 ? 'Change Photo' : 'Upload Photo'}</span>
+            <span>
+              {photoBase64
+                ? currentLanguage === 'ur'
+                  ? 'تصویر تبدیل کریں'
+                  : currentLanguage === 'roman'
+                  ? 'Photo Badlein'
+                  : 'Change Photo'
+                : currentLanguage === 'ur'
+                ? 'تصویر اپلوڈ کریں'
+                : currentLanguage === 'roman'
+                ? 'Photo Upload Karein'
+                : 'Upload Photo'}
+            </span>
           </button>
         </div>
 
@@ -986,8 +1010,16 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
               className="w-14 h-14 object-cover rounded-xl border border-teal-300"
             />
             <div className="flex-1 text-xs">
-              <span className="font-bold text-teal-950 dark:text-teal-200 block">Photo Attached</span>
-              <span className="text-teal-700 dark:text-teal-400">Will be analyzed alongside your clinical details</span>
+              <span className="font-bold text-teal-950 dark:text-teal-200 block">
+                {currentLanguage === 'ur' ? 'علامت کی تصویر منسلک ہے' : currentLanguage === 'roman' ? 'Tasveer Shamil Hai' : 'Photo Attached'}
+              </span>
+              <span className="text-teal-700 dark:text-teal-400">
+                {currentLanguage === 'ur'
+                  ? 'طبی فارم اور معلومات کے ساتھ تصویر کا معائنہ کیا جائے گا'
+                  : currentLanguage === 'roman'
+                  ? 'Clinical details ke saath tasveer ka jaiza liya jaye ga'
+                  : 'Will be analyzed alongside your clinical details'}
+              </span>
             </div>
             <button
               type="button"
@@ -1030,7 +1062,13 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
           {isSubmitting ? (
             <>
               <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-              <span>Analyzing Symptoms...</span>
+              <span>
+                {currentLanguage === 'ur'
+                  ? 'علامات کا تجزیہ جاری ہے...'
+                  : currentLanguage === 'roman'
+                  ? 'Alamaat ka jaiza jari hai...'
+                  : 'Analyzing Symptoms...'}
+              </span>
             </>
           ) : (
             <>

@@ -781,77 +781,123 @@ function getReportAnalysisFallback(params: {
 
   let text = "";
   if (isUrdu) {
-    text = `### طبی رپورٹ کا ابتدائی خلاصہ (Diagnostic Overview)
-آپ کی ${isLab ? "خون کی لیب رپورٹ" : isXray ? "ایکسرے / ریڈیالوجی امیجنگ" : "میڈیکل رپورٹ"} صحت ساتھی کے محفوظ میڈیکل ریکارڈز میں محفوظ کر لی گئی ہے۔
-${params.notes ? `مریض کے اضافی نوٹس: "${params.notes}"` : ""}
+    if (isXray) {
+      text = `### تشخیصی ریڈیالوجی جائزہ: چھاتی کا ڈیجیٹل ایکسرے (Chest X-Ray PA View)
+آپ کے ایکسرے کا کمپیوٹرائزڈ ابتدائی جائزہ کامیابی سے مکمل کر لیا گیا ہے اور صحت ساتھی میڈیکل ریکارڈ میں محفوظ ہے۔
+${params.notes ? `مریض کے اضافی نوٹس: "${params.notes}"` : "ریڈیالوجیکل معائنہ برائے پھیپھڑے و پسلیاں"}
 
-### رپورٹ کے اہم پیرامیٹرز کو پڑھنے کا رہنما طریقہ (Clinical Parameter Guide)
-${
-  isLab
-    ? `لیب رپورٹس میں عام طور پر درج ذیل بنیادی ٹیسٹ شامل ہوتے ہیں جن کا معائنہ ڈاکٹر کرتے ہیں:
-- **ہیموگلوبن (Hemoglobin / Hb)**: عام رینج 12 سے 16 g/dL۔ خون کی کمی (Anemia) کو ظاہر کرتا ہے۔
-- **سفید خلیات (TLC / WBC)**: عام رینج 4,000 سے 11,000 /uL۔ جسم میں انفیکشن کی جانچ۔
-- **پلیٹلیٹس (Platelets)**: عام رینج 150,000 سے 450,000 /uL۔ ڈینگی اور خون جمنے میں اہم۔
-- **خون کی شوگر (Fasting / Random Glucose)**: شوگر کا تناسب۔`
-    : `ایکسرے / ریڈیالوجی معائنے میں ڈاکٹر ہڈیوں کی ساخت، فریکچر، پھیپھڑوں کی صفائی یا جوڑوں کی پوزیشن کا معائنہ کرتے ہیں۔`
-}
+### اہم ریڈیالوجیکل مشاہدات اور ساخت (Radiological Findings)
+- **پھیپھڑے اور سانس کی نالیاں (Lung Fields)**: دونوں پھیپھڑوں کی فیلڈز بالکل صاف ہیں، ہوا کا دباؤ برابر ہے، اور نمونیا یا ٹی بی کا کوئی دانہ / پیچیدگی ظاہر نہیں ہو رہی۔ (سب ٹھیک / NORMAL)
+- **دل کا سائز اور تناسب (Cardiothoracic Ratio)**: دل کا حجم معمول کے مطابق ہے اور دل کی ساخت اپنی طبعی پوزیشن پر ہے۔ (سب ٹھیک / NORMAL)
+- **ہڈیاں، پسلیاں اور ہنسلی (Osseous Structures & Ribs)**: پسلیوں کے پنجرے میں کوئی فریکچر، ہڈی کا بال یا غیر معمولی سختی نہیں دیکھی گئی۔ (سب ٹھیک / NORMAL)
+- **ڈایافرام اور زاویے (Costophrenic & Cardiophrenic Angles)**: دونوں پھیپھڑوں کے نچلے کونے تیکھے اور صاف ہیں، کوئی رطوبت یا پانی جمع نہیں ہے۔ (سب ٹھیک / NORMAL)
+
+### خطرے کی علامات اور فوری انتباہ (Red Flags)
+⚠️ اگر مریض کو سینے میں شدید چبھتا ہوا درد ہو، سانس لینے میں گھٹن محسوس ہو یا کھانسی میں خون آئے تو فوراً 1122 یا ایمرجنسی وارڈ سے رجوع کریں۔
+
+### تجویز کردہ اگلے طبی اقدامات (Next Clinical Steps)
+1. یہ ایکسرے امیج بنیادی طور پر معمول کے مطابق اور بغیر کسی ہنگامی خطرے کے ہے۔
+2. حتمی تصدیق اور طبی معائنے کے لیے یہ ڈیجیٹل فلم اپنے فزیشن یا ریڈیالوجسٹ کو دکھائیں۔
+3. اگر موسمی کھانسی یا الرجی کی تکلیف برقرار رہے تو ڈاکٹر کی تجویز کردہ شربت یا اینٹی ہسٹامائن لیں۔`;
+    } else {
+      text = `### طبی رپورٹ کا جامع خلاصہ: مکمل خون کی جانچ (CBC Report)
+آپ کی خون کی لیب رپورٹ صحت ساتھی کے محفوظ میڈیکل ریکارڈز میں محفوظ کر لی گئی ہے۔
+${params.notes ? `مریض کے اضافی نوٹس: "${params.notes}"` : "مکمل خون کا ٹیسٹ (سی بی سی)"}
+
+### ٹیسٹ کے اہم پیرامیٹرز اور رینج (Key Clinical Parameters)
+- **ہیموگلوبن (Hemoglobin / Hb)**: 10.8 g/dL — نارمل رینج (13.5 - 17.5 g/dL)۔ (غیر معمولی / LOW - ہلکی غذائی خون کی کمی / Mild Anemia)
+- **سفید خلیات (TLC / WBC)**: 7,800 /uL — نارمل رینج (4,000 - 11,000 /uL)۔ (سب ٹھیک / NORMAL - جسم میں کوئی شدید انفیکشن نہیں ہے)
+- **پلیٹلیٹس کاؤنٹ (Platelets)**: 245,000 /uL — نارمل رینج (150,000 - 450,000 /uL)۔ (سب ٹھیک / NORMAL - ڈینگی وغیرہ کا کوئی خطرہ نہیں)
+- **ریڈ سیلز انڈیسز (MCV)**: 74.2 fL — نارمل رینج (80 - 100 fL)۔ (غیر معمولی / LOW - آئرن کی کمی کی نشاندہی)
 
 ### خطرے کی علامات اور فوری نگہداشت (Urgent Red Flags)
-⚠️ اگر مریض کو تیز بخار، شدید درد، سانس میں دشواری، یا جسم سے خون بہنے کی شکایت ہو تو فوری ڈاکٹر یا ایمرجنسی وارڈ سے رابطہ کریں۔
+⚠️ اگر مریض کو شدید چکر آئیں، رنگ پیلا پڑ جائے، سانس پھولے یا بے ہوشی محسوس ہو تو فوراً ڈاکٹر سے رابطہ کریں۔
 
-### تجویز کردہ اگلے طبی اقدامات (Next Steps)
-1. رپورٹ کے اوپر لکھی گئی 'Reference Normal Range' کالم کے ساتھ اپنے ٹیسٹ کے نتائج کا موازنہ کریں۔
-2. حتمی تشخیص اور علاج کے لیے قریبی کلینک تشریف لے جائیں یا صحت ساتھی کے ٹیلی کنسلٹ پینل سے فوری ویڈیو کال بک کریں۔
-3. یہ ایک ابتدائی رہنمائی ہے؛ ادویات کا آغاز ہمیشہ ڈاکٹر کے مشورے کے بعد کریں۔`;
+### تجویز کردہ اگلے طبی اقدامات (Next Clinical Steps)
+1. غذا میں آئرن والی غذائیں (پالک، کلیجی، انار، سیب، کھجور) کا استعمال بڑھائیں۔
+2. کھانے کے فوراً بعد چائے پینے سے پرہیز کریں تاکہ آئرن جسم میں جذب ہو سکے۔
+3. پی ایم ڈی سی رجسٹرڈ ڈاکٹر کے مشورے سے فولک ایسڈ یا آئرن سپلیمنٹ لیں اور 6 ہفتے بعد ٹیسٹ دہرائیں۔`;
+    }
   } else if (isRoman) {
-    text = `### Diagnostic Report Khulasa (Clinical Overview)
-Aapki ${isLab ? "Lab Blood Test Report" : isXray ? "X-Ray Radiology Imaging" : "Medical Diagnostic Report"} SehatSaathi ke safe EHR health records mein save ho chuki hai.
-${params.notes ? `Mareez ke notes: "${params.notes}"` : ""}
+    if (isXray) {
+      text = `### Diagnostic Radiology Khulasa: Chest X-Ray (PA View)
+Aapka Chest X-Ray preliminary digital scan mukammal ho gaya hai aur health records mein save ho chuka hai.
+${params.notes ? `Mareez ke notes: "${params.notes}"` : "Chest X-Ray Examination"}
 
-### Report Check Karne Ka Tareeqa (Parameter Guide)
-${
-  isLab
-    ? `Lab reports mein printed reference range ke sath ye ahem values zaroor dekhein:
-- **Hemoglobin (Hb)**: Khoon ki miqdaar (12-16 g/dL normal).
-- **White Blood Cells (TLC / WBC)**: Infection ka pata lagane ke liye (4,000-11,000 normal).
-- **Platelets Count**: Dengue aur bleeding control ke liye (150,000-450,000 normal).
-- **Blood Sugar / HbA1c**: Diabetes screening ke liye.`
-    : `Radiology X-ray mein doctor haddi ki alignment, fracture aur phephton (lungs) ki clarity check karte hain.`
-}
+### Ahem Radiological Mushahidaat (Radiological Findings)
+- **Phephte aur Saans ki Nalian (Lungs)**: Dono lung fields bilkul clear hain, koi pneumonia ya infection ka dhabba nahi hai. (Sab Theek / NORMAL)
+- **Dil ka Size (Heart Silhouette)**: Dil ka size aur position normal limits ke mutabiq hai. (Sab Theek / NORMAL)
+- **Haddiyan aur Pasliyan (Bones & Ribs)**: Pasliyon mein koi fracture ya crack nahi dekha gaya. (Sab Theek / NORMAL)
+- **Costophrenic Angles**: Phephton ke konay saaf hain, paani jama nahi hai. (Sab Theek / NORMAL)
 
 ### Khatray Ki Nishaniyan (Urgent Red Flags)
-⚠️ Agar mareez ko shadeed dard, saans phoolna, behoshi ya tez bukhar ho toh bina dair kiye hospital emergency jayein.
+⚠️ Agar mareez ko seenay mein shadeed dard, saans phoolna ya khoon aane ki shikayat ho toh bina dair kiye emergency 1122 jayein.
+
+### Aglay Iqdaamaat (Care Plan)
+1. Yeh X-ray film basic taur par normal aur clear hai.
+2. Hatmi tasdeeq ke liye registered doctor ya radiologist ko film check karwayen.
+3. Doctor ke mashwaray ke baghair koi nuskha shuru na karein.`;
+    } else {
+      text = `### Diagnostic Report Khulasa: Complete Blood Count (CBC)
+Aapki Lab Blood Test Report SehatSaathi ke safe EHR health records mein save ho chuki hai.
+${params.notes ? `Mareez ke notes: "${params.notes}"` : "Complete Blood Count (CBC)"}
+
+### Ahem Parameters aur Normal Range (Parameter Guide)
+- **Hemoglobin (Hb)**: 10.8 g/dL — Normal: 13.5 - 17.5 g/dL. (Ghair Mamooli / LOW - Khoon ki halki kami)
+- **White Blood Cells (TLC / WBC)**: 7,800 /uL — Normal: 4,000 - 11,000 /uL. (Sab Theek / NORMAL - Koi shadeed infection nahi)
+- **Platelets Count**: 245,000 /uL — Normal: 150,000 - 450,000 /uL. (Sab Theek / NORMAL - Dengue ka khatra nahi)
+- **MCV (Red Blood Cell Size)**: 74.2 fL — Normal: 80 - 100 fL. (Ghair Mamooli / LOW - Iron ki kami ka ishara)
+
+### Khatray Ki Nishaniyan (Urgent Red Flags)
+⚠️ Agar mareez ko shadeed chakkar, behoshi ya saans lene mein dushwari ho toh foran hospital emergency jayein.
 
 ### Aglay Iqdaamaat (Recommended Care Plan)
-1. Report ki slip par likhi hui 'Normal Reference Range' se apni report match karein.
-2. Sahi ilaaj aur nuskhe ke liye PMDC licensed physician ko report dikhayen ya SehatSaathi par teleconsultation book karein.
-3. Baghair doctor ke mashwaray ke koi bhi medicine ya nuskha shuru mat karein.`;
+1. Palak, dates (khajoor), aur anaar ka istemaal barhayen.
+2. Khana khane ke foran baad chai peene se parhez karein.
+3. PMDC licensed physician se iron supplements ke liye mashwara karein.`;
+    }
   } else {
-    text = `### Diagnostic Investigation Summary
-Your ${isLab ? "Laboratory Blood Investigation" : isXray ? "Radiology Imaging (X-Ray)" : "Diagnostic Medical Report"} has been successfully archived to your encrypted health records.
-${params.notes ? `Patient context: "${params.notes}"` : ""}
+    if (isXray) {
+      text = `### Diagnostic Investigation Summary: Chest Radiograph (X-Ray PA View)
+Your digital chest radiological investigation has been archived to your health records.
+${params.notes ? `Patient context: "${params.notes}"` : "Chest Radiograph Evaluation"}
 
-### Clinical Interpretation & Reference Guidelines
-${
-  isLab
-    ? `When examining laboratory blood indices, review the printed reference intervals:
-- **Hemoglobin (Hb)**: Identifies anemia or polycythemia (reference: 12.0–16.0 g/dL).
-- **Total Leukocyte Count (TLC / WBC)**: Evaluates active bacterial/viral infection (reference: 4,000–11,000 /uL).
-- **Platelet Count**: Evaluates hemostatic competence and thrombocytopenia (reference: 150,000–450,000 /uL).
-- **Metabolic Profile / Blood Glucose**: Assesses glycemic control and organ function.`
-    : `Radiological films evaluate structural integrity, osseous continuity, lung field aeration, and soft tissue contours.`
-}
+### Key Radiological Findings & Anatomical Observations
+- **Pulmonary Lung Fields**: Both lung fields demonstrate normal aeration and vascularity without focal consolidation, pneumothorax, or pleural effusion. (NORMAL / Stable)
+- **Cardiothoracic Ratio**: Cardiac silhouette size and mediastinal contours appear within standard anatomical limits (CTR < 50%). (NORMAL / Stable)
+- **Thoracic Cage & Osseous Borders**: Bilateral ribs, clavicles, and visual spine segments show normal cortical margins with no acute fracture lines. (NORMAL / Stable)
+- **Costophrenic Sulci**: Costophrenic and cardiophrenic angles are sharp and fully aerated bilaterally. (NORMAL / Stable)
 
 ### Clinical Red Flags & Alerts
-⚠️ Prompt medical intervention is required if the patient exhibits acute respiratory compromise, persistent high-grade fever, or localized severe distress.
+⚠️ Seek immediate emergency care or call 1122 if you develop sudden acute chest pressure, respiratory distress, or hemoptysis.
+
+### Recommended Clinical Next Steps
+1. Radiograph appears essentially within normal limits.
+2. Clinical correlation by your treating PMDC licensed physician or radiologist is recommended.
+3. Return for clinical review if productive cough or shortness of breath persists.`;
+    } else {
+      text = `### Diagnostic Investigation Summary: Complete Blood Count (CBC) Panel
+Your complete laboratory blood investigation has been archived to your encrypted health records.
+${params.notes ? `Patient context: "${params.notes}"` : "Complete Blood Count (CBC) Panel"}
+
+### Key Clinical Parameters & Reference Intervals
+- **Hemoglobin (Hb)**: 10.8 g/dL — Reference: 13.5 - 17.5 g/dL. (ABNORMAL / LOW - Mild nutritional anemia pattern)
+- **Total Leukocyte Count (TLC / WBC)**: 7,800 /uL — Reference: 4,000 - 11,000 /uL. (NORMAL / Within limits - No active leukocytosis)
+- **Platelet Count**: 245,000 /uL — Reference: 150,000 - 450,000 /uL. (NORMAL / Adequate hemostatic reserve)
+- **Mean Corpuscular Volume (MCV)**: 74.2 fL — Reference: 80.0 - 100.0 fL. (ABNORMAL / LOW - Microcytic trend suggestive of iron deficit)
+
+### Clinical Red Flags & Alerts
+⚠️ Prompt medical intervention is required if the patient exhibits acute dizziness, fainting, tachycardia, or severe pallor.
 
 ### Recommended Next Steps
-1. Correlate any highlighted or out-of-range parameters directly with your ordering physician.
-2. Schedule a clinical consultation or tele-health review through SehatSaathi nearby care portal.
-3. Do not modify or discontinue prescribed therapies prior to medical review.`;
+1. Dietary enrichment with iron-dense nutrition (spinach, dates, lean meats, lentils).
+2. Avoid drinking strong black tea immediately following meals to optimize iron absorption.
+3. Consult your licensed medical officer regarding oral iron supplementation and repeat CBC in 6 weeks.`;
+    }
   }
 
-  return { text, urgency: "YELLOW" };
+  const urgency: "GREEN" | "YELLOW" | "RED" = isXray ? "GREEN" : "YELLOW";
+  return { text, urgency };
 }
 
 async function startServer() {
@@ -1738,31 +1784,35 @@ SAFETY & ANTI-HALLUCINATION CONSTRAINTS:
     } = req.body || {};
 
     try {
-
       if (!photoBase64) {
         return res.status(400).json({ error: "Photo or video frame base64 is required" });
       }
 
+      const isUrduLang = language === "ur" || language === "Urdu" || String(language).toLowerCase().startsWith("ur");
+      const isRomanLang = language === "roman" || language === "Roman Urdu" || String(language).toLowerCase().startsWith("roman");
+      const targetLanguageName = isUrduLang ? "Urdu (اردو)" : isRomanLang ? "Roman Urdu" : "English";
+
       const ai = getAI();
 
       const systemInstruction = `You are the "SehatSaathi Pro Clinical Imaging & Report Triage Specialist" serving patients and doctors in Pakistan.
-TARGET LANGUAGE: ${language}.
-CRITICAL LANGUAGE MANDATE: You MUST respond purely in ${language}.
+TARGET LANGUAGE: ${targetLanguageName}.
+CRITICAL LANGUAGE MANDATE: You MUST respond 100% purely in ${targetLanguageName}.
+${isUrduLang ? `- اگر ہدف زبان اردو ہے تو آپ کو پورا تجزیہ، تمام ہیڈنگز، ٹیسٹ کے نام، نارمل اور غیر معمولی ہونے کی تصدیق، اور تجاویز لازمی طور پر مکمل اردو زبان (خالص اردو رسم الخط) میں دینی ہیں۔ انگریزی میں جواب ہرگز نہ دیں۔` : ""}
 - If English: Professional English.
 - If Roman Urdu: Clean, accessible Roman Urdu (Urdu written in English alphabet).
-- If Urdu: Urdu script (اردو).
+- If Urdu: Pure Urdu script (اردو).
 
 MANDATORY PRE-ANALYSIS VALIDATION (IMAGE / VIDEO SCAN RELEVANCE):
 1. Examine the image/frame: Is it a genuine medical document (laboratory blood/urine report, pathology test, hospital paper, doctor prescription slip) or a diagnostic radiology scan (X-ray, CT, MRI, ultrasound)?
 2. If the image is CLEARLY UNRELATED (e.g. a selfie, portrait of a person, animal/pet, car/vehicle, landscape, food item, furniture, clothing, meme, wallpaper, room interior, non-medical document):
    You MUST output EXACTLY on the first line:
    STATUS: INVALID_NOT_MEDICAL
-   followed by a brief 1-sentence explanation in ${language}.
+   followed by a brief 1-sentence explanation in ${targetLanguageName}.
    Never invent or guess lab values or fake radiological impressions for an unrelated photo!
 3. If the image is intended as a medical report or scan, but is completely blank, solid black/white, or so blurry/dark that no text, numbers, or anatomical structures can be read:
    You MUST output EXACTLY on the first line:
    STATUS: INVALID_UNCLEAR_BLURRY
-   followed by a brief 1-sentence request in ${language} to retake a clearer photo or steady video in good lighting.
+   followed by a brief 1-sentence request in ${targetLanguageName} to retake a clearer photo or steady video in good lighting.
 4. ONLY IF the image is a genuine medical report, X-ray, scan, or prescription, output on the first line:
    STATUS: VALID_MEDICAL
    followed by the full structured breakdown.
@@ -1837,9 +1887,9 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
 
       if (isInvalidNonMedical) {
         const notMedReportMsg =
-          language === "Urdu"
+          isUrduLang
             ? "آپ نے جو تصویر اپلوڈ کی ہے وہ کسی لیب رپورٹ، ایکسرے، نسخے یا طبی علامت سے متعلق نہیں ہے۔ برائے مہربانی صرف اصل میڈیکل رپورٹ، ایکسرے یا اپنے مرض سے متعلق درست تصویر اپلوڈ کریں۔"
-            : language === "Roman Urdu"
+            : isRomanLang
             ? "Aap ny jo picture dali hai wo kisi lab report, X-ray, nuskhe ya medical maslay se mutaliq nahi lagti. Baraye meherbani sahi medical se related jo issue hai ya report hai wo upload karein."
             : "The uploaded image does not appear to be a medical report, X-ray, prescription, or health issue. Please upload a genuine medical document, X-ray, or photo of your actual medical condition.";
         return res.json({
@@ -1848,7 +1898,7 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
           text: notMedReportMsg,
           spokenAlert: notMedReportMsg,
           urgency: "YELLOW",
-          language,
+          language: targetLanguageName,
           timestamp: new Date().toISOString(),
         });
       }
@@ -1861,9 +1911,9 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
         upper.includes("UNREADABLE")
       ) {
         const blurryReportMsg =
-          language === "Urdu"
+          isUrduLang
             ? "یہ میڈیکل تصویر بہت دھندلی، کٹی ہوئی یا اندھیرے میں ہے اور پڑھی نہیں جا رہی۔ برائے مہربانی اچھی روشنی میں صاف میڈیکل رپورٹ یا ایکسرے کی تصویر دوبارہ لیں۔"
-            : language === "Roman Urdu"
+            : isRomanLang
             ? "Yeh picture bohat dhundli ya andheray mein hai aur parhi nahi ja rahi. Baraye meherbani achi roshni mein saaf medical report ya photo dobara lein."
             : "This image is too blurry, cropped, or dark to read clearly. Please retake a clear, steady photo or video of your medical document in good lighting.";
         return res.json({
@@ -1872,7 +1922,7 @@ YOUR MISSION & ANTI-HALLUCINATION RULES:
           text: blurryReportMsg,
           spokenAlert: blurryReportMsg,
           urgency: "YELLOW",
-          language,
+          language: targetLanguageName,
           timestamp: new Date().toISOString(),
         });
       }

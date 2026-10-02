@@ -18,11 +18,13 @@ import {
   Check,
   PhoneCall,
   FileCheck,
+  FileText,
   Info,
   AlertCircle,
   ArrowRight,
 } from 'lucide-react';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { TRANSLATIONS } from '../services/i18n';
 
 interface ClinicalOutputCardProps {
   content: string;
@@ -49,6 +51,7 @@ interface ParsedClinicalSections {
   doctorQuestions: string[];
   drugProfile: { label: string; value: string }[];
   ageSafety: string;
+  reportFindings: string[];
   indications: string[];
   contraindications: string[];
   sideEffects: { common: string[]; severe: string[] };
@@ -197,6 +200,7 @@ function parseClinicalContent(rawContent: string, isMedicine: boolean): ParsedCl
     doctorQuestions: [],
     drugProfile: [],
     ageSafety: '',
+    reportFindings: [],
     indications: [],
     contraindications: [],
     sideEffects: { common: [], severe: [] },
@@ -216,6 +220,7 @@ function parseClinicalContent(rawContent: string, isMedicine: boolean): ParsedCl
     doctorQuestions: [],
     drugProfile: [],
     ageSafety: [],
+    reportFindings: [],
     indications: [],
     contraindications: [],
     sideEffects: [],
@@ -239,6 +244,20 @@ function parseClinicalContent(rawContent: string, isMedicine: boolean): ParsedCl
       lower.includes('assessment')
     ) {
       matchedNewSection = 'overview';
+    } else if (
+      lower.includes('radiological findings') ||
+      lower.includes('radiological observations') ||
+      lower.includes('مشاہدات') ||
+      lower.includes('ریڈیالوجیکل مشاہدات') ||
+      lower.includes('clinical parameters') ||
+      lower.includes('ٹیسٹ کے اہم پیرامیٹرز') ||
+      lower.includes('test parameters') ||
+      lower.includes('key findings') ||
+      lower.includes('اہم نتائج') ||
+      lower.includes('laboratory findings') ||
+      lower.includes('key clinical parameters')
+    ) {
+      matchedNewSection = 'reportFindings';
     } else if (
       lower.includes('differential') ||
       lower.includes('possible cause') ||
@@ -352,6 +371,7 @@ function parseClinicalContent(rawContent: string, isMedicine: boolean): ParsedCl
   result.doctorQuestions = cleanList(sectionBuffers.doctorQuestions);
 
   result.ageSafety = sectionBuffers.ageSafety.join(' ').replace(/[*_#`~]/g, '').trim();
+  result.reportFindings = cleanList(sectionBuffers.reportFindings);
   result.indications = cleanList(sectionBuffers.indications);
   result.contraindications = cleanList(sectionBuffers.contraindications);
   result.safeUsage = cleanList(sectionBuffers.safeUsage);
@@ -413,6 +433,8 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
   const isUrdu = currentLanguage === 'ur';
   const isRoman = currentLanguage === 'roman';
   const isMedicine = feature === 'medicine';
+  const isReport = feature === 'report';
+  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
 
   const [viewMode, setViewMode] = useState<'structured' | 'editorial'>('structured');
   const [copied, setCopied] = useState(false);
@@ -490,7 +512,7 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
       <div className="p-4 sm:p-5 border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-850 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-teal-600/10 dark:bg-teal-400/10 text-teal-700 dark:text-teal-300">
-            {isMedicine ? <Pill className="w-5 h-5" /> : <Stethoscope className="w-5 h-5" />}
+            {isMedicine ? <Pill className="w-5 h-5" /> : isReport ? <FileText className="w-5 h-5" /> : <Stethoscope className="w-5 h-5" />}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -501,6 +523,8 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
                     : isRoman
                     ? 'Dawai Ki Hifazati Report'
                     : 'Pharmacology Safety Assessment'
+                  : isReport
+                  ? t.reportAnalysisHeader
                   : isUrdu
                   ? 'طبی تشخیص اور رہنمائی'
                   : isRoman
@@ -675,17 +699,70 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-850/80 border border-slate-200/80 dark:border-slate-800 space-y-2">
               <div className="flex items-center gap-2 text-teal-700 dark:text-teal-400 font-extrabold text-xs uppercase tracking-wider">
                 <Info className="w-4 h-4" />
-                <span>
-                  {isUrdu
-                    ? 'جامع طبی خلاصہ اور جائزہ'
-                    : isRoman
-                    ? 'Mukammal Tibbi Khulasa aur Jaiza'
-                    : 'Clinical Summary & Presentation Assessment'}
-                </span>
+                <span>{t.clinicalOverviewHeader}</span>
               </div>
               <p className="text-sm sm:text-base leading-relaxed text-slate-800 dark:text-slate-200 font-medium">
                 <CleanClinicalText text={parsed.overview} />
               </p>
+            </div>
+          )}
+
+          {/* REPORT SPECIFIC: Key Clinical Parameters & Radiological Findings */}
+          {parsed.reportFindings.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300 font-extrabold text-xs uppercase tracking-wider">
+                <FileText className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                <span>{t.keyFindingsHeader}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5">
+                {parsed.reportFindings.map((finding, idx) => {
+                  const isNormal =
+                    finding.includes('سب ٹھیک') ||
+                    finding.includes('NORMAL') ||
+                    finding.includes('Normal') ||
+                    finding.includes('معمول کے مطابق');
+                  const isAbnormal =
+                    finding.includes('غیر معمولی') ||
+                    finding.includes('ABNORMAL') ||
+                    finding.includes('LOW') ||
+                    finding.includes('HIGH') ||
+                    finding.includes('زیادہ') ||
+                    finding.includes('کم');
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3.5 rounded-2xl border shadow-2xs flex items-start justify-between gap-3 ${
+                        isAbnormal
+                          ? 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/80 text-amber-950 dark:text-amber-100'
+                          : isNormal
+                          ? 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/70 text-slate-800 dark:text-slate-200'
+                          : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div
+                          className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${
+                            isAbnormal ? 'bg-amber-500' : isNormal ? 'bg-emerald-500' : 'bg-cyan-500'
+                          }`}
+                        />
+                        <div className="text-xs sm:text-sm leading-relaxed font-medium">
+                          <CleanClinicalText text={finding} />
+                        </div>
+                      </div>
+                      {isNormal ? (
+                        <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-800">
+                          {isUrdu ? 'سب ٹھیک' : 'NORMAL'}
+                        </span>
+                      ) : isAbnormal ? (
+                        <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-800">
+                          {isUrdu ? 'غیر معمولی' : 'ABNORMAL'}
+                        </span>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -744,13 +821,7 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-extrabold text-xs uppercase tracking-wider">
                 <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <span>
-                  {isUrdu
-                    ? 'ممکنہ طبی وجوہات (ڈاکٹر سے تصدیق طلب)'
-                    : isRoman
-                    ? 'Mumkin Wajoohaat (Doctor se tasdeeq talab)'
-                    : 'Potential Causes & Differentials for Doctor Review'}
-                </span>
+                <span>{t.potentialCausesHeader}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {parsed.differentials.map((diff, idx) => (
@@ -773,13 +844,7 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
             <div className="p-4 sm:p-5 rounded-2xl bg-red-50 dark:bg-red-950/40 border-2 border-red-300 dark:border-red-800 space-y-3">
               <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-extrabold text-xs uppercase tracking-wider">
                 <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400 animate-pulse" />
-                <span>
-                  {isUrdu
-                    ? 'خطرناک انتباہی علامات (Red Flags)'
-                    : isRoman
-                    ? 'Khatray Ki Nishaniyan (Red Flags)'
-                    : 'Warning Signs & Critical Red Flags (Seek Urgent Care)'}
-                </span>
+                <span>{t.redFlagsHeader}</span>
               </div>
               <ul className="space-y-2">
                 {parsed.redFlags.map((rf, idx) => (

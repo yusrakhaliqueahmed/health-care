@@ -36,6 +36,7 @@ interface HighDensityHeaderProps {
   onLogout?: () => void;
   onOpenEmergencyCall?: () => void;
   onOpenQuickMessage?: () => void;
+  pendingDoctorReviewsCount?: number;
 }
 
 export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
@@ -52,6 +53,7 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
   onOpenLogin,
   onOpenEmergencyCall,
   onOpenQuickMessage,
+  pendingDoctorReviewsCount = 0,
 }) => {
   const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
   const displayName =
@@ -123,6 +125,29 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
             onLanguageChange={onSelectLanguage}
             compact
           />
+
+          {/* Mobile Doctor Portal Button */}
+          <button
+            type="button"
+            id="header-mobile-doctor-portal-btn"
+            onClick={() => onNavigate('doctor_portal')}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all min-h-[38px] cursor-pointer shrink-0 border ${
+              activeTab === 'doctor_portal'
+                ? 'bg-teal-700 text-white border-teal-600 shadow-xs'
+                : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-800'
+            }`}
+            title={currentLanguage === 'ur' ? 'ڈاکٹر ریویو پورٹل' : 'Doctor Review Portal'}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span className="text-[11px] font-bold">
+              {currentLanguage === 'ur' ? 'ڈاکٹر' : 'Dr.'}
+            </span>
+            {pendingDoctorReviewsCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-emerald-500 text-white text-[9px] font-black flex items-center justify-center">
+                {pendingDoctorReviewsCount}
+              </span>
+            )}
+          </button>
 
           {/* Emergency 1122 Call (Mobile) */}
           <button
@@ -242,6 +267,27 @@ export const HighDensityHeader: React.FC<HighDensityHeaderProps> = ({
           >
             <Volume2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             <span className="hidden sm:inline">{t.audioPlay}</span>
+          </button>
+
+          {/* Doctor Review Portal Button (Desktop) */}
+          <button
+            type="button"
+            id="header-btn-doctor-portal-desktop"
+            onClick={() => onNavigate('doctor_portal')}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all min-h-[40px] cursor-pointer shadow-2xs ${
+              activeTab === 'doctor_portal'
+                ? 'bg-teal-700 text-white border-teal-600 ring-2 ring-teal-400/40 shadow-xs'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-teal-400 text-slate-800 dark:text-slate-200'
+            }`}
+            title={currentLanguage === 'ur' ? 'ڈاکٹر ریویو و ایڈمن پورٹل' : 'PMDC Doctor & Admin Review Portal'}
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            <span>{currentLanguage === 'ur' ? 'ڈاکٹر پورٹل' : currentLanguage === 'roman' ? 'Doctor Portal' : 'Doctor Portal'}</span>
+            {pendingDoctorReviewsCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-black">
+                {pendingDoctorReviewsCount}
+              </span>
+            )}
           </button>
 
           {/* Dual Action: Emergency Call & Quick Message (Desktop) */}

@@ -12,7 +12,7 @@ import {
   UnifiedHealthRecord,
 } from './types';
 import { TRANSLATIONS } from './services/i18n';
-import { INITIAL_PROFILES, INITIAL_CASES, INITIAL_PRESCRIPTIONS, INITIAL_REPORTS } from './services/data';
+import { INITIAL_PROFILES, INITIAL_CASES, INITIAL_PRESCRIPTIONS, INITIAL_REPORTS, INITIAL_DOCTORS } from './services/data';
 import { voiceManager } from './services/voice';
 import { Sidebar } from './components/Sidebar';
 import { HighDensityHeader } from './components/HighDensityHeader';
@@ -166,6 +166,18 @@ export default function App() {
     }
     return INITIAL_REPORTS;
   });
+  const [doctors, setDoctors] = useState<Doctor[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_doctors');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_DOCTORS;
+  });
 
   // Persist user-created data locally
   useEffect(() => {
@@ -191,6 +203,26 @@ export default function App() {
       localStorage.setItem('sehat_saathi_reports', JSON.stringify(reports));
     } catch {}
   }, [reports]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_doctors', JSON.stringify(doctors));
+    } catch {}
+  }, [doctors]);
+
+  const handleUpdateDoctorStatus = (doctorId: string, status: 'verified' | 'rejected' | 'suspended', note?: string) => {
+    setDoctors((prev) =>
+      prev.map((doc) =>
+        doc.id === doctorId
+          ? {
+              ...doc,
+              verificationStatus: status,
+              isVerified: status === 'verified',
+            }
+          : doc
+      )
+    );
+  };
 
   // Modal states
   const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
@@ -484,6 +516,7 @@ export default function App() {
         case 'reports': return 'رپورٹس';
         case 'vitals': return 'وائٹلز';
         case 'care': return 'ڈاکٹرز';
+        case 'doctor_portal': return 'ڈاکٹر پورٹل';
         default: return '';
       }
     }
@@ -495,6 +528,7 @@ export default function App() {
         case 'reports': return 'Reports';
         case 'vitals': return 'Vitals';
         case 'care': return 'Doctors';
+        case 'doctor_portal': return 'Dr Portal';
         default: return '';
       }
     }
@@ -505,6 +539,7 @@ export default function App() {
       case 'reports': return 'Reports';
       case 'vitals': return 'Vitals';
       case 'care': return 'Doctors';
+      case 'doctor_portal': return 'Dr Portal';
       default: return '';
     }
   };
@@ -644,6 +679,7 @@ export default function App() {
           onSelectLanguage={setCurrentLanguage}
           onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
           onOpenQuickMessage={() => setShowQuickMessageModal(true)}
+          pendingDoctorReviewsCount={pendingCases.length}
         />
 
         <div className="flex-1 min-h-0 relative overflow-x-hidden">
@@ -768,6 +804,8 @@ export default function App() {
                   currentLanguage={currentLanguage}
                   pendingCases={pendingCases}
                   onApproveCase={handleApproveDoctorCase}
+                  doctors={doctors}
+                  onUpdateDoctorStatus={handleUpdateDoctorStatus}
                 />
               )}
             </motion.div>

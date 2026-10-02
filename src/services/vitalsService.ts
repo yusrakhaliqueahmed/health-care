@@ -720,99 +720,53 @@ export function generateInitialVitalsHistory(profileId: string = 'prof-self', pa
   const now = Date.now();
   const dayMs = 24 * 60 * 60 * 1000;
 
-  // Define 7 days with realistic diverse clinical scenarios including Saturday, Sunday, etc.
-  const dayTemplates: Array<{
-    daysAgo: number;
-    dayOfWeek: string;
-    dayUr: string;
-    dayRoman: string;
-    sugar?: { val: number; unit: SugarUnit; timing: SugarTestTiming };
-    bp?: { sys: number; dia: number };
-    hr?: number;
-  }> = [
-    {
-      daysAgo: 2, // e.g. Saturday
-      dayOfWeek: 'Saturday',
-      dayUr: 'ہفتہ',
-      dayRoman: 'Hafta (Saturday)',
-      sugar: { val: 108, unit: 'mg/dL', timing: 'fasting' },
-      bp: { sys: 122, dia: 80 },
-      hr: 72,
-    },
-    {
-      daysAgo: 1, // e.g. Sunday
-      dayOfWeek: 'Sunday',
-      dayUr: 'اتوار',
-      dayRoman: 'Itwar (Sunday)',
-      sugar: { val: 138, unit: 'mg/dL', timing: 'post_meal' },
-      bp: { sys: 126, dia: 82 },
-      hr: 76,
-    },
-    {
-      daysAgo: 0, // e.g. Today / Monday
-      dayOfWeek: 'Monday',
-      dayUr: 'پیر',
-      dayRoman: 'Peer (Monday)',
-      sugar: { val: 96, unit: 'mg/dL', timing: 'fasting' },
-      bp: { sys: 118, dia: 78 },
-      hr: 70,
-    },
-    {
-      daysAgo: 3, // Friday
-      dayOfWeek: 'Friday',
-      dayUr: 'جمعہ',
-      dayRoman: 'Jummah (Friday)',
-      sugar: { val: 94, unit: 'mg/dL', timing: 'fasting' },
-      bp: { sys: 119, dia: 77 },
-      hr: 68,
-    },
-    {
-      daysAgo: 4, // Thursday
-      dayOfWeek: 'Thursday',
-      dayUr: 'جمعرات',
-      dayRoman: 'Jumerat (Thursday)',
-      sugar: { val: 114, unit: 'mg/dL', timing: 'fasting' },
-      bp: { sys: 124, dia: 82 },
-      hr: 74,
-    },
-    {
-      daysAgo: 5, // Wednesday - only BP was checked!
-      dayOfWeek: 'Wednesday',
-      dayUr: 'بدھ',
-      dayRoman: 'Budh (Wednesday)',
-      bp: { sys: 132, dia: 84 },
-      hr: 75,
-    },
-    {
-      daysAgo: 6, // Tuesday - only Sugar was checked!
-      dayOfWeek: 'Tuesday',
-      dayUr: 'منگل',
-      dayRoman: 'Mangal (Tuesday)',
-      sugar: { val: 102, unit: 'mg/dL', timing: 'fasting' },
-    },
-  ];
+  // 30-day realistic template curve for blood pressure, pulse, and glucose
+  const historyData: VitalsReading[] = [];
 
-  return dayTemplates.map((t, idx) => {
-    const ts = now - t.daysAgo * dayMs;
+  for (let daysAgo = 29; daysAgo >= 0; daysAgo--) {
+    const ts = now - daysAgo * dayMs;
     const d = new Date(ts);
+    const dayInfo = getDayInfo(d);
     const dateStr = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
-    return evaluateVitals({
-      patientProfileId: profileId,
-      patientName,
-      patientAge: '35',
-      customDate: dateStr,
-      customTimestamp: ts,
-      dayOfWeek: t.dayOfWeek,
-      timeOfDay: idx % 2 === 0 ? '08:30 AM' : '02:15 PM',
-      sugarValue: t.sugar?.val,
-      sugarUnit: t.sugar?.unit || 'mg/dL',
-      sugarTiming: t.sugar?.timing || 'fasting',
-      systolic: t.bp?.sys,
-      diastolic: t.bp?.dia,
-      heartRateBpm: t.hr,
-    });
-  });
+    // Smooth realistic variations around normal-to-borderline ranges:
+    // Systolic: 115 - 132 mmHg (occasional mild stress peak)
+    // Diastolic: 74 - 86 mmHg
+    // Heart Rate: 66 - 82 BPM
+    // Sugar: 94 - 138 mg/dL
+    const wave = Math.sin((daysAgo / 30) * Math.PI * 4);
+    const wave2 = Math.cos((daysAgo / 15) * Math.PI * 3);
+
+    const systolic = Math.round(120 + wave * 6 + (daysAgo % 7 === 2 ? 4 : -2));
+    const diastolic = Math.round(79 + wave * 4 + (daysAgo % 5 === 0 ? 3 : -1));
+    const hr = Math.round(72 + wave2 * 5 + (daysAgo % 4 === 1 ? 3 : -2));
+
+    const isFasting = daysAgo % 2 === 0;
+    const sugarVal = isFasting
+      ? Math.round(98 + wave * 8)
+      : Math.round(128 + wave * 12);
+
+    historyData.push(
+      evaluateVitals({
+        patientProfileId: profileId,
+        patientName,
+        patientAge: '35',
+        customDate: dateStr,
+        customTimestamp: ts,
+        dayOfWeek: dayInfo.dayEn,
+        timeOfDay: daysAgo % 2 === 0 ? '08:30 AM' : '06:45 PM',
+        sugarValue: sugarVal,
+        sugarUnit: 'mg/dL',
+        sugarTiming: isFasting ? 'fasting' : 'post_meal',
+        systolic,
+        diastolic,
+        heartRateBpm: hr,
+      })
+    );
+  }
+
+  // Sort descending so today / newest appears first in logbook, but chart can sort chronologically
+  return historyData.reverse();
 }
 
 /**

@@ -361,7 +361,13 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       status: 'pending_review',
     };
     onAddCaseForDoctorReview(caseData);
-    setCaseSavedNotification('Case file successfully prepared and forwarded to PMDC Doctor Review Queue!');
+    setCaseSavedNotification(
+      currentLanguage === 'ur'
+        ? 'کیس فائل کامیابی سے تیار کر کے پی ایم ڈی سی ڈاکٹر کے ریویو کے لیے بھیج دی گئی ہے!'
+        : currentLanguage === 'roman'
+        ? 'Case file tayar kar ke PMDC doctor review queue mein bhej di gayi hai!'
+        : 'Case file successfully prepared and forwarded to PMDC Doctor Review Queue!'
+    );
     setTimeout(() => setCaseSavedNotification(null), 5000);
   };
 
@@ -476,13 +482,27 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/80 border border-teal-600 text-teal-200 text-xs font-bold mb-2">
               <Stethoscope className="w-4 h-4" />
-              <span>Voice & Text Symptom Triage</span>
+              <span>
+                {currentLanguage === 'ur'
+                  ? 'آواز اور تحریر سے علامات کی فوری جانچ'
+                  : currentLanguage === 'roman'
+                  ? 'Voice aur Text Symptom Triage'
+                  : 'Voice & Text Symptom Triage'}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Symptom Assessment Assistant
+              {currentLanguage === 'ur'
+                ? 'علامات کی جانچ اور طبی جائزہ'
+                : currentLanguage === 'roman'
+                ? 'Alamaat Ki Janch (Symptom Assistant)'
+                : 'Symptom Assessment Assistant'}
             </h1>
             <p className="text-xs sm:text-sm text-teal-100/90 mt-1 max-w-xl">
-              Age-aware triage calibrated for Pakistani families. Speak in your native language or type freely.
+              {currentLanguage === 'ur'
+                ? 'پاکستانی خاندانوں کے لیے عمر کے مطابق جدید طبی جانچ۔ اپنی مادری زبان میں بول کر یا لکھ کر علامات بتائیں۔'
+                : currentLanguage === 'roman'
+                ? 'Pakistani khandan ke liye umar ke mutabiq tibbi triage. Apni zaban mein bolein ya type karein.'
+                : 'Age-aware triage calibrated for Pakistani families. Speak in your native language or type freely.'}
             </p>
           </div>
 
@@ -493,7 +513,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/30 transition-all shrink-0"
           >
             <PhoneCall className="w-4 h-4 animate-bounce" />
-            <span>Rescue 1122</span>
+            <span>{currentLanguage === 'ur' ? 'ایمرجنسی 1122' : 'Rescue 1122'}</span>
           </a>
         </div>
       </div>
@@ -519,7 +539,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
               : 'Structured Intake Form'}
           </span>
           <span className="hidden sm:inline-block text-[10px] px-1.5 py-0.5 rounded-md bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-extrabold uppercase">
-            Recommended
+            {currentLanguage === 'ur' ? 'تجویز کردہ' : currentLanguage === 'roman' ? 'Tajweez Shuda' : 'Recommended'}
           </span>
         </button>
 
@@ -536,7 +556,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           <MessageSquare className="w-4 h-4" />
           <span>
             {currentLanguage === 'ur'
-              ? 'چیٹ و آواز موڈ'
+              ? 'اے آئی چیٹ اور صوتی گفتگو'
               : currentLanguage === 'roman'
               ? 'AI Chat & Voice'
               : 'AI Chat & Voice'}
@@ -584,7 +604,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
                         : 'Submitted Patient Clinical Intake Form'}
                     </h4>
                     <p className="text-[11px] text-slate-600 dark:text-slate-400">
-                      {submittedFormData.chiefComplaint} • {submittedFormData.duration} • {submittedFormData.severity}/10 Pain Scale
+                      {submittedFormData.chiefComplaint} • {submittedFormData.duration} • {submittedFormData.severity}/10 {currentLanguage === 'ur' ? 'شدت' : currentLanguage === 'roman' ? 'Shiddat' : 'Pain Scale'}
                     </p>
                   </div>
                 </div>
@@ -611,31 +631,49 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
               {isFormDossierExpanded && (
                 <div className="pt-3 border-t border-teal-200/70 dark:border-teal-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Chief Complaint</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                      {currentLanguage === 'ur' ? 'بنیادی علامت' : 'Chief Complaint'}
+                    </span>
                     <span className="font-semibold text-slate-900 dark:text-white">{submittedFormData.chiefComplaint}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-slate-500 block">Duration & Severity</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                      {currentLanguage === 'ur' ? 'دورانیہ اور شدت' : 'Duration & Severity'}
+                    </span>
                     <span className="font-semibold text-slate-900 dark:text-white">
                       {submittedFormData.duration} • {submittedFormData.severity}/10 ({submittedFormData.progression})
                     </span>
                   </div>
                   {submittedFormData.associatedSymptoms.length > 0 && (
                     <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 sm:col-span-2">
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">Associated Symptoms</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                        {currentLanguage === 'ur' ? 'دیگر ہمراہ علامات' : 'Associated Symptoms'}
+                      </span>
                       <span className="font-semibold text-slate-900 dark:text-white">{submittedFormData.associatedSymptoms.join(', ')}</span>
                     </div>
                   )}
                   {submittedFormData.detailedNotes && (
                     <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 sm:col-span-2">
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">Patient's Detailed Notes</span>
+                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                        {currentLanguage === 'ur' ? 'مریض کی اضافی تفصیلات' : "Patient's Detailed Notes"}
+                      </span>
                       <p className="font-medium text-slate-800 dark:text-slate-200 italic">"{submittedFormData.detailedNotes}"</p>
                     </div>
                   )}
                   {(submittedFormData.triggersOrRelief || submittedFormData.medicationsTaken) && (
                     <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 sm:col-span-2 text-slate-700 dark:text-slate-300">
-                      {submittedFormData.triggersOrRelief && <div><strong>Triggers / Relief:</strong> {submittedFormData.triggersOrRelief}</div>}
-                      {submittedFormData.medicationsTaken && <div><strong>Medications Taken:</strong> {submittedFormData.medicationsTaken}</div>}
+                      {submittedFormData.triggersOrRelief && (
+                        <div>
+                          <strong>{currentLanguage === 'ur' ? 'تکلیف بڑھانے یا گھٹانے والے عوامل: ' : 'Triggers / Relief: '}</strong>
+                          {submittedFormData.triggersOrRelief}
+                        </div>
+                      )}
+                      {submittedFormData.medicationsTaken && (
+                        <div>
+                          <strong>{currentLanguage === 'ur' ? 'پہلے سے لی گئی ادویات: ' : 'Medications Taken: '}</strong>
+                          {submittedFormData.medicationsTaken}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -662,7 +700,9 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
                   {prof.name} ({prof.relation}) - {prof.exactAge} yrs
                 </option>
               ))}
-              <option value="custom">Other / Quick Guest</option>
+              <option value="custom">
+                {currentLanguage === 'ur' ? 'دیگر / نیا مریض' : currentLanguage === 'roman' ? 'Doosra Mareez' : 'Other / Quick Guest'}
+              </option>
             </select>
 
             <button
@@ -679,11 +719,11 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
         {/* Age Groups Selector */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
           {[
-            { id: 'infant', label: t.forInfant, sub: '0-2 yrs' },
-            { id: 'child', label: t.forChild, sub: '2-12 yrs' },
-            { id: 'teen', label: t.forTeen, sub: '13-18 yrs' },
-            { id: 'adult', label: t.forSelf, sub: '18-60 yrs' },
-            { id: 'elderly', label: t.forElderly, sub: '60+ yrs' },
+            { id: 'infant', label: t.forInfant, sub: currentLanguage === 'ur' ? '0 سے 2 سال' : currentLanguage === 'roman' ? '0-2 saal' : '0-2 yrs' },
+            { id: 'child', label: t.forChild, sub: currentLanguage === 'ur' ? '2 سے 12 سال' : currentLanguage === 'roman' ? '2-12 saal' : '2-12 yrs' },
+            { id: 'teen', label: t.forTeen, sub: currentLanguage === 'ur' ? '13 سے 18 سال' : currentLanguage === 'roman' ? '13-18 saal' : '13-18 yrs' },
+            { id: 'adult', label: t.forSelf, sub: currentLanguage === 'ur' ? '18 سے 60 سال' : currentLanguage === 'roman' ? '18-60 saal' : '18-60 yrs' },
+            { id: 'elderly', label: t.forElderly, sub: currentLanguage === 'ur' ? '60 سال یا زائد' : currentLanguage === 'roman' ? '60+ saal' : '60+ yrs' },
           ].map((item) => (
             <button
               key={item.id}
@@ -722,7 +762,11 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
               <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             )}
             <span>
-              Urgency Level:{' '}
+              {currentLanguage === 'ur'
+                ? 'فوری طبی ضرورت کا درجہ: '
+                : currentLanguage === 'roman'
+                ? 'Emergency Ka Darja: '
+                : 'Urgency Level: '}
               {currentUrgency === 'RED'
                 ? t.redUrgency
                 : currentUrgency === 'YELLOW'
@@ -765,7 +809,11 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
             </span>
           </div>
           <span className="text-[11px] text-teal-700 dark:text-teal-300 font-semibold bg-teal-100/80 dark:bg-teal-950/80 px-2.5 py-0.5 rounded-full">
-            Multilingual Voice & Guidance
+            {currentLanguage === 'ur'
+              ? 'کثیر لسانی صوتی رہنمائی'
+              : currentLanguage === 'roman'
+              ? 'Voice aur Audio Rehnumai'
+              : 'Multilingual Voice & Guidance'}
           </span>
         </div>
 
@@ -815,7 +863,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
             >
               <div className="flex items-center gap-1.5 mb-1 px-1">
                 <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                  {isUser ? patientName : 'SehatSaathi AI'}
+                  {isUser ? patientName : (currentLanguage === 'ur' ? 'صحت ساتھی اے آئی' : 'SehatSaathi AI')}
                 </span>
                 <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
               </div>
@@ -859,7 +907,11 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl max-w-sm">
             <div className="w-3 h-3 rounded-full bg-teal-600 animate-ping" />
             <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
-              Evaluating symptoms & consulting clinical protocols...
+              {currentLanguage === 'ur'
+                ? 'علامات کا تجزیہ اور طبی پروٹوکولز سے موازنہ جاری ہے...'
+                : currentLanguage === 'roman'
+                ? 'Alamaat ka jaiza aur clinical protocols se check ho raha hai...'
+                : 'Evaluating symptoms & consulting clinical protocols...'}
             </span>
           </div>
         )}
@@ -876,8 +928,14 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
             className="w-14 h-14 object-cover rounded-xl border border-teal-300"
           />
           <div className="flex-1 text-xs">
-            <p className="font-bold text-slate-900 dark:text-white">Symptom Photo Attached</p>
-            <p className="text-slate-500">Will be analyzed alongside your voice/text description</p>
+            <p className="font-bold text-slate-900 dark:text-white">
+              {currentLanguage === 'ur' ? 'علامت کی تصویر منسلک ہو چکی ہے' : 'Symptom Photo Attached'}
+            </p>
+            <p className="text-slate-500">
+              {currentLanguage === 'ur'
+                ? 'آپ کی صوتی یا تحریری وضاحت کے ساتھ تصویر کا معائنہ کیا جائے گا'
+                : 'Will be analyzed alongside your voice/text description'}
+            </p>
           </div>
           <button
             type="button"

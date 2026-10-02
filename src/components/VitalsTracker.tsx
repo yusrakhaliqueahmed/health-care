@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { VitalsMeasurementGuide } from './VitalsMeasurementGuide';
 import { VitalsReminderManager } from './VitalsReminderManager';
+import { VitalsTrendsChart } from './VitalsTrendsChart';
 import { downloadVitalsCSVReport } from '../services/vitalsExportService';
 import {
   SupportedLanguage,
@@ -79,7 +80,7 @@ interface VitalsTrackerProps {
   onNavigateToCare: () => void;
 }
 
-type TrackerMode = 'sugar' | 'bp' | 'heart' | 'all' | 'history' | 'reminders' | 'guide';
+type TrackerMode = 'sugar' | 'bp' | 'heart' | 'all' | 'history' | 'trends' | 'reminders' | 'guide';
 
 export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
   language,
@@ -1110,6 +1111,20 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
 
         <button
           type="button"
+          id="btn-vitals-trends-tab"
+          onClick={() => setActiveTab('trends')}
+          className={`flex-1 min-w-[140px] py-3 px-3.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+            activeTab === 'trends'
+              ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-extrabold shadow-md shadow-cyan-600/25'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-800/50'
+          }`}
+        >
+          <TrendingUp className={`w-4 h-4 ${activeTab === 'trends' ? 'text-white' : 'text-cyan-500'}`} />
+          <span>{isUrdu ? '30 روزہ گراف و رجحانات' : isRoman ? '30-Day Trends Graph' : '30-Day Trends (Recharts)'}</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('reminders')}
           className={`flex-1 min-w-[140px] py-3 px-3.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
             activeTab === 'reminders'
@@ -1276,6 +1291,14 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Recharts 30-Day Blood Pressure & Heart Rate Line Chart */}
+          <VitalsTrendsChart
+            vitalsHistory={vitalsHistory}
+            currentLanguage={language}
+            activeProfile={activeProfile}
+            onAddLogClick={() => setShowAddLogModal(true)}
+          />
 
           {/* Filters Bar: Filter by Day of Week and Filter by Metric */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -2742,6 +2765,54 @@ export const VitalsTracker: React.FC<VitalsTrackerProps> = ({
               window.scrollTo({ top: 380, behavior: 'smooth' });
             }}
           />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 2.5: DEDICATED RECHARTS 30-DAY CLINICAL TRENDS VIEW                  */}
+      {/* ========================================================================= */}
+      {activeTab === 'trends' && (
+        <div className="space-y-6">
+          <VitalsTrendsChart
+            vitalsHistory={vitalsHistory}
+            currentLanguage={language}
+            activeProfile={activeProfile}
+            onAddLogClick={() => setShowAddLogModal(true)}
+          />
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                  {isUrdu ? 'روزانہ کی تفصیلی ریڈنگز ملاحظہ فرمائیں' : 'Explore Detailed Day-by-Day Historical Records'}
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {isUrdu ? 'تمام دنوں کے بلڈ پریشر، نبض اور شوگر کے تفصیلی ٹیسٹ ریکارڈز اور نوٹس' : 'View full daily entries with doctor notes, timings, and CSV export'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={handleDownloadReport}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>{isUrdu ? 'CSV رپورٹ ڈاؤنلوڈ' : 'Download CSV'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('history')}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-950 text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <span>{isUrdu ? 'لاگ بک دیکھیں →' : 'View Logbook →'}</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

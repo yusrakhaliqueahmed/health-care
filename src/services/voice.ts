@@ -738,6 +738,8 @@ export interface SpeechRecognitionHelper {
     onError?: (err: any) => void,
     onEnd?: () => void
   ) => void;
+  pause: () => void;
+  resume: () => void;
   stop: () => void;
   isSupported: boolean;
 }
@@ -760,6 +762,7 @@ export function createSpeechRecognizer(): SpeechRecognitionHelper {
   let mediaRecorder: MediaRecorder | null = null;
   let audioChunks: Blob[] = [];
   let isListening = false;
+  let isPausedState = false;
   let accumulatedTranscript = '';
   let activeLang: SupportedLanguage = 'ur';
   let activeOnResult: ((text: string) => void) | null = null;
@@ -920,6 +923,7 @@ export function createSpeechRecognizer(): SpeechRecognitionHelper {
           recognitionInstance.interimResults = true;
 
           recognitionInstance.onresult = (event: any) => {
+            if (isPausedState) return;
             let current = '';
             for (let i = event.resultIndex; i < event.results.length; ++i) {
               current += event.results[i][0].transcript;
@@ -947,7 +951,7 @@ export function createSpeechRecognizer(): SpeechRecognitionHelper {
           };
 
           recognitionInstance.onend = () => {
-            if (isListening && accumulatedTranscript.trim()) {
+            if (isListening && !isPausedState && accumulatedTranscript.trim()) {
               stopAll();
               if (onEnd) onEnd();
             }
@@ -957,6 +961,27 @@ export function createSpeechRecognizer(): SpeechRecognitionHelper {
         } catch (e) {
           console.warn('Browser SpeechRec start warning:', e);
         }
+      }
+    },
+    pause: () => {
+      isPausedState = true;
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        try {
+          mediaRecorder.pause();
+        } catch (_) {}
+      }
+      if (recognitionInstance) {
+        try {
+          recognitionInstance.stop();
+        } catch (_) {}
+      }
+    },
+    resume: () => {
+      isPausedState = false;
+      if (mediaRecorder && mediaRecorder.state === 'paused') {
+        try {
+          mediaRecorder.resume();
+        } catch (_) {}
       }
     },
     stop: () => {

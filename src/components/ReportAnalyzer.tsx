@@ -198,7 +198,12 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
     } catch (err) {
       console.error(err);
       setAnalysisResult({
-        text: 'Could not connect to medical analysis server. Please consult your physician directly.',
+        text:
+          currentLanguage === 'ur'
+            ? 'میڈیکل اینالیسس سرور سے رابطہ نہیں ہو سکا۔ برائے مہربانی اپنے معالج یا قریبی ہسپتال سے براہِ راست رجوع کریں۔'
+            : currentLanguage === 'roman'
+            ? 'Server se rabta nahi ho saka. Baraye meherbani apne doctor se direct rabta karein.'
+            : 'Could not connect to medical analysis server. Please consult your physician directly.',
         urgency: 'YELLOW',
         timestamp: new Date().toLocaleDateString(),
       });
@@ -210,18 +215,34 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
   const handleSaveToEHR = () => {
     if (!analysisResult || !photoBase64) return;
 
+    const defaultTitle =
+      reportType === 'lab'
+        ? currentLanguage === 'ur'
+          ? 'خون کی لیب رپورٹ (سی بی سی)'
+          : currentLanguage === 'roman'
+          ? 'Lab Blood Report (CBC)'
+          : 'Laboratory Blood Investigation'
+        : currentLanguage === 'ur'
+        ? 'ریڈیالوجی امیجنگ (چھاتی کا ایکسرے)'
+        : currentLanguage === 'roman'
+        ? 'Radiology Imaging (Chest X-Ray)'
+        : 'Radiology Imaging (X-Ray)';
+
     const newRecord: MedicalReportRecord = {
       id: `rep-${Date.now()}`,
-      title: reportType === 'lab' ? 'Laboratory Blood Investigation' : 'Radiology Imaging (X-Ray)',
+      title: defaultTitle,
       type: reportType,
-      patientName: 'Current User',
+      patientName: userName || (currentLanguage === 'ur' ? 'صارف' : 'Current User'),
       patientAge: patientAgeGroup,
       date: new Date().toISOString().split('T')[0],
       photoUrl: photoBase64,
       findings: analysisResult.text,
       urgency: analysisResult.urgency,
       status: 'preliminary_ai',
-      reviewedByDoctor: 'Pending Review by PMDC Medical Officer',
+      reviewedByDoctor:
+        currentLanguage === 'ur'
+          ? 'پی ایم ڈی سی میڈیکل آفیسر کا معائنہ باقی ہے'
+          : 'Pending Review by PMDC Medical Officer',
     };
 
     onSaveToRecords(newRecord);
@@ -236,13 +257,27 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/80 border border-teal-600 text-teal-200 text-xs font-bold mb-2">
               <FileText className="w-4 h-4" />
-              <span>Multimodal Vision & OCR AI</span>
+              <span>
+                {currentLanguage === 'ur'
+                  ? 'ملٹی ماڈل تصویری معائنہ و او سی آر'
+                  : currentLanguage === 'roman'
+                  ? 'OCR Vision aur AI Tajziya'
+                  : 'Multimodal Vision & OCR AI'}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Medical Report & X-Ray Decoder
+              {currentLanguage === 'ur'
+                ? 'میڈیکل رپورٹ اور ایکسرے کا معائنہ'
+                : currentLanguage === 'roman'
+                ? 'Medical Report aur X-Ray Decoder'
+                : 'Medical Report & X-Ray Decoder'}
             </h1>
             <p className="text-xs sm:text-sm text-teal-100/90 mt-1 max-w-xl">
-              Understand test numbers, blood counts, and bone/chest X-rays in plain regional language with clear normal vs. abnormal labels.
+              {currentLanguage === 'ur'
+                ? 'خون کے ٹیسٹ، لیب نمبرز اور چھاتی یا ہڈیوں کے ایکسرے کو آسان اور عام فہم اردو میں سمجھیں۔ نارمل اور غیر معمولی نتائج کا تفصیلی موازنہ۔'
+                : currentLanguage === 'roman'
+                ? 'Test numbers, blood counts, aur chest/haddi ke X-ray ko aasan zaban mein samjhein.'
+                : 'Understand test numbers, blood counts, and bone/chest X-rays in plain regional language with clear normal vs. abnormal labels.'}
             </p>
           </div>
         </div>
@@ -278,56 +313,64 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
         <button
           type="button"
           onClick={() => cameraInputRef.current?.click()}
-          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500 shadow-xs flex flex-col items-center text-center gap-2 transition-all min-h-[110px]"
+          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500 shadow-xs flex flex-col items-center text-center gap-2 transition-all min-h-[110px] cursor-pointer"
         >
           <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center">
             <Camera className="w-6 h-6" />
           </div>
           <span className="text-sm font-bold text-slate-900 dark:text-white">{t.takePhoto}</span>
-          <span className="text-[11px] text-slate-500">Camera with frame guide</span>
+          <span className="text-[11px] text-slate-500">
+            {currentLanguage === 'ur' ? 'کیمرے سے واضح تصویر لیں' : 'Camera with frame guide'}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => galleryInputRef.current?.click()}
-          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500 shadow-xs flex flex-col items-center text-center gap-2 transition-all min-h-[110px]"
+          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500 shadow-xs flex flex-col items-center text-center gap-2 transition-all min-h-[110px] cursor-pointer"
         >
           <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center">
             <Upload className="w-6 h-6" />
           </div>
           <span className="text-sm font-bold text-slate-900 dark:text-white">{t.uploadGallery}</span>
-          <span className="text-[11px] text-slate-500">Images or PDF scans</span>
+          <span className="text-[11px] text-slate-500">
+            {currentLanguage === 'ur' ? 'گیلری سے تصویر یا پی ڈی ایف فائل' : 'Images or PDF scans'}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => videoInputRef.current?.click()}
-          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500 shadow-xs flex flex-col items-center text-center gap-2 transition-all min-h-[110px]"
+          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-teal-500 shadow-xs flex flex-col items-center text-center gap-2 transition-all min-h-[110px] cursor-pointer"
         >
           <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center">
             <Video className="w-6 h-6" />
           </div>
           <span className="text-sm font-bold text-slate-900 dark:text-white">{t.recordVideo}</span>
-          <span className="text-[11px] text-slate-500">Multi-page panning scan</span>
+          <span className="text-[11px] text-slate-500">
+            {currentLanguage === 'ur' ? 'ویڈیو سے صفحات اسکین کریں' : 'Multi-page panning scan'}
+          </span>
         </button>
       </div>
 
       {/* Quick Sample Selector */}
-      <div className="flex items-center gap-2 text-xs">
-        <span className="text-slate-500 dark:text-slate-400 font-semibold">Or try sample report:</span>
+      <div className="flex items-center gap-2 text-xs flex-wrap">
+        <span className="text-slate-500 dark:text-slate-400 font-semibold">
+          {currentLanguage === 'ur' ? 'یا نمونہ رپورٹ آزما کر دیکھیں:' : 'Or try sample report:'}
+        </span>
         <button
           type="button"
           onClick={() => handleSampleReport('lab')}
-          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium"
+          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
         >
-          Sample Blood Lab (CBC)
+          {currentLanguage === 'ur' ? 'نمونہ خون کی رپورٹ (CBC)' : 'Sample Blood Lab (CBC)'}
         </button>
         <button
           type="button"
           onClick={() => handleSampleReport('xray')}
-          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium"
+          className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium cursor-pointer"
         >
-          Sample Chest X-Ray
+          {currentLanguage === 'ur' ? 'نمونہ چھاتی کا ایکسرے' : 'Sample Chest X-Ray'}
         </button>
       </div>
 
@@ -349,19 +392,19 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
             <div className="md:col-span-7 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                  Report Category
+                  {currentLanguage === 'ur' ? 'رپورٹ کی نوعیت' : 'Report Category'}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { id: 'lab', label: 'Lab Test' },
-                    { id: 'xray', label: 'X-Ray / Scan' },
-                    { id: 'prescription', label: 'Doctor Slip' },
+                    { id: 'lab', label: currentLanguage === 'ur' ? 'خون / لیب ٹیسٹ' : currentLanguage === 'roman' ? 'Lab Test' : 'Lab Test' },
+                    { id: 'xray', label: currentLanguage === 'ur' ? 'ایکسرے / اسکین' : currentLanguage === 'roman' ? 'X-Ray / Scan' : 'X-Ray / Scan' },
+                    { id: 'prescription', label: currentLanguage === 'ur' ? 'ڈاکٹر کا نسخہ' : currentLanguage === 'roman' ? 'Doctor Slip' : 'Doctor Slip' },
                   ].map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
                       onClick={() => setReportType(cat.id as any)}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                         reportType === cat.id
                           ? 'bg-teal-50 dark:bg-teal-950 border-teal-500 text-teal-800 dark:text-teal-200'
                           : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
@@ -375,29 +418,41 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                  Patient Age Reference
+                  {currentLanguage === 'ur' ? 'مریض کی عمر کا حوالہ' : 'Patient Age Reference'}
                 </label>
                 <select
                   value={patientAgeGroup}
                   onChange={(e) => setPatientAgeGroup(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-100"
                 >
-                  <option>Adult (18-60 yrs)</option>
-                  <option>Elderly (60+ yrs)</option>
-                  <option>Child (2-12 yrs)</option>
-                  <option>Infant (0-2 yrs)</option>
+                  <option value="Adult (18-60 yrs)">
+                    {currentLanguage === 'ur' ? 'بالغ (18 سے 60 سال)' : 'Adult (18-60 yrs)'}
+                  </option>
+                  <option value="Elderly (60+ yrs)">
+                    {currentLanguage === 'ur' ? 'بزرگ (60 سال یا زائد)' : 'Elderly (60+ yrs)'}
+                  </option>
+                  <option value="Child (2-12 yrs)">
+                    {currentLanguage === 'ur' ? 'بچہ (2 سے 12 سال)' : 'Child (2-12 yrs)'}
+                  </option>
+                  <option value="Infant (0-2 yrs)">
+                    {currentLanguage === 'ur' ? 'شیر خوار (0 سے 2 سال)' : 'Infant (0-2 yrs)'}
+                  </option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
-                  Doctor / Symptoms Notes (Optional)
+                  {currentLanguage === 'ur' ? 'ڈاکٹر کا مشورہ یا علامات کے نوٹس (اختیاری)' : 'Doctor / Symptoms Notes (Optional)'}
                 </label>
                 <input
                   type="text"
                   value={patientNotes}
                   onChange={(e) => setPatientNotes(e.target.value)}
-                  placeholder="e.g. Prescribed for ongoing cough & weight loss"
+                  placeholder={
+                    currentLanguage === 'ur'
+                      ? 'مثلاً کھانسی اور وزن میں کمی کے لیے ڈاکٹر نے تجویز کی تھی'
+                      : 'e.g. Prescribed for ongoing cough & weight loss'
+                  }
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-100"
                 />
               </div>
@@ -406,17 +461,27 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
                 type="button"
                 onClick={handleAnalyze}
                 disabled={isLoading}
-                className="w-full py-3 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-teal-600/20 transition-all flex items-center justify-center gap-2 min-h-[44px]"
+                className="w-full py-3 px-5 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-teal-600/20 transition-all flex items-center justify-center gap-2 min-h-[44px] cursor-pointer"
               >
                 {isLoading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Extracting Text & Clinical Findings...</span>
+                    <span>
+                      {currentLanguage === 'ur'
+                        ? 'رپورٹ کا متن اور نتائج پڑھے جا رہے ہیں...'
+                        : 'Extracting Text & Clinical Findings...'}
+                    </span>
                   </>
                 ) : (
                   <>
                     <Eye className="w-4 h-4" />
-                    <span>Decode Report in {currentLanguage.toUpperCase()}</span>
+                    <span>
+                      {currentLanguage === 'ur'
+                        ? 'اردو میں رپورٹ کا تجزیہ حاصل کریں'
+                        : currentLanguage === 'roman'
+                        ? 'Roman Urdu Mein Report Check Karein'
+                        : `Decode Report in ${currentLanguage.toUpperCase()}`}
+                    </span>
                   </>
                 )}
               </button>
@@ -493,7 +558,19 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
               }`}
             >
               {savedSuccess ? <CheckCircle className="w-4 h-4" /> : <BookmarkPlus className="w-4 h-4" />}
-              <span>{savedSuccess ? 'Saved to My Health Records' : 'Save to My Health Records'}</span>
+              <span>
+                {savedSuccess
+                  ? currentLanguage === 'ur'
+                    ? 'صحت ریکارڈ میں محفوظ ہوگیا'
+                    : currentLanguage === 'roman'
+                    ? 'Health Records Mein Save Ho Gaya'
+                    : 'Saved to My Health Records'
+                  : currentLanguage === 'ur'
+                  ? 'میڈیکل ریکارڈ میں محفوظ کریں'
+                  : currentLanguage === 'roman'
+                  ? 'Health Records Mein Save Karein'
+                  : 'Save to My Health Records'}
+              </span>
             </button>
 
             <span className="text-xs text-slate-500 text-center sm:text-right">
