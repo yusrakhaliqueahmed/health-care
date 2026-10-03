@@ -30,6 +30,7 @@ import { SplashScreen } from './components/SplashScreen';
 import { InitialDisclaimerScreen } from './components/InitialDisclaimerScreen';
 import { LoginFormScreen } from './components/LoginFormScreen';
 import { LoginModal } from './components/LoginModal';
+import { DoctorOnboardingModal } from './components/DoctorOnboardingModal';
 import { GlobalFooter } from './components/GlobalFooter';
 import { EmergencyCallModal } from './components/EmergencyCallModal';
 import { MedicalQuickMessageModal } from './components/MedicalQuickMessageModal';
@@ -210,16 +211,25 @@ export default function App() {
     } catch {}
   }, [doctors]);
 
+  const [showDoctorOnboardingModal, setShowDoctorOnboardingModal] = useState(false);
+
+  const handleAddDoctorApplication = (newDoctor: Doctor) => {
+    setDoctors((prev) => [newDoctor, ...prev.filter((d) => d.id !== newDoctor.id)]);
+  };
+
   const handleUpdateDoctorStatus = (doctorId: string, status: 'verified' | 'rejected' | 'suspended', note?: string) => {
     setDoctors((prev) =>
       prev.map((doc) =>
         doc.id === doctorId
-          ? {
-              ...doc,
-              verificationStatus: status,
-              isVerified: status === 'verified',
-            }
-          : doc
+           ? {
+               ...doc,
+               verificationStatus: status,
+               isVerified: status === 'verified',
+               rejectionReason: status === 'rejected' ? (note || 'Application rejected by administration') : undefined,
+               verifiedAt: status === 'verified' ? new Date().toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : doc.verifiedAt,
+               verifiedBy: status === 'verified' ? 'Medical Admin Board' : doc.verifiedBy,
+             }
+           : doc
       )
     );
   };
@@ -605,6 +615,7 @@ export default function App() {
           onLanguageChange={setCurrentLanguage}
           initialUserName={currentUser?.name || ''}
           initialEmail={currentUser?.email || ''}
+          onOpenDoctorRegistration={() => setShowDoctorOnboardingModal(true)}
           onLoginSuccess={(user) => {
             handleLogin(user);
             setHasLoggedIn(true);
@@ -627,6 +638,15 @@ export default function App() {
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLogin}
         onLogout={handleLogout}
+        onOpenDoctorRegistration={() => setShowDoctorOnboardingModal(true)}
+      />
+
+      {/* Doctor Registration & PMDC Verification Modal */}
+      <DoctorOnboardingModal
+        isOpen={showDoctorOnboardingModal}
+        onClose={() => setShowDoctorOnboardingModal(false)}
+        language={currentLanguage}
+        onSubmitDoctorApplication={handleAddDoctorApplication}
       />
 
       {/* Teleconsult Booking Modal */}
@@ -657,6 +677,7 @@ export default function App() {
           onSelectLanguage={setCurrentLanguage}
           onOpenDisclaimer={() => setShowDisclaimer(true)}
           onOpenLogin={() => setShowLoginModal(true)}
+          onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
@@ -664,7 +685,7 @@ export default function App() {
 
       {/* High Density Main Content Container with Safe Bottom Clearance */}
       {isMainAppActive && (
-        <main className="flex-1 flex flex-col min-h-screen p-3 sm:p-6 lg:p-8 pb-36 lg:pb-12 min-w-0 overflow-y-auto">
+        <main className="flex-1 flex flex-col min-h-screen p-2.5 sm:p-4 lg:p-6 pb-32 sm:pb-36 lg:pb-12 min-w-0 max-w-full overflow-x-hidden overflow-y-auto">
         <HighDensityHeader
           currentLanguage={currentLanguage}
           activeTab={activeTab}
@@ -679,6 +700,7 @@ export default function App() {
           onSelectLanguage={setCurrentLanguage}
           onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
           onOpenQuickMessage={() => setShowQuickMessageModal(true)}
+          onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
           pendingDoctorReviewsCount={pendingCases.length}
         />
 
@@ -780,6 +802,8 @@ export default function App() {
                 <NearbyCare
                   currentLanguage={currentLanguage}
                   onBookDoctor={(doc) => setBookingDoctor(doc)}
+                  doctors={doctors}
+                  onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
                 />
               )}
 
@@ -806,6 +830,7 @@ export default function App() {
                   onApproveCase={handleApproveDoctorCase}
                   doctors={doctors}
                   onUpdateDoctorStatus={handleUpdateDoctorStatus}
+                  onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
                 />
               )}
             </motion.div>

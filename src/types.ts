@@ -157,13 +157,35 @@ export interface Doctor {
   experienceYears: number;
   isDemoPlaceholder?: boolean;
   isVerified?: boolean;
-  verificationStatus?: 'pending' | 'verified' | 'rejected';
+  verificationStatus?: 'pending' | 'verified' | 'rejected' | 'suspended';
   rejectionReason?: string;
   degreeDocumentUrl?: string;
   pmdcCertificateUrl?: string;
+  verificationDocumentName?: string;
+  verificationDocumentDataUrl?: string;
   registeredAt?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+  adminApprovalNote?: string;
   email?: string;
   clinicAffiliation?: string;
+}
+
+export interface VerificationLogRecord {
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  pmdcNumber: string;
+  specialty: string;
+  qualification: string;
+  avatarUrl: string;
+  action: 'verified' | 'rejected' | 'suspended';
+  timestamp: string;
+  adminNote: string;
+  verifiedBy: string;
+  documentName?: string;
+  hospital?: string;
+  city?: string;
 }
 
 export interface Hospital {

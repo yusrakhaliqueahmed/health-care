@@ -29,6 +29,7 @@ import {
   UrgencyLevel,
 } from '../types';
 import { createSpeechRecognizer, voiceManager } from '../services/voice';
+import { VoiceControlGroup } from './VoiceControlGroup';
 
 interface SymptomIntakeFormProps {
   currentLanguage: SupportedLanguage;
@@ -282,10 +283,6 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Voice recording for detailed notes
-  const [isRecording, setIsRecording] = useState(false);
-  const speechRecognizer = useRef(createSpeechRecognizer());
-
   const hasRedFlag =
     redFlags.chestPain ||
     redFlags.breathingDifficulty ||
@@ -310,25 +307,54 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
     }
   };
 
+  // Voice recording for detailed notes
+  const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingPaused, setIsRecordingPaused] = useState(false);
+  const speechRecognizer = useRef(createSpeechRecognizer());
+
+  const startVoiceRecording = () => {
+    if (isRecording && isRecordingPaused) {
+      speechRecognizer.current.resume();
+      setIsRecordingPaused(false);
+      return;
+    }
+    setIsRecording(true);
+    setIsRecordingPaused(false);
+    speechRecognizer.current.start(
+      currentLanguage,
+      (transcript) => {
+        setDetailedNotes((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      },
+      (err) => {
+        console.warn('Voice recording error:', err);
+        setIsRecording(false);
+        setIsRecordingPaused(false);
+      },
+      () => {
+        setIsRecording(false);
+        setIsRecordingPaused(false);
+      }
+    );
+  };
+
+  const pauseVoiceRecording = () => {
+    if (isRecording && !isRecordingPaused) {
+      speechRecognizer.current.pause();
+      setIsRecordingPaused(true);
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    speechRecognizer.current.stop();
+    setIsRecording(false);
+    setIsRecordingPaused(false);
+  };
+
   const toggleVoiceRecording = () => {
     if (isRecording) {
-      speechRecognizer.current.stop();
-      setIsRecording(false);
+      stopVoiceRecording();
     } else {
-      setIsRecording(true);
-      speechRecognizer.current.start(
-        currentLanguage,
-        (transcript) => {
-          setDetailedNotes((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        },
-        (err) => {
-          console.warn('Voice recording error:', err);
-          setIsRecording(false);
-        },
-        () => {
-          setIsRecording(false);
-        }
-      );
+      startVoiceRecording();
     }
   };
 
@@ -561,30 +587,20 @@ export const SymptomIntakeForm: React.FC<SymptomIntakeFormProps> = ({
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
               <span>{currentLanguage === 'ur' ? 'اپنی زبان میں تفصیل لکھیں یا بولیں:' : currentLanguage === 'roman' ? 'Apni zuban mein tafseel likhein ya bolein:' : 'Describe the symptoms in your own words:'}</span>
             </label>
-            <button
-              type="button"
-              onClick={toggleVoiceRecording}
-              className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
-                isRecording
-                  ? 'bg-red-600 text-white animate-pulse'
-                  : 'bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100'
-              }`}
-            >
-              {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-              <span>
-                {isRecording
-                  ? currentLanguage === 'ur'
-                    ? 'سن رہا ہوں... (روکیں)'
-                    : currentLanguage === 'roman'
-                    ? 'Sun raha hoon... (Rokein)'
-                    : 'Listening... (Stop)'
-                  : currentLanguage === 'ur'
-                  ? 'بولیں'
-                  : currentLanguage === 'roman'
-                  ? 'Bolein'
-                  : 'Speak'}
-              </span>
-            </button>
+            <VoiceControlGroup
+              currentLanguage={currentLanguage}
+              mode="recording"
+              variant="compact"
+              size="sm"
+              isRecording={isRecording}
+              isRecordingPaused={isRecordingPaused}
+              onStartRecording={startVoiceRecording}
+              onPauseRecording={pauseVoiceRecording}
+              onResumeRecording={startVoiceRecording}
+              onStopRecording={stopVoiceRecording}
+              showSpeed={false}
+              showWaveform={true}
+            />
           </div>
 
           <textarea

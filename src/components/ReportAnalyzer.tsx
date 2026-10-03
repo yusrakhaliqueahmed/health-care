@@ -3,6 +3,7 @@ import { SupportedLanguage, MedicalReportRecord, UrgencyLevel, UnifiedHealthReco
 import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager } from '../services/voice';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { VoiceControlGroup } from './VoiceControlGroup';
 import { ClinicalOutputCard } from './ClinicalOutputCard';
 import { InvalidUploadAlert } from './InvalidUploadAlert';
 import {
@@ -283,6 +284,20 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
         </div>
       </div>
 
+      {/* Audio Guidance Bar for Report Analyzer */}
+      <VoiceControlGroup
+        currentLanguage={currentLanguage}
+        textToSpeak={
+          currentLanguage === 'ur'
+            ? 'میڈیکل رپورٹ اور ایکسرے کا معائنہ۔ خون کے ٹیسٹ، لیب نمبرز اور چھاتی یا ہڈیوں کے ایکسرے کی تصویر اپلوڈ کریں اور اردو میں تفصیلی طبی تجزیہ حاصل کریں۔'
+            : currentLanguage === 'roman'
+            ? 'Medical report aur X-ray decoder. Test numbers aur chest X-ray upload karein aur fori AI tajziya hasil karein.'
+            : 'Medical Report & X-Ray Decoder. Upload test results or imaging scans to receive immediate clinical analysis and findings.'
+        }
+        variant="bar"
+        size="sm"
+      />
+
       {/* Hidden File Inputs */}
       <input
         ref={galleryInputRef}
@@ -535,6 +550,21 @@ export const ReportAnalyzer: React.FC<ReportAnalyzerProps> = ({
               )}
             </div>
           </div>
+
+          {/* Voice Guidance Control Bar for Report Findings */}
+          <VoiceControlGroup
+            currentLanguage={currentLanguage}
+            textToSpeak={analysisResult.text.replace(/[*_#`~]/g, '')}
+            label={
+              currentLanguage === 'ur'
+                ? 'رپورٹ کا مکمل صوتی تجزیہ سنیں'
+                : currentLanguage === 'roman'
+                ? 'Report Ka Mukammal Audio Tajziya'
+                : 'Listen to Full Report Analysis'
+            }
+            variant="bar"
+            size="sm"
+          />
 
           <ClinicalOutputCard
             content={analysisResult.text}

@@ -46,8 +46,11 @@ export const NearbyCare: React.FC<NearbyCareProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-  // Filter Doctors (Only active doctors, never pending or rejected ones)
-  const activeDoctorList = doctors.filter((d) => d.verificationStatus !== 'pending' && d.verificationStatus !== 'rejected');
+  // Filter Doctors: ONLY VERIFIED DOCTORS EVER APPEAR TO PATIENTS
+  // Unverified, pending, rejected, or suspended doctors are strictly hidden
+  const activeDoctorList = doctors.filter(
+    (d) => d.verificationStatus === 'verified' && d.isVerified === true
+  );
 
   const filteredDoctors = activeDoctorList.filter((doc) => {
     const matchCity = selectedCity === 'All Cities' || doc.city.toLowerCase() === selectedCity.toLowerCase();
@@ -55,6 +58,7 @@ export const NearbyCare: React.FC<NearbyCareProps> = ({
       !searchQuery ||
       doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.pmdcNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.languages.some((l) => l.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchCity && matchQuery;
   });
@@ -289,19 +293,16 @@ export const NearbyCare: React.FC<NearbyCareProps> = ({
                           {doc.qualification} • {doc.experienceYears} yrs exp
                         </p>
 
-                        {/* Distinct Badges: Real Verified vs Demo Placeholder */}
-                        <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                          {isRealVerified ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/40">
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>{t.pmdcVerifiedBadge} • {doc.pmdcNumber}</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-medium border border-slate-300 dark:border-slate-700">
-                              <AlertCircle className="w-3 h-3 text-slate-400" />
-                              <span>{t.demoDoctorBadge}</span>
-                            </span>
-                          )}
+                        {/* Verified Doctor Badge & Visible PMDC Registration Number */}
+                        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/90 text-emerald-800 dark:text-emerald-300 text-[11px] font-black border border-emerald-500/50 shadow-2xs">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>✅ PMDC Verified</span>
+                          </span>
+
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 font-mono text-[11px] font-extrabold text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/80" title="Pakistan Medical & Dental Council License Number">
+                            <span>Reg #{doc.pmdcNumber}</span>
+                          </span>
                         </div>
                       </div>
                     </div>

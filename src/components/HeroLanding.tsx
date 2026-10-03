@@ -32,6 +32,7 @@ import {
 import { ClinicalHeartIcon } from './ClinicalHeartIcon';
 import { validateMedicalInput, InputValidationResult, containsKnownMedicine } from '../services/inputValidation';
 import { SmartValidationAlert } from './SmartValidationAlert';
+import { DailyHealthInsight } from './DailyHealthInsight';
 
 interface HeroLandingProps {
   currentLanguage: SupportedLanguage;
@@ -491,6 +492,9 @@ export const HeroLanding: React.FC<HeroLandingProps> = ({
           <Activity className="w-72 h-72 text-teal-500" />
         </div>
       </motion.section>
+
+      {/* Daily Health Insight Section (Verified Daily Medical Advice with English & Urdu Toggle) */}
+      <DailyHealthInsight currentLanguage={currentLanguage} />
 
       {/* 2. Core Clinical Bento Grid (The 4 Primary Tools) */}
       <section>

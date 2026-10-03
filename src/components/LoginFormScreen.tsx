@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { LogIn, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { LogIn, Eye, EyeOff, ArrowRight, Stethoscope, ShieldCheck } from 'lucide-react';
 import { SupportedLanguage, UserAccount } from '../types';
 import { LanguageSelector } from './LanguageSelector';
 
@@ -10,6 +10,7 @@ interface LoginFormScreenProps {
   onLoginSuccess: (user: UserAccount) => void;
   initialUserName?: string;
   initialEmail?: string;
+  onOpenDoctorRegistration?: () => void;
 }
 
 export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
@@ -18,6 +19,7 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
   onLoginSuccess,
   initialUserName = '',
   initialEmail = '',
+  onOpenDoctorRegistration,
 }) => {
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
@@ -257,6 +259,30 @@ export const LoginFormScreen: React.FC<LoginFormScreenProps> = ({
                 ? 'Mehmaan ke tor par dakhil hon'
                 : 'Continue as Guest'}
             </button>
+
+            {/* Dedicated Doctor Registration Flow Trigger */}
+            {onOpenDoctorRegistration && (
+              <div className="pt-3.5 mt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1.5 font-medium">
+                  {currentLanguage === 'ur'
+                    ? 'کیا آپ لائسنس یافتہ ڈاکٹر ہیں؟'
+                    : 'Are you a licensed physician in Pakistan?'}
+                </span>
+                <button
+                  type="button"
+                  id="login-register-doctor-btn"
+                  onClick={onOpenDoctorRegistration}
+                  className="w-full py-2.5 px-3 rounded-xl bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/60 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                >
+                  <Stethoscope className="w-4 h-4 text-teal-600" />
+                  <span>
+                    {currentLanguage === 'ur'
+                      ? 'بطور ڈاکٹر رجسٹریشن کروائیں (پی ایم ڈی سی تصدیق)'
+                      : 'Register as a Doctor (PMDC Verification)'}
+                  </span>
+                </button>
+              </div>
+            )}
           </form>
         </motion.div>
       </div>

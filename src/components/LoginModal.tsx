@@ -21,6 +21,7 @@ interface LoginModalProps {
   onClose: () => void;
   onLogin: (user: UserAccount) => void;
   onLogout: () => void;
+  onOpenDoctorRegistration?: () => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({
@@ -30,6 +31,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   onClose,
   onLogin,
   onLogout,
+  onOpenDoctorRegistration,
 }) => {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [identifier, setIdentifier] = useState('');
@@ -366,6 +368,27 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   <span>{isSubmitting ? 'Authenticating...' : authMode === 'signin' ? 'Sign In' : 'Create Account'}</span>
                 </button>
               </div>
+
+              {/* For Doctors: PMDC Registration */}
+              {onOpenDoctorRegistration && (
+                <div className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenDoctorRegistration();
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-teal-50 dark:hover:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-slate-200 dark:border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <UserCheck className="w-4 h-4 text-teal-600" />
+                    <span>
+                      {currentLanguage === 'ur'
+                        ? 'ڈاکٹر کے طور پر شمولیت اختیار کریں (پی ایم ڈی سی رجسٹریشن)'
+                        : 'Are you a Doctor? Register & Verify PMDC License'}
+                    </span>
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         )}

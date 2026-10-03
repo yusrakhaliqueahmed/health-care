@@ -39,6 +39,7 @@ interface SidebarProps {
   onSelectLanguage: (lang: SupportedLanguage) => void;
   onOpenDisclaimer: () => void;
   onOpenLogin?: () => void;
+  onOpenDoctorOnboarding?: () => void;
   isOpenMobile?: boolean;
   onCloseMobile?: () => void;
 }
@@ -57,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectLanguage,
   onOpenDisclaimer,
   onOpenLogin,
+  onOpenDoctorOnboarding,
   isOpenMobile = false,
   onCloseMobile,
 }) => {
@@ -319,6 +321,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </motion.button>
           )}
         </div>
+
+        {/* For Doctors / PMDC Registration Card */}
+        {onOpenDoctorOnboarding && (
+          <div className="p-2.5 rounded-xl bg-teal-50/80 dark:bg-teal-950/40 border border-teal-200/80 dark:border-teal-800/60 flex items-center justify-between gap-2 shadow-2xs">
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400 block leading-none">
+                {currentLanguage === 'ur' ? 'ڈاکٹرز کے لیے' : 'For Doctors'}
+              </span>
+              <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                {currentLanguage === 'ur' ? 'پی ایم ڈی سی رجسٹریشن' : 'PMDC Onboarding'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (onCloseMobile) onCloseMobile();
+                onOpenDoctorOnboarding();
+              }}
+              className="px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-bold shrink-0 transition-colors shadow-2xs cursor-pointer"
+            >
+              {currentLanguage === 'ur' ? 'رجسٹر کریں' : 'Register'}
+            </button>
+          </div>
+        )}
 
         {/* Language Selector Dropdown with AnimatePresence */}
         <div className="relative">

@@ -19,6 +19,13 @@ import {
   AlertCircle,
   Check,
   Filter,
+  Eye,
+  ExternalLink,
+  Copy,
+  Phone,
+  Mail,
+  RefreshCw,
+  X,
 } from 'lucide-react';
 import { SupportedLanguage, Doctor, PatientCase } from '../types';
 import { TRANSLATIONS } from '../services/i18n';
@@ -57,9 +64,11 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
   const [approvalNotice, setApprovalNotice] = useState<string | null>(null);
 
   // Admin Verification states
-  const [docFilter, setDocFilter] = useState<'all' | 'pending' | 'verified' | 'rejected'>('pending');
-  const [rejectionReasonInput, setRejectionReasonInput] = useState<{ [docId: string]: string }>({});
-  const [showRejectBox, setShowRejectBox] = useState<string | null>(null);
+  const [docFilter, setDocFilter] = useState<'all' | 'pending' | 'verified' | 'rejected' | 'suspended'>('pending');
+  const [inspectingDoc, setInspectingDoc] = useState<Doctor | null>(null);
+  const [rejectingDoc, setRejectingDoc] = useState<Doctor | null>(null);
+  const [rejectionReasonText, setRejectionReasonText] = useState('');
+  const [copiedPmdc, setCopiedPmdc] = useState<string | null>(null);
 
   const selectedCase = pendingCases.find((c) => c.id === selectedCaseId) || pendingCases[0];
 
@@ -86,24 +95,34 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
       onUpdateDoctorStatus(doctorId, 'verified');
       setApprovalNotice(
         isUrdu
-          ? 'ڈاکٹر کے کوائف اور پی ایم ڈی سی نمبر کی تصدیق ہو گئی ہے۔ پروفائل اب پبلک ہو چکی ہے۔'
-          : 'Doctor credentials & PMDC registration verified. Doctor is now visible in Find Care.'
+          ? 'ڈاکٹر کے کوائف اور پی ایم ڈی سی نمبر کی تصدیق ہو گئی ہے۔ ڈاکٹر اب فائنڈ کیئر اور پلیٹ فارم پر لائیو ہو چکا ہے۔'
+          : 'Doctor credentials & PMDC license verified. Doctor is now active and visible in Find Care.'
       );
-      setTimeout(() => setApprovalNotice(null), 4000);
+      setTimeout(() => setApprovalNotice(null), 5000);
     }
   };
 
-  const handleRejectDoctor = (doctorId: string) => {
-    const reason = rejectionReasonInput[doctorId] || (isUrdu ? 'پی ایم ڈی سی رجسٹری سے کوائف کی تصدیق نہیں ہو سکی۔' : 'Credentials could not be verified with PMDC registry.');
+  const handleOpenRejectModal = (doc: Doctor) => {
+    setRejectingDoc(doc);
+    setRejectionReasonText(
+      isUrdu
+        ? 'پی ایم ڈی سی رجسٹری میں رجسٹریشن نمبر یا لائسنس سرٹیفکیٹ کی تصدیق نہیں ہو سکی۔'
+        : 'PMDC registration number or verification document could not be validated against the national registry.'
+    );
+  };
+
+  const handleConfirmRejectDoctor = () => {
+    if (!rejectingDoc) return;
     if (onUpdateDoctorStatus) {
-      onUpdateDoctorStatus(doctorId, 'rejected', reason);
-      setShowRejectBox(null);
+      onUpdateDoctorStatus(rejectingDoc.id, 'rejected', rejectionReasonText);
       setApprovalNotice(
         isUrdu
-          ? 'درخواست مسترد کر دی گئی ہے اور ڈاکٹر کو نوٹس ارسال کر دیا گیا ہے۔'
-          : 'Doctor application rejected and reason recorded.'
+          ? `ڈاکٹر ${rejectingDoc.name} کی درخواست مسترد کر دی گئی ہے اور نوٹس ریکارڈ ہو چکا ہے۔`
+          : `Doctor application for ${rejectingDoc.name} has been rejected. Reason recorded.`
       );
-      setTimeout(() => setApprovalNotice(null), 4000);
+      setRejectingDoc(null);
+      setRejectionReasonText('');
+      setTimeout(() => setApprovalNotice(null), 5000);
     }
   };
 
@@ -112,11 +131,17 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
       onUpdateDoctorStatus(doctorId, 'suspended', isUrdu ? 'انتظامی جانچ تک اکاؤنٹ معطل کیا گیا ہے۔' : 'Account suspended pending administrative investigation.');
       setApprovalNotice(
         isUrdu
-          ? 'ڈاکٹر کا اکاؤنٹ معطل کر دیا گیا ہے۔'
-          : 'Doctor account suspended and removed from patient search.'
+          ? 'ڈاکٹر کا اکاؤنٹ معطل کر دیا گیا ہے اور مریضوں کے نتائج سے غائب کر دیا گیا ہے۔'
+          : 'Doctor account revoked/suspended and immediately removed from all patient-facing search results.'
       );
-      setTimeout(() => setApprovalNotice(null), 4000);
+      setTimeout(() => setApprovalNotice(null), 5000);
     }
+  };
+
+  const handleCopyPmdc = (pmdcNum: string) => {
+    navigator.clipboard?.writeText(pmdcNum);
+    setCopiedPmdc(pmdcNum);
+    setTimeout(() => setCopiedPmdc(null), 2500);
   };
 
   // Filtered doctors for admin queue (safe from undefined)
@@ -126,21 +151,25 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
     if (docFilter === 'pending') return d.verificationStatus === 'pending';
     if (docFilter === 'verified') return d.verificationStatus === 'verified' && d.isVerified;
     if (docFilter === 'rejected') return d.verificationStatus === 'rejected';
+    if (docFilter === 'suspended') return d.verificationStatus === 'suspended';
     return true;
   });
 
   const pendingCount = safeDoctorsList.filter((d) => d.verificationStatus === 'pending').length;
+  const verifiedCount = safeDoctorsList.filter((d) => d.verificationStatus === 'verified' && d.isVerified).length;
+  const rejectedCount = safeDoctorsList.filter((d) => d.verificationStatus === 'rejected').length;
+  const suspendedCount = safeDoctorsList.filter((d) => d.verificationStatus === 'suspended').length;
 
   return (
-    <div className={`max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6 ${isUrdu ? 'rtl font-urdu' : 'ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
+    <div className={`max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 ${isUrdu ? 'rtl font-urdu' : 'ltr'}`} dir={isUrdu ? 'rtl' : 'ltr'}>
       {/* Top Banner */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-teal-800/40">
+      <div className="p-5 sm:p-8 rounded-3xl bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-teal-800/40">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-800/80 border border-teal-600 text-teal-200 text-xs font-bold mb-2">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span>
               {isUrdu
-                ? 'پی ایم ڈی سی تصدیق شدہ فزیشن و ایڈمن کونسول'
+                ? 'پی ایم ڈی سی لائسنس یافتہ فزیشن و ایڈمن کونسول'
                 : 'PMDC Licensed Physician & Admin Console'}
             </span>
           </div>
@@ -149,8 +178,8 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
           </h1>
           <p className="text-xs sm:text-sm text-teal-100/90 mt-1 max-w-xl">
             {isUrdu
-              ? 'مستند اور تصدیق شدہ ڈاکٹر مریضوں کے ٹریاج کیسز کا معائنہ کرتے ہیں، ڈیجیٹل نسخوں پر دستخط کرتے ہیں، اور ادویات کی منظوری دیتے ہیں۔'
-              : 'Human-in-the-loop clinical governance. Authenticated doctors review patient triage, sign digital prescriptions, and administer credentials.'}
+              ? 'مستند اور تصدیق شدہ ڈاکٹر مریضوں کے ٹریاج کیسز کا معائنہ کرتے ہیں، ڈیجیٹل نسخوں پر دستخط کرتے ہیں، اور ایڈمن نئے ڈاکٹرز کی پی ایم ڈی سی اسناد کی توثیق کرتا ہے۔'
+              : 'Human-in-the-loop clinical governance. Authenticated doctors review patient triage, sign digital prescriptions, and administrators verify doctor PMDC licenses.'}
           </p>
         </div>
 
@@ -158,10 +187,10 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
           {onOpenDoctorOnboarding && (
             <button
               onClick={onOpenDoctorOnboarding}
-              className="px-4 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer shrink-0"
             >
               <UserCheck className="w-4 h-4" />
-              <span>{t.joinAsDoctor}</span>
+              <span>{isUrdu ? 'نیا ڈاکٹر رجسٹر کریں' : 'Register New Doctor'}</span>
             </button>
           )}
         </div>
@@ -194,9 +223,9 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
           }`}
         >
           <ShieldCheck className="w-4 h-4" />
-          <span>{t.adminVerificationQueue || (isUrdu ? 'ایڈمن توثیق کی فہرست' : 'Doctor Credentials Queue')}</span>
+          <span>{isUrdu ? 'ایڈمن توثیق کونسول' : 'PMDC Doctor Verification Queue'}</span>
           {pendingCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black animate-pulse">
               {pendingCount}
             </span>
           )}
@@ -212,18 +241,20 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
           }`}
         >
           <Award className="w-4 h-4" />
-          <span>{isUrdu ? 'ڈاکٹر ڈیش بورڈ و کارکردگی' : 'Doctor Dashboard & Metrics'}</span>
+          <span>{isUrdu ? 'ڈاکٹر میٹرکس و گائیڈلائنز' : 'Metrics & PMDC Standards'}</span>
         </button>
       </div>
 
       {approvalNotice && (
-        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fade-in">
-          <ShieldCheck className="w-5 h-5 text-emerald-600" />
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fade-in shadow-xs">
+          <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
           <span>{approvalNotice}</span>
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* VIEW 1: Patient Triage Cases */}
+      {/* ========================================================================= */}
       {activePortalTab === 'cases' && (
         <>
           {pendingCases.length === 0 ? (
@@ -235,7 +266,7 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {isUrdu
                   ? 'اس وقت کوئی غیر معائنہ شدہ مریض کا کیس موجود نہیں ہے۔ نئے کیسز علامات جانچنے پر خود بخود یہاں ظاہر ہوں گے۔'
-                  : 'No pending patient files awaiting clinical review. New symptom checker cases and vitals alerts will automatically appear here.'}
+                  : 'No pending patient files awaiting clinical review. New symptom checker cases will automatically appear here.'}
               </p>
             </div>
           ) : (
@@ -251,7 +282,7 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
                       key={c.id}
                       type="button"
                       onClick={() => setSelectedCaseId(c.id)}
-                      className={`w-full p-3.5 rounded-2xl text-left border transition-all cursor-pointer ${
+                      className={`w-full p-3.5 rounded-2xl text-left rtl:text-right border transition-all cursor-pointer ${
                         selectedCaseId === c.id
                           ? 'bg-teal-50 dark:bg-teal-950 border-teal-500 shadow-xs'
                           : 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
@@ -378,54 +409,83 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
         </>
       )}
 
-      {/* VIEW 2: Doctor Credential Verification & Onboarding Admin Queue */}
+      {/* ========================================================================= */}
+      {/* VIEW 2: ADMIN MANUAL DOCTOR VERIFICATION WORKFLOW */}
+      {/* ========================================================================= */}
       {activePortalTab === 'admin_verification' && (
         <div className="space-y-5">
+          {/* Admin Guidance Header */}
+          <div className="p-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-start gap-2.5">
+              <ShieldCheck className="w-5 h-5 text-teal-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-teal-900 dark:text-teal-200 block text-xs">
+                  {isUrdu ? 'ایڈمن دستی توثیقی طریقہ کار (PMDC Verification Workflow)' : 'Admin Manual PMDC Verification Workflow'}
+                </span>
+                <p className="text-[11px] text-teal-800/90 dark:text-teal-300/90 mt-0.5 leading-relaxed">
+                  {isUrdu
+                    ? 'کوئی بھی ڈاکٹر جب تک ایڈمن سے تصدیق شدہ نہ ہو، مریضوں کے سرچ رزلٹس یا کیس اپروول میں ظاہر نہیں ہو سکتا۔ پی ایم ڈی سی نمبر اور اپلوڈ شدہ سند کا بغور معائنہ کریں۔'
+                    : 'Doctors in "Pending Verification" are completely invisible to patients until you manually review their license document and approve their PMDC registration.'}
+                </p>
+              </div>
+            </div>
+            {onOpenDoctorOnboarding && (
+              <button
+                type="button"
+                onClick={onOpenDoctorOnboarding}
+                className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs shrink-0 cursor-pointer shadow-xs"
+              >
+                {isUrdu ? '+ ڈاکٹر درخواست جمع کریں' : '+ Register Doctor'}
+              </button>
+            )}
+          </div>
+
           {/* Filter Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center gap-2 flex-wrap">
               <Filter className="w-4 h-4 text-slate-400" />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                {isUrdu ? 'ڈاکٹرز کی درجہ بندی:' : 'Filter Applicants:'}
+                {isUrdu ? 'فلٹر کریں:' : 'Filter Applications:'}
               </span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {[
-                  { id: 'pending', label: isUrdu ? `زیر التواء توثیق (${pendingCount})` : `Pending Review (${pendingCount})` },
-                  { id: 'verified', label: isUrdu ? 'تصدیق شدہ ڈاکٹرز' : 'Verified & Active' },
-                  { id: 'rejected', label: isUrdu ? 'مسترد شدہ' : 'Rejected' },
+                  { id: 'pending', label: isUrdu ? `زیر التواء توثیق (${pendingCount})` : `Pending Review (${pendingCount})`, badge: pendingCount },
+                  { id: 'verified', label: isUrdu ? `تصدیق شدہ (${verifiedCount})` : `Verified & Active (${verifiedCount})` },
+                  { id: 'rejected', label: isUrdu ? `مسترد شدہ (${rejectedCount})` : `Rejected (${rejectedCount})` },
+                  { id: 'suspended', label: isUrdu ? `معطل شدہ (${suspendedCount})` : `Suspended (${suspendedCount})` },
                   { id: 'all', label: isUrdu ? `تمام (${safeDoctorsList.length})` : `All (${safeDoctorsList.length})` },
                 ].map((f) => (
                   <button
                     key={f.id}
                     onClick={() => setDocFilter(f.id as any)}
-                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 ${
                       docFilter === f.id
-                        ? 'bg-teal-600 text-white shadow-xs'
+                        ? 'bg-teal-600 text-white shadow-xs font-bold'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                     }`}
                   >
-                    {f.label}
+                    <span>{f.label}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <span className="text-xs text-slate-400">
-              {isUrdu ? `${filteredDoctors.length} ڈاکٹرز ظاہر ہیں` : `${filteredDoctors.length} doctors shown`}
+              {filteredDoctors.length} {isUrdu ? 'درخواستیں' : 'applications'}
             </span>
           </div>
 
-          {/* List of Applications */}
+          {/* List of Doctor Applications */}
           {filteredDoctors.length === 0 ? (
             <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2">
               <UserCheck className="w-10 h-10 text-slate-400 mx-auto" />
               <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-                {isUrdu ? 'اس فلٹر میں کوئی ڈاکٹر درخواست موجود نہیں' : 'No Doctor Applications in this Filter'}
+                {isUrdu ? 'اس فلٹر میں کوئی ڈاکٹر درخواست موجود نہیں' : 'No Applications in this Category'}
               </h3>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
                 {isUrdu
                   ? 'ڈاکٹر کے طور پر شمولیت اختیار کرنے والے معالجین کی درخواستیں پی ایم ڈی سی توثیق کے لیے یہاں ظاہر ہوں گی۔'
-                  : 'Applications submitted via "Join as a Doctor" will populate here for PMDC license cross-checking and verification.'}
+                  : 'Applications submitted via "Register as a Doctor" will populate here for PMDC license cross-checking.'}
               </p>
             </div>
           ) : (
@@ -434,98 +494,157 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
                 const isPending = doc.verificationStatus === 'pending';
                 const isVerified = doc.verificationStatus === 'verified' && doc.isVerified;
                 const isRejected = doc.verificationStatus === 'rejected';
+                const isSuspended = doc.verificationStatus === 'suspended';
 
                 return (
                   <div
                     key={doc.id}
-                    className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5"
+                    className={`p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border shadow-xs transition-all flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5 ${
+                      isPending
+                        ? 'border-amber-400/80 bg-amber-50/15 dark:bg-slate-900 ring-2 ring-amber-400/20'
+                        : isVerified
+                        ? 'border-emerald-500/40 dark:border-emerald-800/40'
+                        : isSuspended
+                        ? 'border-orange-500/40 bg-orange-50/10'
+                        : 'border-rose-400/40 bg-rose-50/10'
+                    }`}
                   >
-                    <div className="flex items-start gap-4">
+                    {/* Left: Avatar & Comprehensive Details */}
+                    <div className="flex items-start gap-4 min-w-0 flex-1">
                       <img
                         src={doc.avatarUrl}
                         alt={doc.name}
-                        className="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                        className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-slate-200 dark:border-slate-700 shrink-0 shadow-xs"
                         referrerPolicy="no-referrer"
                         onError={(e) => {
                           (e.currentTarget as HTMLImageElement).src =
                             'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&auto=format&fit=crop&q=80';
                         }}
                       />
-                      <div>
+
+                      <div className="min-w-0 flex-1">
+                        {/* Name & Verification Status Badge */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                          <h3 className="font-black text-base sm:text-lg text-slate-900 dark:text-white">
                             {doc.name}
                           </h3>
-                          {/* Status Badge */}
+
                           {isVerified ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] font-black border border-emerald-500/40 flex items-center gap-1">
                               <CheckCircle className="w-3 h-3 text-emerald-600" />
-                              <span>{isUrdu ? 'پی ایم ڈی سی تصدیق شدہ' : 'PMDC Verified'}</span>
+                              <span>{isUrdu ? '✅ پی ایم ڈی سی تصدیق شدہ' : '✅ PMDC Verified'}</span>
                             </span>
                           ) : isPending ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 text-[10px] font-bold border border-amber-500/30 flex items-center gap-1 animate-pulse">
+                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-[10px] font-black border border-amber-500/50 flex items-center gap-1 animate-pulse">
                               <Clock className="w-3 h-3 text-amber-600" />
-                              <span>{isUrdu ? 'زیر التواء توثیق' : 'Pending Admin Review'}</span>
+                              <span>{isUrdu ? 'زیر التواء توثیق (Pending Review)' : 'Pending Verification'}</span>
                             </span>
-                          ) : isRejected ? (
-                            <span className="px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-500/30 flex items-center gap-1">
-                              <XCircle className="w-3 h-3 text-rose-600" />
-                              <span>{isUrdu ? 'درخواست مسترد' : 'Application Rejected'}</span>
+                          ) : isSuspended ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-orange-100 dark:bg-orange-950 text-orange-800 dark:text-orange-300 text-[10px] font-black border border-orange-500/40 flex items-center gap-1">
+                              <Ban className="w-3 h-3 text-orange-600" />
+                              <span>{isUrdu ? 'لائسنس معطل شدہ (Suspended)' : 'Suspended / Revoked'}</span>
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px]">
-                              {doc.isDemoPlaceholder ? (isUrdu ? 'ڈیمو ڈاکٹر' : 'Demo Placeholder') : (isUrdu ? 'غیر فعال' : 'Inactive')}
+                            <span className="px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 text-[10px] font-black border border-rose-500/40 flex items-center gap-1">
+                              <XCircle className="w-3 h-3 text-rose-600" />
+                              <span>{isUrdu ? 'درخواست مسترد (Rejected)' : 'Application Rejected'}</span>
                             </span>
                           )}
                         </div>
 
-                        <p className="text-xs font-semibold text-teal-600 dark:text-teal-400 mt-0.5">
+                        {/* Specialty & Degree */}
+                        <p className="text-xs font-bold text-teal-700 dark:text-teal-400 mt-0.5">
                           {doc.specialty} • {doc.qualification}
                         </p>
 
-                        <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                          <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-800 dark:text-slate-200 font-bold">
-                            {isUrdu ? `پی ایم ڈی سی نمبر: ${doc.pmdcNumber}` : `PMDC Reg: ${doc.pmdcNumber}`}
-                          </span>
-                          <span>{isUrdu ? `تجربہ: ${doc.experienceYears} سال` : `Experience: ${doc.experienceYears} yrs`}</span>
-                          <span>{isUrdu ? `ہسپتال: ${doc.hospital}` : `Hospital: ${doc.hospital}`}</span>
-                          <span>{isUrdu ? `شہر: ${doc.city}` : `City: ${doc.city}`}</span>
-                          {doc.pmdcCertificateUrl && (
-                            <span className="text-teal-600 dark:text-teal-400 underline cursor-pointer flex items-center gap-1">
-                              <FileText className="w-3 h-3" />
-                              <span>{isUrdu ? `سند: ${doc.pmdcCertificateUrl}` : `Doc: ${doc.pmdcCertificateUrl}`}</span>
+                        {/* PMDC Registration Number Box with Copy Tool */}
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 dark:bg-teal-950/80 border border-teal-300 dark:border-teal-700 font-mono text-xs font-black text-teal-900 dark:text-teal-200">
+                            <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                            <span>{doc.pmdcNumber}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPmdc(doc.pmdcNumber)}
+                              className="text-teal-600 hover:text-teal-800 dark:hover:text-white p-0.5 rounded ml-1 cursor-pointer"
+                              title="Copy PMDC Number"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                          {copiedPmdc === doc.pmdcNumber && (
+                            <span className="text-[10px] font-bold text-emerald-600 animate-fade-in">
+                              Copied!
                             </span>
+                          )}
+
+                          {/* Uploaded Verification Document Inspection Trigger */}
+                          <button
+                            type="button"
+                            onClick={() => setInspectingDoc(doc)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-teal-100 dark:hover:bg-teal-900/40 text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-teal-600" />
+                            <span>{isUrdu ? 'پی ایم ڈی سی سند کا معائنہ کریں' : 'Inspect Certificate Document'}</span>
+                            <Eye className="w-3 h-3 text-slate-400" />
+                          </button>
+                        </div>
+
+                        {/* Metadata row: Contact, Hospital, City, Experience */}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>{doc.phone}</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-slate-400" />
+                            <span>{doc.email || 'doctor@registry.pk'}</span>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Building2 className="w-3 h-3 text-slate-400" />
+                            <span>{doc.hospital}</span>
+                          </span>
+                          <span>{doc.city}, {doc.province}</span>
+                          <span>{doc.experienceYears} yrs exp</span>
+                          {doc.registeredAt && (
+                            <span className="text-slate-400">Reg: {doc.registeredAt}</span>
                           )}
                         </div>
 
                         {/* Rejection Note if existing */}
                         {doc.rejectionReason && (
-                          <p className="text-xs text-rose-500 dark:text-rose-400 mt-2 italic bg-rose-50 dark:bg-rose-950/40 p-2 rounded-xl border border-rose-200 dark:border-rose-900">
-                            {isUrdu ? `مسترد کرنے کی وجہ: ${doc.rejectionReason}` : `Rejection note: ${doc.rejectionReason}`}
-                          </p>
+                          <div className="text-xs text-rose-700 dark:text-rose-300 mt-2 bg-rose-50 dark:bg-rose-950/60 p-2.5 rounded-xl border border-rose-200 dark:border-rose-900 flex items-start gap-1.5">
+                            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                            <div>
+                              <strong className="block text-[10px] uppercase tracking-wider text-rose-600 dark:text-rose-400">
+                                {isUrdu ? 'مسترد کرنے کی وجہ / ایڈمن نوٹ:' : 'Rejection Reason / Admin Note:'}
+                              </strong>
+                              <span>{doc.rejectionReason}</span>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    {/* Admin Actions */}
-                    <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0 self-end md:self-center w-full md:w-auto">
+                    {/* Right: Manual Admin Action Buttons */}
+                    <div className="flex flex-row lg:flex-col items-stretch gap-2 shrink-0 w-full lg:w-44 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 dark:border-slate-800">
                       {isPending && (
                         <>
                           <button
                             type="button"
                             onClick={() => handleApproveDoctor(doc.id)}
-                            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all"
+                            className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
                           >
                             <Check className="w-4 h-4" />
-                            <span>{t.approveDoctorBtn}</span>
+                            <span>{isUrdu ? 'منظور کریں (Approve)' : 'Approve Doctor'}</span>
                           </button>
+
                           <button
                             type="button"
-                            onClick={() => setShowRejectBox(showRejectBox === doc.id ? null : doc.id)}
-                            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-500/30 flex items-center justify-center gap-1.5 transition-all"
+                            onClick={() => handleOpenRejectModal(doc)}
+                            className="flex-1 py-2.5 px-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-700 dark:text-rose-300 font-bold text-xs border border-rose-300 dark:border-rose-800 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                           >
                             <XCircle className="w-4 h-4" />
-                            <span>{t.rejectDoctorBtn}</span>
+                            <span>{isUrdu ? 'مسترد کریں (Reject)' : 'Reject Application'}</span>
                           </button>
                         </>
                       )}
@@ -534,10 +653,23 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleSuspendDoctor(doc.id)}
-                          className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-rose-900/40 hover:text-rose-300 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-orange-600 hover:text-white text-slate-700 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                          title="Revoke / Suspend license"
                         >
                           <Ban className="w-3.5 h-3.5" />
-                          <span>{isUrdu ? 'معطل کریں' : 'Suspend'}</span>
+                          <span>{isUrdu ? 'لائسنس معطل کریں' : 'Revoke / Suspend'}</span>
+                        </button>
+                      )}
+
+                      {(isSuspended || isRejected) && (
+                        <button
+                          type="button"
+                          onClick={() => handleApproveDoctor(doc.id)}
+                          className="flex-1 py-2.5 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                          title="Reinstate to Verified status"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>{isUrdu ? 'دوبارہ بحال کریں' : 'Re-verify & Restore'}</span>
                         </button>
                       )}
                     </div>
@@ -546,41 +678,279 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
               })}
             </div>
           )}
+
+          {/* ========================================================================= */}
+          {/* INSPECTION MODAL: PMDC CERTIFICATE & LICENSE DOCUMENT VIEWER */}
+          {/* ========================================================================= */}
+          {inspectingDoc && (
+            <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-xl w-full p-6 shadow-2xl relative space-y-4 my-auto">
+                <button
+                  type="button"
+                  onClick={() => setInspectingDoc(null)}
+                  className="absolute top-4 right-4 rtl:right-auto rtl:left-4 p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                      {isUrdu ? 'پی ایم ڈی سی رجسٹریشن و اسناد کا معائنہ' : 'PMDC License Document Inspection'}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {inspectingDoc.name} • {inspectingDoc.specialty}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Simulated / Rendered Official Document Card */}
+                <div className="p-4 sm:p-6 rounded-2xl bg-amber-50/50 dark:bg-slate-950 border-2 border-amber-300 dark:border-amber-900/60 text-slate-900 dark:text-slate-100 space-y-3 relative overflow-hidden">
+                  <div className="absolute top-2 right-2 opacity-10 pointer-events-none">
+                    <ShieldCheck className="w-24 h-24 text-teal-800" />
+                  </div>
+
+                  <div className="text-center border-b border-amber-200 dark:border-slate-800 pb-2">
+                    <span className="text-[10px] uppercase font-black tracking-widest text-teal-800 dark:text-teal-400 block">
+                      Pakistan Medical & Dental Council (PMDC)
+                    </span>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Certificate of Permanent Medical Registration
+                    </h4>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Doctor Name</span>
+                      <strong className="text-slate-900 dark:text-white">{inspectingDoc.name}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">PMDC Registration #</span>
+                      <strong className="font-mono text-teal-700 dark:text-teal-400">{inspectingDoc.pmdcNumber}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Medical Degree</span>
+                      <span>{inspectingDoc.qualification}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Specialty</span>
+                      <span>{inspectingDoc.specialty}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Document File</span>
+                      <span className="truncate block font-mono text-[11px] text-teal-600 dark:text-teal-400">
+                        {inspectingDoc.verificationDocumentName || inspectingDoc.pmdcCertificateUrl || 'PMDC_License_Scan.pdf'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-bold block">Issuing Authority</span>
+                      <span className="text-[11px]">PMDC Islamabad Secretariat</span>
+                    </div>
+                  </div>
+
+                  {/* Document preview if data URL exists */}
+                  {inspectingDoc.verificationDocumentDataUrl && (
+                    <div className="mt-3 pt-3 border-t border-amber-200 dark:border-slate-800">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Uploaded Document Preview:</span>
+                      <img
+                        src={inspectingDoc.verificationDocumentDataUrl}
+                        alt="PMDC Document Preview"
+                        className="max-h-48 w-full object-contain rounded-xl border border-slate-300 dark:border-slate-700 bg-white"
+                      />
+                    </div>
+                  )}
+
+                  {/* Verification Checklist */}
+                  <div className="pt-2 border-t border-amber-200 dark:border-slate-800 text-[11px] space-y-1 text-slate-600 dark:text-slate-300">
+                    <p className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>PMDC registry format verified ({inspectingDoc.pmdcNumber})</span>
+                    </p>
+                    <p className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Proof of license certificate submitted</span>
+                    </p>
+                    <p className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-semibold">
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>MBBS / Specialist qualification documented</span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Cross-check Helper button & Actions */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <a
+                    href="https://pmdc.pk"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-teal-700 dark:text-teal-400 hover:underline"
+                  >
+                    <span>Official PMDC Portal (pmdc.pk)</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {inspectingDoc.verificationStatus === 'pending' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleApproveDoctor(inspectingDoc.id);
+                            setInspectingDoc(null);
+                          }}
+                          className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                        >
+                          <Check className="w-4 h-4" />
+                          <span>Approve & Verify</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const d = inspectingDoc;
+                            setInspectingDoc(null);
+                            handleOpenRejectModal(d);
+                          }}
+                          className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-rose-50 text-rose-700 dark:text-rose-300 font-bold text-xs border border-rose-300 dark:border-rose-800 cursor-pointer"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setInspectingDoc(null)}
+                      className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* REJECTION REASON MODAL (OPTIONAL/CUSTOM NOTE TO APPLICANT) */}
+          {/* ========================================================================= */}
+          {rejectingDoc && (
+            <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-3xl max-w-md w-full p-6 shadow-2xl relative space-y-4 my-auto">
+                <button
+                  type="button"
+                  onClick={() => setRejectingDoc(null)}
+                  className="absolute top-4 right-4 rtl:right-auto rtl:left-4 p-2 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                    <XCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
+                      {isUrdu ? 'درخواست مسترد کرنے کی وجہ' : 'Reject Doctor Application'}
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      {rejectingDoc.name} ({rejectingDoc.pmdcNumber})
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs">
+                  <label className="block font-bold text-slate-700 dark:text-slate-300">
+                    {isUrdu ? 'مسترد کرنے کی وجہ / ڈاکٹر کو نوٹس:' : 'Reason / Note to Applicant:'}
+                  </label>
+                  {/* Preset quick reasons */}
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {[
+                      'PMDC number mismatch with official registry',
+                      'License document illegible or expired',
+                      'Specialization credentials not accredited',
+                    ].map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => setRejectionReasonText(reason)}
+                        className="text-[10px] px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-50 hover:text-rose-700 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    value={rejectionReasonText}
+                    onChange={(e) => setRejectionReasonText(e.target.value)}
+                    placeholder="Enter reason or note to applicant doctor..."
+                    className="w-full p-3 rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-rose-500"
+                  />
+                  <span className="text-[11px] text-slate-400 block">
+                    This note will be recorded and communicated to the applicant doctor.
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setRejectingDoc(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmRejectDoctor}
+                    className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Confirm Rejection</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
+      {/* ========================================================================= */}
       {/* VIEW 3: Doctor Personal Dashboard & Reviewed Cases Stats */}
+      {/* ========================================================================= */}
       {activePortalTab === 'my_dashboard' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
               <span className="text-xs text-slate-400 uppercase font-bold">
-                {isUrdu ? 'کل طبی معائنے و ریویوز' : 'Total Clinical Reviews'}
+                {isUrdu ? 'کل تصدیق شدہ فزیشنز' : 'Total Verified PMDC Doctors'}
               </span>
-              <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-1">42</p>
+              <p className="text-3xl font-extrabold text-teal-600 dark:text-teal-400 mt-1">{verifiedCount}</p>
               <span className="text-xs text-emerald-500 font-medium">
-                {isUrdu ? '100% ڈاکٹر تصدیق شدہ' : '100% human signed'}
+                {isUrdu ? '100% ایڈمن مصدقہ' : '100% Admin Approved & Visible'}
               </span>
             </div>
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
               <span className="text-xs text-slate-400 uppercase font-bold">
-                {isUrdu ? 'پی ایم ڈی سی لائسنس کی حیثیت' : 'PMDC License Status'}
+                {isUrdu ? 'پی ایم ڈی سی لائسنس کی حیثیت' : 'PMDC License Standards'}
               </span>
               <p className="text-xl font-extrabold text-emerald-500 mt-1 flex items-center gap-1.5">
                 <ShieldCheck className="w-5 h-5" />
-                <span>{isUrdu ? 'فعال و رجسٹرڈ' : 'Active & Compliant'}</span>
+                <span>{isUrdu ? 'فعال و رجسٹرڈ' : 'Mandatory Verification Active'}</span>
               </p>
               <span className="text-xs text-slate-400">
-                {isUrdu ? 'سالانہ آڈٹ رپورٹ: پاس شدہ' : 'Annual audit status: Passed'}
+                {isUrdu ? 'کوئی غیر مصدقہ ڈاکٹر نظر نہیں آتا' : 'Zero unverified doctors shown to patients'}
               </span>
             </div>
             <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
               <span className="text-xs text-slate-400 uppercase font-bold">
-                {isUrdu ? 'مریضوں کا اطمینان اور ریٹنگ' : 'Average Patient Satisfaction'}
+                {isUrdu ? 'زیرِ جائزہ درخواستیں' : 'Pending Verification Queue'}
               </span>
-              <p className="text-3xl font-extrabold text-amber-400 mt-1">4.9 / 5.0</p>
+              <p className="text-3xl font-extrabold text-amber-500 mt-1">{pendingCount}</p>
               <span className="text-xs text-slate-400">
-                {isUrdu ? 'مصدقہ ٹیلی کنسلٹیشنز کی بنیاد پر' : 'Based on verified teleconsults'}
+                {isUrdu ? 'ایڈمن توثیق کے منتظر' : 'Awaiting admin cross-check'}
               </span>
             </div>
           </div>
@@ -591,8 +961,8 @@ export const DoctorReviewPortal: React.FC<DoctorReviewPortalProps> = ({
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-3xl">
               {isUrdu
-                ? 'پی ایم ڈی سی اور پاکستان ٹیلی میڈیسن ایکٹ کے رہنما اصولوں کے تحت تمام مریضوں کے ٹریاج اور نسخہ جات کا جائزہ رجسٹرڈ میڈیکل پریکٹشنر لیتے ہیں۔ مصنوعی ذہانت صرف ابتدائی معلومات جمع کرنے میں مدد دیتی ہے، حتمی تشخیص اور نسخے کی قانونی ذمہ داری معالج پر عائد ہوتی ہے۔'
-                : 'In accordance with PMDC regulations and Pakistan Telemedicine Standards, all clinical reviews must be conducted by registered medical practitioners. Artificial intelligence operates solely as an initial triage pre-screen; final medical responsibility and prescription issuance remains with the signing physician.'}
+                ? 'پی ایم ڈی سی اور پاکستان ٹیلی میڈیسن ایکٹ کے رہنما اصولوں کے تحت تمام مریضوں کے ٹریاج اور نسخہ جات کا جائزہ رجسٹرڈ میڈیکل پریکٹشنر لیتے ہیں۔ کوئی بھی ڈاکٹر اس وقت تک مریضوں کو نظر نہیں آ سکتا جب تک کہ اس کی رجسٹریشن نمبر اور اسناد کی باقاعدہ ایڈمن تصدیق نہ ہو جائے۔'
+                : 'In accordance with PMDC regulations and Pakistan Telemedicine Standards, no doctor is visible to patients or able to approve clinical cases without completing the PMDC license verification process, receiving admin sign-off, and displaying a verified registration badge.'}
             </p>
           </div>
         </div>

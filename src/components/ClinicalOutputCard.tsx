@@ -24,6 +24,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { VoiceControlGroup } from './VoiceControlGroup';
 import { TRANSLATIONS } from '../services/i18n';
 
 interface ClinicalOutputCardProps {
@@ -953,13 +954,7 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
             <div className="p-4 sm:p-5 rounded-2xl bg-teal-50/40 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800/70 space-y-3">
               <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-extrabold text-xs uppercase tracking-wider">
                 <FileCheck className="w-4 h-4 text-teal-600" />
-                <span>
-                  {isUrdu
-                    ? 'تجویز کردہ طبی لائحہ عمل'
-                    : isRoman
-                    ? 'Tajweez Kardah Aglay Iqdaamaat'
-                    : 'Recommended Next Clinical Steps'}
-                </span>
+                <span>{t.recommendedCarePlanHeader}</span>
               </div>
               <div className="space-y-2.5">
                 {parsed.carePlan.map((step, idx) => (
@@ -984,13 +979,7 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
             <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
               <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-extrabold text-xs uppercase tracking-wider">
                 <HeartPulse className="w-4 h-4 text-teal-600" />
-                <span>
-                  {isUrdu
-                    ? 'محفوظ گھریلو احتیاطی تدابیر'
-                    : isRoman
-                    ? 'Ghar Par Mehfooz Dekhbhal'
-                    : 'Safe Supportive Measures at Home'}
-                </span>
+                <span>{t.safeHomeCareHeader}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
                 {parsed.homeCare.map((care, idx) => (
@@ -1014,13 +1003,7 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-300 font-extrabold text-xs uppercase tracking-wider">
                   <HelpCircle className="w-4 h-4 text-indigo-600" />
-                  <span>
-                    {isUrdu
-                      ? 'ڈاکٹر کے پاس جانے سے پہلے ضروری سوالات'
-                      : isRoman
-                      ? 'Doctor Se Poochne Walay Zaroori Sawalaat'
-                      : 'Questions to Ask Your Doctor at Your Visit'}
-                  </span>
+                  <span>{t.questionsForDoctorHeader}</span>
                 </div>
                 <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900 px-2 py-0.5 rounded-md">
                   {isUrdu
@@ -1069,10 +1052,10 @@ export const ClinicalOutputCard: React.FC<ClinicalOutputCardProps> = ({
       {/* Audio Playback Controls Footer (Manual User Trigger Only) */}
       <div className="px-4 py-3 sm:px-6 sm:py-3.5 bg-slate-100/90 dark:bg-slate-850 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="w-full sm:w-auto">
-          <AudioPlayerControls
+          <VoiceControlGroup
             currentLanguage={currentLanguage}
             textToSpeak={content.replace(/[*_#`~]/g, '')}
-            compact
+            variant="compact"
           />
         </div>
 

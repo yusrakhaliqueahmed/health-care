@@ -4,6 +4,7 @@ import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager, createSpeechRecognizer } from '../services/voice';
 import { validateMedicalInput } from '../services/inputValidation';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { VoiceControlGroup } from './VoiceControlGroup';
 import { ClinicalOutputCard } from './ClinicalOutputCard';
 import { SmartValidationAlert } from './SmartValidationAlert';
 import { InvalidUploadAlert } from './InvalidUploadAlert';
@@ -192,6 +193,7 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
 
   // Speech Recognition
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingPaused, setIsRecordingPaused] = useState(false);
   const [recordingField, setRecordingField] = useState<'name' | 'condition' | null>(null);
   const speechRecognizer = useRef(createSpeechRecognizer());
 
@@ -212,15 +214,21 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
   const startVoiceInput = (field: 'name' | 'condition') => {
     setValidationAlert(null);
     setInvalidUploadError(null);
+
+    if (isRecording && recordingField === field && isRecordingPaused) {
+      speechRecognizer.current.resume();
+      setIsRecordingPaused(false);
+      return;
+    }
+
     if (isRecording) {
       speechRecognizer.current.stop();
-      setIsRecording(false);
-      setRecordingField(null);
-      return;
     }
 
     setRecordingField(field);
     setIsRecording(true);
+    setIsRecordingPaused(false);
+
     speechRecognizer.current.start(
       currentLanguage,
       (text) => {
@@ -229,13 +237,29 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
       },
       () => {
         setIsRecording(false);
+        setIsRecordingPaused(false);
         setRecordingField(null);
       },
       () => {
         setIsRecording(false);
+        setIsRecordingPaused(false);
         setRecordingField(null);
       }
     );
+  };
+
+  const pauseVoiceInput = () => {
+    if (isRecording && !isRecordingPaused) {
+      speechRecognizer.current.pause();
+      setIsRecordingPaused(true);
+    }
+  };
+
+  const stopVoiceInput = () => {
+    speechRecognizer.current.stop();
+    setIsRecording(false);
+    setIsRecordingPaused(false);
+    setRecordingField(null);
   };
 
   const handleVerifyMedicine = async (e: React.FormEvent) => {
@@ -509,6 +533,18 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
         </div>
       </div>
 
+      {/* Audio Guidance Bar for Medicine Safety */}
+      <VoiceControlGroup
+        currentLanguage={currentLanguage}
+        textToSpeak={
+          currentLanguage === 'ur'
+            ? `${bannerTitle}۔ ${bannerDesc}۔ اپنی دوا کا نام لکھیں یا مائیک دباکر بولیں، خوراک اور الرجی کا معائنہ فوری حاصل کریں۔`
+            : `${bannerTitle}. ${bannerDesc}. Type or speak your medicine name to verify pediatric safety, interactions, and precautions.`
+        }
+        variant="bar"
+        size="sm"
+      />
+
         {/* Mode Switcher Tabs */}
         <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700">
           <button
@@ -660,9 +696,25 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
           {mode === 'check' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                  {medNameLabel}
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    {medNameLabel}
+                  </label>
+                  <VoiceControlGroup
+                    currentLanguage={currentLanguage}
+                    mode="recording"
+                    variant="compact"
+                    size="sm"
+                    isRecording={isRecording && recordingField === 'name'}
+                    isRecordingPaused={isRecording && recordingField === 'name' && isRecordingPaused}
+                    onStartRecording={() => startVoiceInput('name')}
+                    onPauseRecording={pauseVoiceInput}
+                    onResumeRecording={() => startVoiceInput('name')}
+                    onStopRecording={stopVoiceInput}
+                    showSpeed={false}
+                    showWaveform={false}
+                  />
+                </div>
                 <div className="relative flex items-center">
                   <input
                     type="text"
@@ -721,9 +773,25 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                  {conditionLabel}
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    {conditionLabel}
+                  </label>
+                  <VoiceControlGroup
+                    currentLanguage={currentLanguage}
+                    mode="recording"
+                    variant="compact"
+                    size="sm"
+                    isRecording={isRecording && recordingField === 'condition'}
+                    isRecordingPaused={isRecording && recordingField === 'condition' && isRecordingPaused}
+                    onStartRecording={() => startVoiceInput('condition')}
+                    onPauseRecording={pauseVoiceInput}
+                    onResumeRecording={() => startVoiceInput('condition')}
+                    onStopRecording={stopVoiceInput}
+                    showSpeed={false}
+                    showWaveform={false}
+                  />
+                </div>
                 <div className="relative flex items-center">
                   <input
                     type="text"
@@ -756,9 +824,25 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
           {mode === 'reverse' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                  {reverseLabel}
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    {reverseLabel}
+                  </label>
+                  <VoiceControlGroup
+                    currentLanguage={currentLanguage}
+                    mode="recording"
+                    variant="compact"
+                    size="sm"
+                    isRecording={isRecording && recordingField === 'condition'}
+                    isRecordingPaused={isRecording && recordingField === 'condition' && isRecordingPaused}
+                    onStartRecording={() => startVoiceInput('condition')}
+                    onPauseRecording={pauseVoiceInput}
+                    onResumeRecording={() => startVoiceInput('condition')}
+                    onStopRecording={stopVoiceInput}
+                    showSpeed={false}
+                    showWaveform={false}
+                  />
+                </div>
                 <div className="relative flex items-center">
                   <textarea
                     rows={3}
@@ -947,6 +1031,19 @@ export const MedicineChecker: React.FC<MedicineCheckerProps> = ({
               )}
             </div>
           </div>
+
+          {/* Voice Guidance Control Bar for Medicine Analysis */}
+          <VoiceControlGroup
+            currentLanguage={currentLanguage}
+            textToSpeak={`${result.medicineName}. ${result.explanation.replace(/[*_#`~]/g, '')}`}
+            label={
+              currentLanguage === 'ur'
+                ? `دوا کی رپورٹ سنیں: ${result.medicineName}`
+                : `Audio Guidance: ${result.medicineName}`
+            }
+            variant="bar"
+            size="sm"
+          />
 
           <ClinicalOutputCard
             content={result.explanation}

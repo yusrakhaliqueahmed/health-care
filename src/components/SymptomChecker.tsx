@@ -12,6 +12,7 @@ import { TRANSLATIONS } from '../services/i18n';
 import { voiceManager, createSpeechRecognizer } from '../services/voice';
 import { validateMedicalInput } from '../services/inputValidation';
 import { AudioPlayerControls } from './AudioPlayerControls';
+import { VoiceControlGroup } from './VoiceControlGroup';
 import { SymptomIntakeForm } from './SymptomIntakeForm';
 import { ClinicalOutputCard } from './ClinicalOutputCard';
 import { SmartValidationAlert } from './SmartValidationAlert';
@@ -129,6 +130,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
 
   // Speech Recognition state
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingPaused, setIsRecordingPaused] = useState(false);
   const [caseSavedNotification, setCaseSavedNotification] = useState<string | null>(null);
   const speechRecognizer = useRef(createSpeechRecognizer());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -185,25 +187,49 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     }
   };
 
+  const startVoiceRecording = () => {
+    if (isRecording && isRecordingPaused) {
+      speechRecognizer.current.resume();
+      setIsRecordingPaused(false);
+      return;
+    }
+    setIsRecording(true);
+    setIsRecordingPaused(false);
+    speechRecognizer.current.start(
+      currentLanguage,
+      (transcript) => {
+        setInputText(transcript);
+      },
+      (err) => {
+        console.warn('Speech err:', err);
+        setIsRecording(false);
+        setIsRecordingPaused(false);
+      },
+      () => {
+        setIsRecording(false);
+        setIsRecordingPaused(false);
+      }
+    );
+  };
+
+  const pauseVoiceRecording = () => {
+    if (isRecording && !isRecordingPaused) {
+      speechRecognizer.current.pause();
+      setIsRecordingPaused(true);
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    speechRecognizer.current.stop();
+    setIsRecording(false);
+    setIsRecordingPaused(false);
+  };
+
   const toggleRecording = () => {
     if (isRecording) {
-      speechRecognizer.current.stop();
-      setIsRecording(false);
+      stopVoiceRecording();
     } else {
-      setIsRecording(true);
-      speechRecognizer.current.start(
-        currentLanguage,
-        (transcript) => {
-          setInputText(transcript);
-        },
-        (err) => {
-          console.warn('Speech err:', err);
-          setIsRecording(false);
-        },
-        () => {
-          setIsRecording(false);
-        }
-      );
+      startVoiceRecording();
     }
   };
 
@@ -678,6 +704,16 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
                   )}
                 </div>
               )}
+
+              {/* Voice playback for submitted dossier */}
+              <div className="pt-2 border-t border-teal-200/50 dark:border-teal-800/60">
+                <VoiceControlGroup
+                  currentLanguage={currentLanguage}
+                  textToSpeak={`${submittedFormData.chiefComplaint}. ${submittedFormData.duration}. ${submittedFormData.detailedNotes || ''}`}
+                  variant="compact"
+                  size="sm"
+                />
+              </div>
             </div>
           )}
 
@@ -709,7 +745,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
               type="button"
               onClick={handleResetChat}
               className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs"
-              title="Reset Conversation"
+              title={currentLanguage === 'ur' ? 'گفتگو دوبارہ شروع کریں' : currentLanguage === 'roman' ? 'Guftagu dobara shuru karein' : 'Reset Conversation'}
             >
               <RotateCcw className="w-4 h-4" />
             </button>
@@ -781,7 +817,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
                 href="tel:1122"
                 className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-bold"
               >
-                Call 1122
+                {currentLanguage === 'ur' ? 'کال 1122' : 'Call 1122'}
               </a>
             )}
             <button
@@ -817,6 +853,20 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           </span>
         </div>
 
+        {/* Multilingual Voice Control Bar for Prompts & Triage Guidance */}
+        <VoiceControlGroup
+          currentLanguage={currentLanguage}
+          textToSpeak={
+            currentLanguage === 'ur'
+              ? 'صحت ساتھی علامات کی جانچ میں خوش آمدید۔ آپ اوپر دی گئی عام علامات پر کلک کر کے سن سکتے ہیں، یا نیچے مائیک کا بٹن دبا کر اپنی علامات بول سکتے ہیں۔'
+              : currentLanguage === 'roman'
+              ? 'SehatSaathi symptom triage mein khush aamdeed. Aap alamaat par click kar ke sun saktay hain ya mic se bol saktay hain.'
+              : 'Welcome to symptom triage. Click any prompt to analyze or tap the microphone below to speak freely.'
+          }
+          variant="bar"
+          size="sm"
+        />
+
         <div className="flex flex-wrap gap-2">
           {SYMPTOM_GUIDANCE_PROMPTS.map((prompt) => {
             const label = prompt.labels[currentLanguage] || prompt.labels.en;
@@ -841,7 +891,7 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
                     voiceManager.speak(label, currentLanguage);
                   }}
                   className="px-2 py-1.5 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-teal-50 dark:hover:bg-slate-700 transition-colors border-l border-slate-100 dark:border-slate-700"
-                  title="Listen in selected language"
+                  title={currentLanguage === 'ur' ? 'آواز سنیں' : currentLanguage === 'roman' ? 'Awaaz sunen' : 'Listen prompt'}
                   aria-label={`Listen prompt: ${label}`}
                 >
                   <Volume2 className="w-3.5 h-3.5" />
@@ -990,21 +1040,23 @@ export const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           <Camera className="w-5 h-5" />
         </button>
 
-        {/* Big Speech-To-Text Microphone Button */}
-        <button
-          id="symptom-mic-btn"
-          type="button"
-          onClick={toggleRecording}
-          className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer ${
-            isRecording
-              ? 'bg-red-600 text-white animate-pulse shadow-md shadow-red-500/40'
-              : 'bg-teal-50 dark:bg-teal-950 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 hover:bg-teal-100'
-          }`}
-          title={isRecording ? t.stopVoice : t.voiceInput}
-          aria-label={isRecording ? 'Stop voice recording' : 'Start voice input'}
-        >
-          {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-        </button>
+        {/* Voice Input Control Group (Start, Pause, Stop) */}
+        <div id="symptom-mic-btn-container" className="shrink-0">
+          <VoiceControlGroup
+            currentLanguage={currentLanguage}
+            mode="recording"
+            variant="compact"
+            size="sm"
+            isRecording={isRecording}
+            isRecordingPaused={isRecordingPaused}
+            onStartRecording={startVoiceRecording}
+            onPauseRecording={pauseVoiceRecording}
+            onResumeRecording={startVoiceRecording}
+            onStopRecording={stopVoiceRecording}
+            showSpeed={false}
+            showWaveform={true}
+          />
+        </div>
 
         {/* Text Input */}
         <input

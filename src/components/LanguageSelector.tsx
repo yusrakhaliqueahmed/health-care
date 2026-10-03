@@ -49,16 +49,22 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={
           compact
-            ? "inline-flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-xl bg-teal-900/80 hover:bg-teal-800 text-white border border-teal-700/50 shadow-xs transition-all focus:outline-hidden min-h-[38px] shrink-0"
-            : "inline-flex items-center justify-between gap-2 px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all focus:outline-hidden focus:ring-2 focus:ring-teal-500 min-h-[44px]"
+            ? "inline-flex items-center justify-between gap-1 px-2 py-1 text-xs font-semibold rounded-xl bg-teal-900/80 hover:bg-teal-800 text-white border border-teal-700/50 shadow-xs transition-all focus:outline-hidden min-h-[32px] sm:min-h-[36px] cursor-pointer"
+            : "inline-flex items-center justify-between gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-xs hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all focus:outline-hidden focus:ring-2 focus:ring-teal-500 min-h-[36px] sm:min-h-[40px] cursor-pointer"
         }
         aria-expanded={isOpen}
         aria-haspopup="true"
         title={`Current Language: ${activeLangInfo.name}`}
       >
         <Globe className={`shrink-0 ${compact ? 'w-3.5 h-3.5 text-teal-300' : 'w-4 h-4 text-teal-600 dark:text-teal-400'}`} />
-        <span className={`font-medium truncate ${compact ? 'max-w-[70px]' : ''}`}>
-          {activeLangInfo.nativeName}
+        <span className={`font-semibold ${compact ? 'text-xs uppercase tracking-wider' : ''}`}>
+          {compact
+            ? currentLanguage === 'ur'
+              ? 'اردو'
+              : currentLanguage === 'roman'
+              ? 'ROM'
+              : 'EN'
+            : activeLangInfo.nativeName}
         </span>
         {!compact && (
           <span className="hidden md:inline text-xs text-slate-400 dark:text-slate-500 font-normal">
@@ -74,25 +80,25 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
 
       {isOpen && (
         <>
-          {/* Mobile backdrop for easy tap dismissal */}
+          {/* Subtle backdrop for quick tap outside */}
           <div
-            className="fixed inset-0 bg-black/40 z-40 sm:hidden"
+            className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           />
 
           <div
             id="language-dropdown-menu"
-            className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 bottom-4 sm:bottom-auto sm:top-full mt-2 w-auto sm:w-64 bg-white dark:bg-slate-900 rounded-2xl sm:rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 duration-150 max-w-sm mx-auto sm:max-w-none"
+            className="absolute top-full mt-1.5 right-0 rtl:right-auto rtl:left-0 w-52 sm:w-56 max-w-[85vw] bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100"
             role="menu"
             aria-orientation="vertical"
           >
-            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="px-3.5 py-1.5 border-b border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Select Language / زبان چنیں
               </p>
             </div>
 
-            <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto py-1">
+            <div className="py-1">
               {(Object.keys(LANGUAGES) as SupportedLanguage[]).map((code) => {
                 const lang = LANGUAGES[code];
                 const isSelected = currentLanguage === code;
@@ -103,7 +109,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                     id={`lang-option-${code}`}
                     type="button"
                     onClick={() => handleSelect(code)}
-                    className={`w-full text-left px-4 py-3 flex items-center justify-between transition-colors min-h-[44px] ${
+                    className={`w-full text-left rtl:text-right px-3.5 py-2.5 flex items-center justify-between transition-colors cursor-pointer text-xs sm:text-sm ${
                       isSelected
                         ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-900 dark:text-teal-200 font-bold'
                         : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -111,10 +117,10 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
                     role="menuitem"
                   >
                     <div className="flex flex-col">
-                      <span className="text-base sm:text-sm font-semibold text-slate-900 dark:text-white">
+                      <span className="font-semibold text-slate-900 dark:text-white">
                         {lang.nativeName}
                       </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
                         {lang.name}
                       </span>
                     </div>
