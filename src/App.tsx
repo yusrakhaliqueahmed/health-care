@@ -1,0 +1,1234 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  SupportedLanguage,
+  NavigationTab,
+  PatientProfile,
+  PatientCase,
+  Prescription,
+  MedicalReportRecord,
+  Doctor,
+  UserAccount,
+  UnifiedHealthRecord,
+} from './types';
+import { TRANSLATIONS } from './services/i18n';
+import { INITIAL_PROFILES, INITIAL_CASES, INITIAL_PRESCRIPTIONS, INITIAL_REPORTS, INITIAL_DOCTORS } from './services/data';
+import { voiceManager } from './services/voice';
+import { Sidebar } from './components/Sidebar';
+import { HighDensityHeader } from './components/HighDensityHeader';
+import { HeroLanding } from './components/HeroLanding';
+import { SymptomChecker } from './components/SymptomChecker';
+import { MedicineChecker } from './components/MedicineChecker';
+import { ReportAnalyzer } from './components/ReportAnalyzer';
+import { NearbyCare } from './components/NearbyCare';
+import { EmergencyCare } from './components/EmergencyCare';
+import { HealthRecords } from './components/HealthRecords';
+import { VoiceHealthAssistant } from './components/VoiceHealthAssistant';
+import { WomensHealth } from './components/WomensHealth';
+import { FamilyCare } from './components/FamilyCare';
+import { DoctorReviewPortal } from './components/DoctorReviewPortal';
+import { TeleconsultBookingModal } from './components/TeleconsultBookingModal';
+import { DisclaimerModal } from './components/DisclaimerModal';
+import { SplashScreen } from './components/SplashScreen';
+import { InitialDisclaimerScreen } from './components/InitialDisclaimerScreen';
+import { LoginFormScreen } from './components/LoginFormScreen';
+import { LoginModal } from './components/LoginModal';
+import { DoctorOnboardingModal } from './components/DoctorOnboardingModal';
+import { GlobalFooter } from './components/GlobalFooter';
+import { EmergencyCallModal } from './components/EmergencyCallModal';
+import { MedicalQuickMessageModal } from './components/MedicalQuickMessageModal';
+import { VitalsTracker } from './components/VitalsTracker';
+import { StandaloneHealthCardViewer } from './components/StandaloneHealthCardViewer';
+import { ActiveMedicineAlertModal } from './components/ActiveMedicineAlertModal';
+import { MedicineReminderModal } from './components/MedicineReminderModal';
+import { HealthQrCardModal } from './components/HealthQrCardModal';
+import { FloatingAudioPlayer } from './components/FloatingAudioPlayer';
+import { decodeHealthCardPayload } from './services/healthCardService';
+import { loadActiveSession, saveActiveSession, clearActiveSession } from './services/accountAuthService';
+import { auth, firebaseSignOut } from './firebase';
+import { loadMedicineReminders } from './services/medicineReminderService';
+import {
+  syncGuestPatientRecordsToFirestore,
+  loadGuestPatientFromFirestore,
+} from './services/guestPatientService';
+import { MedicineReminder, SharedHealthCardData } from './types';
+import {
+  PhoneCall,
+  MessageSquare,
+  ShieldCheck,
+  Volume2,
+  VolumeX,
+  Stethoscope,
+  Info,
+  Linkedin,
+  Globe,
+  LayoutDashboard,
+  Pill,
+  FileText,
+  Activity,
+  MapPin,
+  UserCheck,
+} from 'lucide-react';
+
+const TAB_INDEX_MAP: Record<NavigationTab, number> = {
+  home: 0,
+  symptoms: 1,
+  medicine: 2,
+  reports: 3,
+  vitals: 4,
+  records: 5,
+  voice_assistant: 6,
+  womens_health: 7,
+  family_care: 8,
+  care: 9,
+  emergency: 10,
+  doctor_portal: 11,
+};
+
+export default function App() {
+  // Check if opened via QR Code scan (e.g. /?view=qr-health-card&data=...)
+  const [standaloneCardData, setStandaloneCardData] = useState<SharedHealthCardData | null>(() => {
+    if (typeof window !== 'undefined') {
+      let params = new URLSearchParams(window.location.search);
+      if (!params.get('view') && window.location.hash.includes('?')) {
+        params = new URLSearchParams(window.location.hash.split('?')[1]);
+      }
+      const view = params.get('view');
+      const data = params.get('data');
+      if (view === 'qr-health-card' && data) {
+        return decodeHealthCardPayload(data);
+      }
+    }
+    return null;
+  });
+
+  const [showSplash, setShowSplash] = useState<boolean>(true);
+
+  // Initial start flow matching video:
+  // 1. Splash Screen (showSplash: true)
+  // 2. Important Message Screen (hasAcknowledgedDisclaimer: false)
+  // 3. Welcome back Login Screen (hasLoggedIn: false) -> Continue with Google
+  const [hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer] = useState<boolean>(false);
+
+  const [currentUser, setCurrentUser] = useState<UserAccount>(() => {
+    const session = loadActiveSession();
+    if (session && session.name) return session;
+    return {
+      id: 'usr-guest',
+      name: 'Guest Patient',
+      email: '',
+      isLoggedIn: false,
+    };
+  });
+
+  const [hasLoggedIn, setHasLoggedIn] = useState<boolean>(false);
+
+  // Active Due Medicine Reminder Alarm State
+  const [activeDueReminder, setActiveDueReminder] = useState<MedicineReminder | null>(null);
+  const [activeDueScheduledTime, setActiveDueScheduledTime] = useState<string>('');
+  const [snoozedAlarms, setSnoozedAlarms] = useState<
+    Array<{ reminder: MedicineReminder; fireAt: number; scheduledTime: string }>
+  >([]);
+  const triggeredSlotsRef = React.useRef<Set<string>>(new Set());
+
+  // Global modals: Health QR Card & Daily Medicine Reminders
+  const [showHealthQrModal, setShowHealthQrModal] = useState(false);
+  const [showMedicineReminderModal, setShowMedicineReminderModal] = useState(false);
+
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showEmergencyCallModal, setShowEmergencyCallModal] = useState(false);
+  const [showQuickMessageModal, setShowQuickMessageModal] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>(() => {
+    const saved = localStorage.getItem('sehat_saathi_language');
+    if (saved === 'en' || saved === 'ur' || saved === 'roman') {
+      return saved;
+    }
+    return 'en';
+  });
+  const t = TRANSLATIONS[currentLanguage] || TRANSLATIONS.en;
+  const [activeTab, setActiveTab] = useState<NavigationTab>('home');
+  const [tabDirection, setTabDirection] = useState<number>(1);
+
+  const navigateToTab = (newTab: NavigationTab) => {
+    if (newTab === activeTab) return;
+    const currentIdx = TAB_INDEX_MAP[activeTab] ?? 0;
+    const nextIdx = TAB_INDEX_MAP[newTab] ?? 0;
+    setTabDirection(nextIdx >= currentIdx ? 1 : -1);
+    setActiveTab(newTab);
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sehat_theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+    }
+    return false; // Default to White / Light Mode on start on every device
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  // App State collections - initialized without fabricated data
+  const [patientProfiles, setPatientProfiles] = useState<PatientProfile[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_patient_profiles');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_PROFILES;
+  });
+  const [pendingCases, setPendingCases] = useState<PatientCase[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_cases');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_CASES;
+  });
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_prescriptions');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_PRESCRIPTIONS;
+  });
+  const [reports, setReports] = useState<MedicalReportRecord[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_reports');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_REPORTS;
+  });
+  const [doctors, setDoctors] = useState<Doctor[]>(() => {
+    const saved = localStorage.getItem('sehat_saathi_doctors');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {
+        // ignore
+      }
+    }
+    return INITIAL_DOCTORS;
+  });
+
+  // Persist user-created data locally
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_patient_profiles', JSON.stringify(patientProfiles));
+    } catch {}
+  }, [patientProfiles]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_cases', JSON.stringify(pendingCases));
+    } catch {}
+  }, [pendingCases]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_prescriptions', JSON.stringify(prescriptions));
+    } catch {}
+  }, [prescriptions]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_reports', JSON.stringify(reports));
+    } catch {}
+  }, [reports]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_doctors', JSON.stringify(doctors));
+    } catch {}
+  }, [doctors]);
+
+  const [showDoctorOnboardingModal, setShowDoctorOnboardingModal] = useState(false);
+
+  const handleAddDoctorApplication = (newDoctor: Doctor) => {
+    setDoctors((prev) => [newDoctor, ...prev.filter((d) => d.id !== newDoctor.id)]);
+  };
+
+  const handleUpdateDoctorStatus = (
+    doctorId: string,
+    status: 'verified' | 'rejected' | 'suspended',
+    note?: string,
+    extraMetadata?: {
+      initialReviewerAdmin?: any;
+      finalApproverAdmin?: any;
+      yearlyRenewalDue?: string;
+    }
+  ) => {
+    setDoctors((prev) =>
+      prev.map((doc) =>
+        doc.id === doctorId
+           ? {
+               ...doc,
+               verificationStatus: status,
+               isVerified: status === 'verified',
+               isSuspended: status === 'suspended',
+               suspensionReason: status === 'suspended' ? (note || 'Suspended pending administrative review') : undefined,
+               rejectionReason: status === 'rejected' ? (note || 'Application rejected by administration') : undefined,
+               verifiedAt: status === 'verified' ? new Date().toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }) : doc.verifiedAt,
+               verifiedBy: status === 'verified' ? (extraMetadata?.finalApproverAdmin?.name || 'Two-Person Medical Board') : doc.verifiedBy,
+               initialReviewerAdmin: extraMetadata?.initialReviewerAdmin || doc.initialReviewerAdmin,
+               finalApproverAdmin: extraMetadata?.finalApproverAdmin || doc.finalApproverAdmin,
+               yearlyRenewalDue: extraMetadata?.yearlyRenewalDue || doc.yearlyRenewalDue || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
+               yearlyRenewalStatus: status === 'verified' ? 'active' : doc.yearlyRenewalStatus,
+             }
+           : doc
+      )
+    );
+  };
+
+  // Modal states
+  const [bookingDoctor, setBookingDoctor] = useState<Doctor | null>(null);
+
+  // Audio Auto-play global toggle
+  const [voiceAutoPlay, setVoiceAutoPlay] = useState(true);
+
+  // Handle dynamic login
+  const handleLogin = (user: UserAccount) => {
+    setCurrentUser(user);
+    setHasLoggedIn(true);
+    saveActiveSession(user);
+
+    const userKey = (user.email || user.id || 'default').toLowerCase().trim();
+
+    // Guest Patient Firestore database sync:
+    // Link guest credentials to persistent Firestore records so they can be retrieved
+    // by their specific password upon subsequent logins.
+    if (user.loginMethod === 'guest') {
+      loadGuestPatientFromFirestore(userKey, user.name)
+        .then((firestoreData) => {
+          if (firestoreData) {
+            if (firestoreData.records && firestoreData.records.length > 0) {
+              try {
+                localStorage.setItem(`sehat_records_${userKey}`, JSON.stringify(firestoreData.records));
+              } catch {}
+            }
+            if (firestoreData.profiles && firestoreData.profiles.length > 0) {
+              setPatientProfiles(firestoreData.profiles);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('Guest patient Firestore sync on login notice:', err);
+        });
+    }
+
+    // Migrate any guest session searches directly into the user's permanent Google profile
+    try {
+      const guestLocal = localStorage.getItem('sehat_records_default');
+      if (guestLocal) {
+        const guestRecords: UnifiedHealthRecord[] = JSON.parse(guestLocal);
+        if (Array.isArray(guestRecords) && guestRecords.length > 0) {
+          guestRecords.forEach((gr) => {
+            fetch('/api/records', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userKey, record: { ...gr, userId: userKey } }),
+            }).catch(() => {});
+          });
+        }
+      }
+    } catch {}
+
+    setPatientProfiles((prev) => {
+      const updated = [...prev];
+      if (updated[0]) {
+        updated[0] = { ...updated[0], name: user.name };
+      }
+      return updated;
+    });
+  };
+
+  const handleLogout = () => {
+    clearActiveSession();
+    firebaseSignOut(auth).catch(() => {});
+    const unauthenticatedUser: UserAccount = {
+      id: '',
+      name: '',
+      isLoggedIn: false,
+    };
+    setCurrentUser(unauthenticatedUser);
+    setHasLoggedIn(false);
+  };
+
+  // Background Medicine Reminder Alarms checking
+  useEffect(() => {
+    if (!hasLoggedIn) return;
+
+    const checkReminders = () => {
+      const now = new Date();
+      const currentH = now.getHours().toString().padStart(2, '0');
+      const currentM = now.getMinutes().toString().padStart(2, '0');
+      const currentTimeStr = `${currentH}:${currentM}`;
+      const todayStr = now.toISOString().split('T')[0];
+      const nowTimestamp = Date.now();
+
+      // 1. Check snoozed alarms
+      if (snoozedAlarms.length > 0) {
+        const dueIdx = snoozedAlarms.findIndex((s) => s.fireAt <= nowTimestamp);
+        if (dueIdx !== -1) {
+          const due = snoozedAlarms[dueIdx];
+          setSnoozedAlarms((prev) => prev.filter((_, i) => i !== dueIdx));
+          setActiveDueReminder(due.reminder);
+          setActiveDueScheduledTime(due.scheduledTime);
+          return;
+        }
+      }
+
+      // 2. Check scheduled times across all patient profiles
+      for (const profile of patientProfiles) {
+        const reminders = loadMedicineReminders(profile.id);
+        for (const rem of reminders) {
+          if (!rem.enabled) continue;
+          for (const timeSlot of rem.times) {
+            if (timeSlot === currentTimeStr) {
+              const slotKey = `${rem.id}_${todayStr}_${timeSlot}`;
+              if (!triggeredSlotsRef.current.has(slotKey)) {
+                triggeredSlotsRef.current.add(slotKey);
+                setActiveDueReminder(rem);
+                setActiveDueScheduledTime(timeSlot);
+                return;
+              }
+            }
+          }
+        }
+      }
+    };
+
+    const interval = setInterval(checkReminders, 15000);
+    checkReminders();
+    return () => clearInterval(interval);
+  }, [hasLoggedIn, patientProfiles, snoozedAlarms]);
+
+  // Keep layout structure firmly anchored (never flip the layout shell)
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_saathi_language', currentLanguage);
+    } catch {}
+    document.documentElement.dir = 'ltr';
+    document.documentElement.lang = currentLanguage;
+  }, [currentLanguage]);
+
+  // Dark mode class on html and localStorage sync
+  useEffect(() => {
+    try {
+      localStorage.setItem('sehat_theme', isDarkMode ? 'dark' : 'light');
+    } catch {}
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleVoiceAutoPlay = () => {
+    const nextVal = !voiceAutoPlay;
+    setVoiceAutoPlay(nextVal);
+    voiceManager.setAutoPlay(nextVal);
+    if (!nextVal) {
+      voiceManager.stop();
+    }
+  };
+
+  // Add Case from Symptom Checker to Doctor Queue & Permanent Records
+  const handleAddCaseForDoctorReview = (caseData: any) => {
+    setPendingCases((prev) => [caseData, ...prev]);
+
+    // Also persist as a diagnostic record
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const triageRecord: UnifiedHealthRecord = {
+      id: `rec-${caseData.id || Date.now()}`,
+      referenceNumber: `SS-TR-${Date.now().toString().slice(-6)}`,
+      labCaseNumber: `LB-TR-${Math.floor(10000 + Math.random() * 90000)}`,
+      userId: userKey,
+      patientProfileId: caseData.patientProfileId || 'prof-self',
+      title: `Symptom Triage: ${caseData.chiefComplaint || 'Clinical Assessment'}`,
+      panelName: 'SYMPTOM CLINICAL ASSESSMENT REPORT',
+      category: 'symptom',
+      patientName: caseData.patientName || currentUser?.name || 'Self',
+      patientAge: caseData.patientAge?.toString() || '30 Y',
+      patientGender: caseData.patientGender || 'male',
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: 'ai_preliminary',
+      urgency: caseData.urgency || 'YELLOW',
+      testResults: [
+        {
+          testName: 'Chief Complaint',
+          result: caseData.chiefComplaint || 'Symptom Triage',
+          referenceRange: 'Self-Reported',
+          isAbnormal: false,
+        },
+        {
+          testName: 'Triage Urgency Score',
+          result: caseData.urgency || 'Moderate',
+          referenceRange: 'Normal / Mild',
+          isAbnormal: caseData.urgency === 'RED',
+        },
+        {
+          testName: 'Symptom Duration',
+          result: caseData.duration || '2-3 days',
+          referenceRange: '< 7 days',
+          isAbnormal: false,
+        },
+      ],
+      clinicalNotes: caseData.summary || caseData.chiefComplaint || 'Clinical triage completed.',
+      doctorComments: 'Queued for PMDC physician review.',
+      reviewedByDoctor: 'Dr. Tariq Jamil (PMDC #33190-S)',
+      doctorPmdc: 'PMDC #33190-S',
+    };
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: triageRecord }),
+    }).catch((e) => console.warn('Sync error:', e));
+  };
+
+  // Doctor approves case and issues prescription
+  const handleApproveDoctorCase = (
+    caseId: string,
+    doctorNote: string,
+    prescriptionText: string
+  ) => {
+    const matched = pendingCases.find((c) => c.id === caseId);
+    if (!matched) return;
+
+    // Create verified digital prescription
+    const newRx: Prescription = {
+      id: `rx-${Date.now().toString().slice(-4)}`,
+      caseId,
+      patientName: matched.patientName,
+      doctorName: 'Dr. Ayesha Malik, MBBS, FCPS',
+      doctorPmdc: 'PMDC #48291-P',
+      date: new Date().toISOString().split('T')[0],
+      diagnosis: doctorNote,
+      medicines: [
+        {
+          name: prescriptionText.split('(')[0] || 'Paracetamol 500mg',
+          dosage: '1 tablet 3 times a day',
+          frequency: 'After meals',
+          duration: '3 to 5 days',
+          instructions: 'Drink plenty of clean fluids and rest well.',
+        },
+      ],
+      qrCodeData: `SEHAT-SAATHI-VERIFIED-RX-${caseId}-HASH-9382104-PMDC-LICENSED`,
+      status: 'active',
+    };
+
+    setPrescriptions((prev) => [newRx, ...prev]);
+    setPendingCases((prev) => prev.filter((c) => c.id !== caseId));
+
+    // Save as persistent prescription record
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const rxRecord: UnifiedHealthRecord = {
+      id: `rec-${newRx.id}`,
+      referenceNumber: `SS-RX-${Date.now().toString().slice(-6)}`,
+      labCaseNumber: `LB-RX-${Math.floor(10000 + Math.random() * 90000)}`,
+      userId: userKey,
+      patientProfileId: matched.patientProfileId || 'prof-self',
+      title: `Rx: ${newRx.diagnosis}`,
+      panelName: 'LICENSED MEDICAL PRESCRIPTION & CLINICAL SUMMARY',
+      category: 'prescription',
+      patientName: newRx.patientName,
+      patientAge: matched.patientAge?.toString() || '32 Y',
+      patientGender: matched.patientGender || 'male',
+      date: newRx.date,
+      status: 'doctor_approved',
+      urgency: 'GREEN',
+      testResults: newRx.medicines.map((m) => ({
+        testName: m.name,
+        result: `${m.dosage} (${m.frequency})`,
+        referenceRange: m.duration,
+        isAbnormal: false,
+      })),
+      clinicalNotes: `Clinical diagnosis: ${newRx.diagnosis}. Dispensing instruction: ${newRx.medicines[0]?.instructions || ''}`,
+      doctorComments: `Electronically verified and authorized by ${newRx.doctorName} (${newRx.doctorPmdc})`,
+      reviewedByDoctor: newRx.doctorName,
+      doctorPmdc: newRx.doctorPmdc,
+      prescriptionData: newRx,
+    };
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: rxRecord }),
+    }).catch((e) => console.warn('Sync error:', e));
+  };
+
+  // Add new family profile
+  const handleAddProfile = (newProfile: PatientProfile) => {
+    setPatientProfiles((prev) => [...prev, newProfile]);
+  };
+
+  // Add saved medical report
+  const handleSaveReport = (newRecord: MedicalReportRecord) => {
+    setReports((prev) => [newRecord, ...prev]);
+
+    // Save as persistent lab report record
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const labRecord: UnifiedHealthRecord = {
+      id: newRecord.id,
+      referenceNumber: `SS-LB-${Date.now().toString().slice(-6)}`,
+      labCaseNumber: `LB-${Math.floor(10000 + Math.random() * 90000)}`,
+      userId: userKey,
+      patientProfileId: 'prof-self',
+      title: newRecord.title,
+      panelName: newRecord.title,
+      category: 'lab_report',
+      patientName: newRecord.patientName || currentUser?.name || 'Patient',
+      patientAge: '35 Y',
+      patientGender: 'male',
+      date: newRecord.date || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: newRecord.status === 'approved_by_pmdc_doctor' ? 'doctor_approved' : 'ai_preliminary',
+      urgency: 'GREEN',
+      testResults: (newRecord.findings || '')
+        .split(/[\n,]+/)
+        .filter((f) => f.trim())
+        .map((f) => ({
+          testName: f.split(':')[0]?.trim() || f.trim(),
+          result: f.split(':')[1]?.trim() || 'Normal',
+          referenceRange: 'Standard Normal',
+          isAbnormal: f.toLowerCase().includes('high') || f.toLowerCase().includes('low') || f.toLowerCase().includes('abnormal'),
+        })),
+      clinicalNotes: newRecord.findings || 'Lab diagnostic evaluation completed.',
+      doctorComments: 'Automated digital assay verified on SehatSaathi Pro Diagnostic Network.',
+      reviewedByDoctor: 'Dr. Ayesha Malik (PMDC #48291-P)',
+      doctorPmdc: 'PMDC #48291-P',
+    };
+
+    // Cache locally for instant reactivity and sync to Firestore
+    try {
+      const storageKey = `sehat_records_${userKey}`;
+      const existingStr = localStorage.getItem(storageKey);
+      const existing = existingStr ? JSON.parse(existingStr) : [];
+      const updated = [labRecord, ...existing.filter((r: any) => r.id !== labRecord.id)];
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+
+      // Guest patient Firestore database sync
+      if (currentUser?.loginMethod === 'guest') {
+        syncGuestPatientRecordsToFirestore(userKey, updated, undefined, currentUser.name).catch(() => {});
+      }
+    } catch {}
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: labRecord }),
+    }).catch((e) => console.warn('Sync error:', e));
+  };
+
+  // Save any unified medical record (searches, inquiries, medicine checks, lab reports)
+  const handleSaveUnifiedRecord = (newRecord: UnifiedHealthRecord) => {
+    const userKey = (currentUser?.email || currentUser?.id || 'default').toLowerCase().trim();
+    const recordToSave: UnifiedHealthRecord = {
+      ...newRecord,
+      userId: userKey,
+    };
+
+    // Cache locally for instant reactivity across page refreshes
+    try {
+      const storageKey = `sehat_records_${userKey}`;
+      const existingStr = localStorage.getItem(storageKey);
+      const existing = existingStr ? JSON.parse(existingStr) : [];
+      const updated = [recordToSave, ...existing.filter((r: any) => r.id !== recordToSave.id)];
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+
+      // Guest patient Firestore database sync:
+      // Links guest credentials to persistent Firestore records so they can be retrieved
+      // by their specific password upon subsequent logins.
+      if (currentUser?.loginMethod === 'guest') {
+        syncGuestPatientRecordsToFirestore(userKey, updated, undefined, currentUser.name).catch((e) =>
+          console.warn('Firestore guest sync note:', e)
+        );
+      }
+    } catch {}
+
+    fetch('/api/records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userKey, record: recordToSave }),
+    }).catch((e) => console.warn('Sync error:', e));
+  };
+
+  const getMobileNavLabel = (tabId: string): string => {
+    if (currentLanguage === 'ur') {
+      switch (tabId) {
+        case 'home': return 'ہوم';
+        case 'symptoms': return 'علامات';
+        case 'medicine': return 'ادویات';
+        case 'reports': return 'رپورٹس';
+        case 'vitals': return 'وائٹلز';
+        case 'care': return 'ڈاکٹرز';
+        case 'doctor_portal': return 'ڈاکٹر پورٹل';
+        default: return '';
+      }
+    }
+    if (currentLanguage === 'roman') {
+      switch (tabId) {
+        case 'home': return 'Home';
+        case 'symptoms': return 'Alamaat';
+        case 'medicine': return 'Dawa';
+        case 'reports': return 'Reports';
+        case 'vitals': return 'Vitals';
+        case 'care': return 'Doctors';
+        case 'doctor_portal': return 'Dr Portal';
+        default: return '';
+      }
+    }
+    switch (tabId) {
+      case 'home': return 'Home';
+      case 'symptoms': return 'Symptoms';
+      case 'medicine': return 'Medicine';
+      case 'reports': return 'Reports';
+      case 'vitals': return 'Vitals';
+      case 'care': return 'Doctors';
+      case 'doctor_portal': return 'Dr Portal';
+      default: return '';
+    }
+  };
+
+  const isMainAppActive = !showSplash && hasAcknowledgedDisclaimer && hasLoggedIn;
+
+  const isRTL = currentLanguage === 'ur';
+
+  // Stable cross-fade transition: keeps the application rock-solid in one place without horizontal jumping
+  const tabVariants = {
+    initial: {
+      opacity: 0,
+    },
+    animate: {
+      opacity: 1,
+      transition: {
+        duration: 0.18,
+        ease: 'easeOut',
+      },
+    },
+    exit: {
+      opacity: 0,
+      transition: {
+        duration: 0.12,
+        ease: 'easeIn',
+      },
+    },
+  };
+
+  // Render standalone read-only health card viewer when accessed via QR code scan (no login/app needed)
+  if (standaloneCardData) {
+    return (
+      <StandaloneHealthCardViewer
+        data={standaloneCardData}
+        onExit={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.delete('view');
+          url.searchParams.delete('data');
+          url.searchParams.delete('token');
+          window.history.replaceState({}, '', url.pathname);
+          setStandaloneCardData(null);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      dir="ltr"
+      className={`min-h-screen flex font-sans transition-colors duration-200 overflow-x-hidden w-full max-w-[100vw] ${
+        currentLanguage === 'ur' ? 'font-urdu' : ''
+      } ${
+        isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-[#F8FAFC] text-[#0F172A]'
+      }`}
+    >
+      {/* 1. Splash Screen: Appears first on launch */}
+      {showSplash && (
+        <SplashScreen
+          currentLanguage={currentLanguage}
+          onFinish={() => setShowSplash(false)}
+        />
+      )}
+
+      {/* 2. Doctor Verification Required / Important Message Screen */}
+      {!showSplash && !hasAcknowledgedDisclaimer && (
+        <InitialDisclaimerScreen
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          onAcknowledge={() => {
+            localStorage.setItem('sehat_disclaimer_acknowledged', 'true');
+            setHasAcknowledgedDisclaimer(true);
+          }}
+        />
+      )}
+
+      {/* 3. Welcome Back / Login Screen */}
+      {!showSplash && hasAcknowledgedDisclaimer && !hasLoggedIn && (
+        <LoginFormScreen
+          currentLanguage={currentLanguage}
+          onLanguageChange={setCurrentLanguage}
+          initialUserName=""
+          initialEmail=""
+          onOpenDoctorRegistration={() => setShowDoctorOnboardingModal(true)}
+          onLoginSuccess={(user) => {
+            handleLogin(user);
+            setHasLoggedIn(true);
+          }}
+        />
+      )}
+
+      {/* On-demand Clinical Disclaimer Modal */}
+      <DisclaimerModal
+        isOpen={showDisclaimer}
+        currentLanguage={currentLanguage}
+        onClose={() => setShowDisclaimer(false)}
+      />
+
+      {/* Dynamic Login / Switch User Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        currentUser={currentUser}
+        currentLanguage={currentLanguage}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
+        onOpenDoctorRegistration={() => setShowDoctorOnboardingModal(true)}
+      />
+
+      {/* Doctor Registration & PMDC Verification Modal */}
+      <DoctorOnboardingModal
+        isOpen={showDoctorOnboardingModal}
+        onClose={() => setShowDoctorOnboardingModal(false)}
+        language={currentLanguage}
+        onSubmitDoctorApplication={handleAddDoctorApplication}
+        existingDoctors={doctors}
+      />
+
+      {/* Teleconsult Booking Modal */}
+      {bookingDoctor && (
+        <TeleconsultBookingModal
+          doctor={bookingDoctor}
+          currentLanguage={currentLanguage}
+          onClose={() => setBookingDoctor(null)}
+          onConfirm={(details) => {
+            console.log('Teleconsult booked:', details);
+          }}
+        />
+      )}
+
+      {/* High Density Pine Teal Sidebar */}
+      {isMainAppActive && (
+        <Sidebar
+          currentLanguage={currentLanguage}
+          activeTab={activeTab}
+          onNavigate={navigateToTab}
+          pendingDoctorReviewsCount={pendingCases.length}
+          isDarkMode={isDarkMode}
+          onToggleDarkMode={() => setIsDarkMode((prev) => !prev)}
+          voiceAutoPlay={voiceAutoPlay}
+          onToggleVoiceAutoPlay={toggleVoiceAutoPlay}
+          activeProfile={patientProfiles[0]}
+          currentUser={currentUser}
+          onSelectLanguage={setCurrentLanguage}
+          onOpenDisclaimer={() => setShowDisclaimer(true)}
+          onOpenLogin={() => setShowLoginModal(true)}
+          onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* High Density Main Content Container with Safe Bottom Clearance */}
+      {isMainAppActive && (
+        <main className="flex-1 flex flex-col min-h-screen p-2.5 sm:p-4 lg:p-6 pb-32 sm:pb-36 lg:pb-12 min-w-0 max-w-full overflow-x-hidden overflow-y-auto">
+        <HighDensityHeader
+          currentLanguage={currentLanguage}
+          activeTab={activeTab}
+          activeProfile={patientProfiles[0]}
+          currentUser={currentUser}
+          onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
+          onOpenDisclaimer={() => setShowDisclaimer(true)}
+          onOpenLogin={() => setShowLoginModal(true)}
+          onNavigate={navigateToTab}
+          voiceAutoPlay={voiceAutoPlay}
+          onToggleVoiceAutoPlay={toggleVoiceAutoPlay}
+          onSelectLanguage={setCurrentLanguage}
+          onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
+          onOpenQuickMessage={() => setShowQuickMessageModal(true)}
+          onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
+          pendingDoctorReviewsCount={pendingCases.length}
+        />
+
+        <div className="flex-1 min-h-0 relative overflow-x-hidden">
+          <AnimatePresence mode="wait" custom={tabDirection}>
+            <motion.div
+              key={activeTab}
+              custom={tabDirection}
+              variants={tabVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="w-full flex-1"
+            >
+              {activeTab === 'home' && (
+                <HeroLanding
+                  currentLanguage={currentLanguage}
+                  pendingDoctorReviewsCount={pendingCases.length}
+                  currentUser={currentUser}
+                  patientProfiles={patientProfiles}
+                  prescriptionsCount={prescriptions.length}
+                  onNavigate={navigateToTab}
+                  onEmergencyCall={() => navigateToTab('emergency')}
+                  onOpenEmergencyCall={() => setShowEmergencyCallModal(true)}
+                  onOpenQuickMessage={() => setShowQuickMessageModal(true)}
+                  onOpenDisclaimer={() => setShowDisclaimer(true)}
+                  onReplaySplash={() => setShowSplash(true)}
+                  onSaveSearchRecord={handleSaveUnifiedRecord}
+                  onOpenQrCard={() => setShowHealthQrModal(true)}
+                  onOpenMedicineReminder={() => setShowMedicineReminderModal(true)}
+                />
+              )}
+
+              {activeTab === 'symptoms' && (
+                <SymptomChecker
+                  currentLanguage={currentLanguage}
+                  patientProfiles={patientProfiles}
+                  currentUser={currentUser}
+                  onAddCaseForDoctorReview={handleAddCaseForDoctorReview}
+                  onEmergencyCall={() => navigateToTab('emergency')}
+                />
+              )}
+
+              {activeTab === 'medicine' && (
+                <MedicineChecker
+                  currentLanguage={currentLanguage}
+                  patientProfiles={patientProfiles}
+                  onNavigateToCare={(filter) => {
+                    navigateToTab('care');
+                  }}
+                  onSaveRecord={handleSaveUnifiedRecord}
+                  userName={currentUser?.name}
+                  onNavigateToTab={navigateToTab}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {activeTab === 'reports' && (
+                <ReportAnalyzer
+                  currentLanguage={currentLanguage}
+                  onSaveToRecords={handleSaveReport}
+                  onSaveUnifiedRecord={handleSaveUnifiedRecord}
+                  userName={currentUser?.name}
+                />
+              )}
+
+              {activeTab === 'voice_assistant' && (
+                <VoiceHealthAssistant
+                  currentLanguage={currentLanguage}
+                  currentUser={currentUser}
+                  activeProfile={patientProfiles[0]}
+                  onNavigateToEmergency={() => navigateToTab('emergency')}
+                  onNavigateToCare={() => navigateToTab('care')}
+                  onSaveRecord={handleSaveUnifiedRecord}
+                />
+              )}
+
+              {activeTab === 'womens_health' && (
+                <WomensHealth
+                  currentLanguage={currentLanguage}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {activeTab === 'family_care' && (
+                <FamilyCare
+                  currentLanguage={currentLanguage}
+                  patientProfiles={patientProfiles}
+                  onAddProfile={handleAddProfile}
+                  currentUser={currentUser}
+                />
+              )}
+
+              {activeTab === 'vitals' && (
+                <VitalsTracker
+                  language={currentLanguage}
+                  activeProfile={
+                    patientProfiles[0] || {
+                      id: 'prof-self',
+                      name: currentUser?.name || 'Patient',
+                      relation: 'Self',
+                      ageGroup: 'adult',
+                      exactAge: 32,
+                      gender: 'male',
+                      conditions: '',
+                      medications: '',
+                      allergies: '',
+                    }
+                  }
+                  profiles={patientProfiles}
+                  onSelectProfile={(p) => {
+                    const idx = patientProfiles.findIndex((prof) => prof.id === p.id);
+                    if (idx !== -1) {
+                      const reordered = [...patientProfiles];
+                      const [selected] = reordered.splice(idx, 1);
+                      reordered.unshift(selected);
+                      setPatientProfiles(reordered);
+                    }
+                  }}
+                  onSaveRecord={handleSaveUnifiedRecord}
+                  onNavigateToRecords={() => navigateToTab('records')}
+                  onNavigateToEmergency={() => navigateToTab('emergency')}
+                  onNavigateToCare={() => navigateToTab('care')}
+                />
+              )}
+
+              {activeTab === 'care' && (
+                <NearbyCare
+                  currentLanguage={currentLanguage}
+                  onBookDoctor={(doc) => setBookingDoctor(doc)}
+                  doctors={doctors}
+                  onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
+                />
+              )}
+
+              {activeTab === 'emergency' && (
+                <EmergencyCare
+                  currentLanguage={currentLanguage}
+                  onOpenQrCard={() => setShowHealthQrModal(true)}
+                />
+              )}
+
+              {activeTab === 'records' && (
+                <HealthRecords
+                  currentLanguage={currentLanguage}
+                  patientProfiles={patientProfiles}
+                  prescriptions={prescriptions}
+                  reports={reports}
+                  onAddProfile={handleAddProfile}
+                  currentUser={currentUser}
+                  onNavigateToTab={(tab) => navigateToTab(tab as any)}
+                />
+              )}
+
+              {activeTab === 'doctor_portal' && (
+                <DoctorReviewPortal
+                  currentLanguage={currentLanguage}
+                  pendingCases={pendingCases}
+                  onApproveCase={handleApproveDoctorCase}
+                  doctors={doctors}
+                  onUpdateDoctorStatus={handleUpdateDoctorStatus}
+                  onOpenDoctorOnboarding={() => setShowDoctorOnboardingModal(true)}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Global Multi-Column Professional Footer */}
+        <GlobalFooter
+          currentLanguage={currentLanguage}
+          onNavigateTab={(tab) => navigateToTab(tab as any)}
+          onOpenDisclaimer={() => setShowDisclaimer(true)}
+        />
+      </main>
+      )}
+
+      {/* Mobile Bottom Navigation Bar (< lg screens) with Fluid Framer Motion */}
+      <AnimatePresence>
+        {isMainAppActive && (
+          <motion.nav
+            id="mobile-bottom-nav"
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#071a16]/95 backdrop-blur-md border-t border-slate-200/90 dark:border-teal-900/60 shadow-lg px-1 py-1.5 flex items-center justify-between select-none safe-area-inset-bottom"
+            aria-label="Mobile Navigation"
+          >
+            {[
+              { id: 'home', icon: LayoutDashboard },
+              { id: 'symptoms', icon: Stethoscope },
+              { id: 'medicine', icon: Pill },
+              { id: 'reports', icon: FileText },
+              { id: 'vitals', icon: Activity },
+              { id: 'care', icon: MapPin },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              const label = getMobileNavLabel(item.id);
+              return (
+                <motion.button
+                  key={item.id}
+                  id={`mobile-nav-btn-${item.id}`}
+                  type="button"
+                  onClick={() => navigateToTab(item.id as NavigationTab)}
+                  whileTap={{ scale: 0.92 }}
+                  className={`relative flex-1 min-w-0 max-w-[16.666%] flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-colors cursor-pointer ${
+                    isActive
+                      ? 'text-teal-700 dark:text-teal-300 font-bold'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="mobile-bottom-active-pill"
+                      className="absolute inset-0 bg-teal-50 dark:bg-teal-950/70 border border-teal-200/70 dark:border-teal-800/70 rounded-xl -z-10 shadow-2xs"
+                      transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    />
+                  )}
+                  <Icon
+                    className={`w-5 h-5 mb-0.5 shrink-0 transition-transform ${
+                      isActive ? 'scale-110 text-teal-600 dark:text-teal-300' : ''
+                    }`}
+                  />
+                  <span className="text-[10px] sm:text-[11px] font-medium leading-tight truncate w-full block text-center mt-0.5 px-0.5">
+                    {label}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </motion.nav>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Action Buttons: Refined Clinical Support & Emergency 1122 Dispatch */}
+      <AnimatePresence>
+        {isMainAppActive && !showDisclaimer && (
+          <motion.div
+            id="floating-actions-dock"
+            initial={{ y: 20, opacity: 0, scale: 0.95 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.95 }}
+            transition={{ type: 'spring', damping: 24, stiffness: 300, delay: 0.1 }}
+            className="fixed bottom-[74px] right-3 sm:bottom-[78px] sm:right-6 lg:bottom-8 lg:right-8 z-50 flex items-center gap-2 pointer-events-auto"
+          >
+            {/* Medical Support / Quick Message */}
+            <motion.button
+              type="button"
+              id="fab-quick-message-btn"
+              onClick={() => setShowQuickMessageModal(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 px-3 py-2 sm:px-3.5 sm:py-2.5 bg-teal-600 hover:bg-teal-700 active:scale-95 text-white rounded-full shadow-lg shadow-teal-600/25 hover:shadow-xl transition-shadow cursor-pointer border border-teal-400/40 text-xs font-bold"
+              title={currentLanguage === 'ur' ? 'طبی سپورٹ اور فوری پیغام' : 'Quick Medical Message & Triage Support'}
+              aria-label="Medical Support"
+            >
+              <MessageSquare className="w-4 h-4 text-white shrink-0" />
+              <span>
+                {currentLanguage === 'ur' ? 'طبی مدد' : currentLanguage === 'roman' ? 'Madad' : 'Support'}
+              </span>
+            </motion.button>
+
+            {/* Rescue 1122 Emergency SOS Hotline */}
+            <motion.button
+              type="button"
+              id="fab-emergency-helpline"
+              onClick={() => setShowEmergencyCallModal(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.94 }}
+              className="flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow cursor-pointer border border-rose-400/40 text-xs font-bold"
+              title={t.navEmergency}
+              aria-label="Call Emergency Helpline (1122)"
+            >
+              <PhoneCall className="w-4 h-4 shrink-0 animate-pulse" />
+              <span>
+                {currentLanguage === 'ur' ? '1122 ایمرجنسی' : '1122 SOS'}
+              </span>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Emergency Call Modal */}
+      <EmergencyCallModal
+        isOpen={showEmergencyCallModal}
+        onClose={() => setShowEmergencyCallModal(false)}
+        currentLanguage={currentLanguage}
+      />
+
+      {/* Medical Quick Message Modal */}
+      <MedicalQuickMessageModal
+        isOpen={showQuickMessageModal}
+        onClose={() => setShowQuickMessageModal(false)}
+        currentLanguage={currentLanguage}
+        patientName={currentUser?.name || (currentLanguage === 'ur' ? 'مریض' : 'Patient')}
+        onNavigateToTab={(tab) => navigateToTab(tab as any)}
+      />
+
+      {/* Active Due Medicine Reminder Alarm Alert Modal */}
+      {activeDueReminder && (
+        <ActiveMedicineAlertModal
+          reminder={activeDueReminder}
+          scheduledTime={activeDueScheduledTime}
+          currentLanguage={currentLanguage}
+          onDismiss={() => setActiveDueReminder(null)}
+          onActionComplete={(status) => {
+            if (status === 'snoozed') {
+              setSnoozedAlarms((prev) => [
+                ...prev,
+                {
+                  reminder: activeDueReminder,
+                  fireAt: Date.now() + 15 * 60 * 1000,
+                  scheduledTime: activeDueScheduledTime,
+                },
+              ]);
+            }
+            setActiveDueReminder(null);
+          }}
+        />
+      )}
+
+      {/* Global My Health QR Card Modal */}
+      <HealthQrCardModal
+        isOpen={showHealthQrModal}
+        onClose={() => setShowHealthQrModal(false)}
+        currentLanguage={currentLanguage}
+        selectedProfile={
+          patientProfiles[0] || {
+            id: 'prof-self',
+            name: currentUser?.name || 'Patient',
+            relation: 'Self',
+            ageGroup: 'adult',
+            exactAge: 32,
+            gender: 'male',
+          }
+        }
+        records={[]}
+        currentMedicines={[]}
+      />
+
+      {/* Global Daily Medicine Reminder Management Modal */}
+      <MedicineReminderModal
+        isOpen={showMedicineReminderModal}
+        onClose={() => setShowMedicineReminderModal(false)}
+        currentLanguage={currentLanguage}
+        patientProfiles={patientProfiles}
+      />
+
+      {/* Global Floating Audio Player with Start, Pause, Stop and 1x, 1.25x, 1.75x, 2x speeds */}
+      <FloatingAudioPlayer currentLanguage={currentLanguage} />
+    </div>
+  );
+}

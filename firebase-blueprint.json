@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information saved upon authentication",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Firebase Authentication User UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User full name"
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile picture URL if available"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when user was created"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "Timestamp when user last logged in"
+        }
+      },
+      "required": ["id", "email", "displayName"]
+    },
+    "GuestPatientProfile": {
+      "title": "GuestPatientProfile",
+      "description": "Guest patient credentials and persistent medical records linked by specific password",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique guest patient identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Patient display name"
+        },
+        "normalizedName": {
+          "type": "string",
+          "description": "Normalized lowercase trimmed patient name"
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "Secure password hash created by the patient during first login"
+        },
+        "userKey": {
+          "type": "string",
+          "description": "Storage and lookup key for patient records"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when patient account was first registered"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "description": "Timestamp of most recent authentication"
+        },
+        "records": {
+          "type": "array",
+          "description": "Medical records, prescriptions, and consultations",
+          "items": {
+            "type": "object"
+          }
+        },
+        "vitals": {
+          "type": "object",
+          "description": "Recorded patient vitals like blood pressure, blood sugar, heart rate, weight"
+        },
+        "profiles": {
+          "type": "array",
+          "description": "Associated patient family profiles",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": ["id", "name", "normalizedName", "passwordHash", "userKey"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Authenticated user profile documents accessible by the user themselves"
+    },
+    "/guestPatients/{patientKey}": {
+      "schema": "GuestPatientProfile",
+      "description": "Guest patient records persistent collection keyed by normalized patient credentials"
+    }
+  }
+}

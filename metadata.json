@@ -1,0 +1,11 @@
+{
+  "name": "Remix SehatSaathi Pro",
+  "description": "Multilingual AI-powered doctor-hybrid healthcare platform for Pakistan with symptom triage, medicine verification, medical report/X-ray analysis, and doctor locator.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

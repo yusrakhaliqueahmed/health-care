@@ -1,0 +1,558 @@
+{
+  "default": {
+    "profiles": [
+      {
+        "id": "prof-self",
+        "name": "Patient",
+        "relation": "Self",
+        "ageGroup": "adult",
+        "exactAge": 34,
+        "gender": "male",
+        "bloodGroup": "B+",
+        "conditions": "Mild seasonal allergies",
+        "medications": "None regular",
+        "allergies": "Dust, Pollen",
+        "emergencyContact": "0300-1234567"
+      },
+      {
+        "id": "prof-child-1",
+        "name": "Ali (Son)",
+        "relation": "Child",
+        "ageGroup": "child",
+        "exactAge": 6,
+        "gender": "male",
+        "bloodGroup": "O+",
+        "conditions": "None",
+        "medications": "None",
+        "allergies": "No known drug allergies"
+      },
+      {
+        "id": "prof-parent-1",
+        "name": "Ami Jan (Mother)",
+        "relation": "Parent",
+        "ageGroup": "elderly",
+        "exactAge": 62,
+        "gender": "female",
+        "bloodGroup": "A+",
+        "conditions": "Hypertension, Type 2 Diabetes",
+        "medications": "Tab. Glucophage 500mg, Tab. Softvas 5mg",
+        "allergies": "Penicillin allergy",
+        "emergencyContact": "0321-9876543"
+      }
+    ],
+    "records": [
+      {
+        "id": "SS-REC-88412",
+        "referenceNumber": "SS-2026-88412",
+        "labCaseNumber": "LB-77491",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "Patient",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "lab_report",
+        "title": "Complete Blood Count (CBC) Panel",
+        "panelName": "COMPLETE BLOOD COUNT (CBC)",
+        "date": "07-Sep-2026 11:30 AM",
+        "status": "doctor_approved",
+        "reviewedByDoctor": "Dr. Ayesha Malik",
+        "doctorPmdc": "PMDC #48291-P",
+        "urgency": "YELLOW",
+        "testResults": [
+          {
+            "testName": "Hemoglobin (Hb)",
+            "result": "10.8",
+            "referenceRange": "13.5 - 17.5",
+            "unit": "g/dL",
+            "isAbnormal": true,
+            "notes": "Mild microcytic hypochromic pattern"
+          },
+          {
+            "testName": "Total Leukocyte Count (TLC / WBC)",
+            "result": "7,800",
+            "referenceRange": "4,000 - 11,000",
+            "unit": "/uL",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Platelets Count",
+            "result": "245,000",
+            "referenceRange": "150,000 - 450,000",
+            "unit": "/uL",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Hematocrit (PCV)",
+            "result": "33.5",
+            "referenceRange": "40.0 - 52.0",
+            "unit": "%",
+            "isAbnormal": true,
+            "notes": "Reduced oxygen-carrying capacity"
+          },
+          {
+            "testName": "Mean Corpuscular Volume (MCV)",
+            "result": "74.2",
+            "referenceRange": "80.0 - 100.0",
+            "unit": "fL",
+            "isAbnormal": true
+          },
+          {
+            "testName": "Erythrocyte Sedimentation Rate (ESR)",
+            "result": "14",
+            "referenceRange": "0 - 15",
+            "unit": "mm/1st hr",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Mild nutritional anemia pattern identified with microcytosis. Attending physician recommends dietary iron enrichment (spinach, dates, lean meats) and oral ferrous bisglycinate with Vitamin C. Repeat CBC in 6 weeks.",
+        "doctorComments": "Reviewed and countersigned. Patient advised against taking tea immediately after meals to avoid inhibiting iron absorption."
+      },
+      {
+        "id": "SS-REC-91204",
+        "referenceNumber": "SS-2026-91204",
+        "labCaseNumber": "LB-82915",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "Patient",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "medicine",
+        "title": "Panadol Extra (Paracetamol + Caffeine) Clinical Verification",
+        "panelName": "MEDICINE CHECK RESULT",
+        "date": "05-Sep-2026 04:15 PM",
+        "status": "doctor_approved",
+        "reviewedByDoctor": "Dr. Tariq Jameel",
+        "doctorPmdc": "PMDC #31094-S",
+        "urgency": "GREEN",
+        "testResults": [
+          {
+            "testName": "Active Ingredient 1",
+            "result": "Paracetamol 500mg",
+            "referenceRange": "Standard Analgesic / Antipyretic",
+            "unit": "mg",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Active Ingredient 2",
+            "result": "Caffeine 65mg",
+            "referenceRange": "Analgesic Adjuvant (<200mg/dose)",
+            "unit": "mg",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Max Daily Limit Verification",
+            "result": "4,000 mg / 24 Hours",
+            "referenceRange": "Safe Upper Limit (Adults)",
+            "unit": "mg",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Hepatic / Liver Safety Index",
+            "result": "Class A (Safe at stated dose)",
+            "referenceRange": "Normal LFT Required if Chronic",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Pediatric Contraindication Screen",
+            "result": "Not Recommended for Children < 12y",
+            "referenceRange": "Standard DRAP Warning",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Appropriate for acute mild-to-moderate tension headache and fever. Take 1-2 tablets every 6 hours with a full glass of water. Do NOT combine with other over-the-counter paracetamol products (Disprin Extra, Calpol, etc.) to prevent hepatotoxicity.",
+        "doctorComments": "Approved for short-term symptomatic relief (maximum 3 consecutive days)."
+      },
+      {
+        "id": "SS-REC-67120",
+        "referenceNumber": "SS-2026-67120",
+        "labCaseNumber": "LB-55193",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "Patient",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "symptom",
+        "title": "Upper Respiratory & Pharyngitis Clinical Triage",
+        "panelName": "SYMPTOM SUMMARY",
+        "date": "03-Sep-2026 09:20 AM",
+        "status": "ai_preliminary",
+        "urgency": "GREEN",
+        "testResults": [
+          {
+            "testName": "Chief Complaint",
+            "result": "Sore Throat & Mild Dry Cough x 2 Days",
+            "referenceRange": "Acute Duration (< 7 days)",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Measured Body Temperature",
+            "result": "99.8 °F (Low-grade pyrexia)",
+            "referenceRange": "97.0 - 99.0 °F",
+            "isAbnormal": true,
+            "notes": "Mild fever spike responding to fluids"
+          },
+          {
+            "testName": "Respiratory Distress / Stridor Screen",
+            "result": "Clear & Unlabored",
+            "referenceRange": "No accessory muscle usage",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Emergency Red Flag Audit",
+            "result": "All 5 Negative (No chest pain/hemoptysis)",
+            "referenceRange": "Zero Critical Indicators",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Clinical presentation consistent with viral pharyngitis / seasonal change irritation. Warm saline gargles (1/2 tsp salt in warm water) 3 times daily. Hydrate with warm broths and honey-lemon tea. Physical clinic visit recommended if high fever (>102°F) develops or symptoms persist past 5 days."
+      },
+      {
+        "id": "SS-REC-44192",
+        "referenceNumber": "SS-2026-44192",
+        "labCaseNumber": "LB-39912",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "Patient",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "prescription",
+        "title": "Seasonal Allergy & Bronchial Care Prescription",
+        "panelName": "LICENSED MEDICAL PRESCRIPTION",
+        "date": "01-Sep-2026 02:45 PM",
+        "status": "doctor_approved",
+        "reviewedByDoctor": "Dr. Ayesha Malik",
+        "doctorPmdc": "PMDC #48291-P",
+        "urgency": "GREEN",
+        "prescriptionData": {
+          "diagnosis": "Seasonal Allergic Rhinitis & Mild Tracheitis",
+          "medicines": [
+            {
+              "name": "Tab. Montika (Montelukast) 10mg",
+              "dosage": "10mg",
+              "duration": "14 Days",
+              "instructions": "1 tablet daily at bedtime",
+              "frequency": "Once Daily"
+            },
+            {
+              "name": "Tab. Rigix (Cetirizine) 10mg",
+              "dosage": "10mg",
+              "duration": "5 Days",
+              "instructions": "1 tablet as needed for severe sneezing or itching",
+              "frequency": "As Needed"
+            },
+            {
+              "name": "Syr. Acefyl (Diprophylline) 120ml",
+              "dosage": "2 teaspoons",
+              "duration": "5 Days",
+              "instructions": "Twice daily after meals",
+              "frequency": "Twice Daily"
+            }
+          ],
+          "notes": "Avoid direct ice water, cold air conditioning drafts, and dusty environments."
+        },
+        "testResults": [
+          {
+            "testName": "Primary Clinical Diagnosis",
+            "result": "Seasonal Allergic Rhinitis with Mild Tracheitis",
+            "referenceRange": "ICD-10 J30.1",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Doctor Verification",
+            "result": "Signed & Digitally Verified via PMDC Portal",
+            "referenceRange": "Valid for 30 Days",
+            "isAbnormal": false
+          },
+          {
+            "testName": "DRAP Pharmacy Dispensing Code",
+            "result": "DISP-VERIFIED-9821",
+            "referenceRange": "Official DRAP Barcode QR",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Prescription issued after clinical tele-triage. Patient advised to complete full course of Montelukast to prevent nighttime airway spasms.",
+        "doctorComments": "Patient instructed to report if rash or significant drowsiness occurs."
+      }
+    ],
+    "vitals": {}
+  },
+  "recovery.test@example.com": {
+    "profiles": [
+      {
+        "id": "prof-self",
+        "name": "recovery.test",
+        "relation": "Self",
+        "ageGroup": "adult",
+        "exactAge": 34,
+        "gender": "male",
+        "bloodGroup": "B+",
+        "conditions": "Mild seasonal allergies",
+        "medications": "None regular",
+        "allergies": "Dust, Pollen",
+        "emergencyContact": "0300-1234567"
+      },
+      {
+        "id": "prof-child-1",
+        "name": "Ali (Son)",
+        "relation": "Child",
+        "ageGroup": "child",
+        "exactAge": 6,
+        "gender": "male",
+        "bloodGroup": "O+",
+        "conditions": "None",
+        "medications": "None",
+        "allergies": "No known drug allergies"
+      },
+      {
+        "id": "prof-parent-1",
+        "name": "Ami Jan (Mother)",
+        "relation": "Parent",
+        "ageGroup": "elderly",
+        "exactAge": 62,
+        "gender": "female",
+        "bloodGroup": "A+",
+        "conditions": "Hypertension, Type 2 Diabetes",
+        "medications": "Tab. Glucophage 500mg, Tab. Softvas 5mg",
+        "allergies": "Penicillin allergy",
+        "emergencyContact": "0321-9876543"
+      }
+    ],
+    "records": [
+      {
+        "id": "SS-REC-88412",
+        "referenceNumber": "SS-2026-88412",
+        "labCaseNumber": "LB-77491",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "recovery.test",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "lab_report",
+        "title": "Complete Blood Count (CBC) Panel",
+        "panelName": "COMPLETE BLOOD COUNT (CBC)",
+        "date": "07-Sep-2026 11:30 AM",
+        "status": "doctor_approved",
+        "reviewedByDoctor": "Dr. Ayesha Malik",
+        "doctorPmdc": "PMDC #48291-P",
+        "urgency": "YELLOW",
+        "testResults": [
+          {
+            "testName": "Hemoglobin (Hb)",
+            "result": "10.8",
+            "referenceRange": "13.5 - 17.5",
+            "unit": "g/dL",
+            "isAbnormal": true,
+            "notes": "Mild microcytic hypochromic pattern"
+          },
+          {
+            "testName": "Total Leukocyte Count (TLC / WBC)",
+            "result": "7,800",
+            "referenceRange": "4,000 - 11,000",
+            "unit": "/uL",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Platelets Count",
+            "result": "245,000",
+            "referenceRange": "150,000 - 450,000",
+            "unit": "/uL",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Hematocrit (PCV)",
+            "result": "33.5",
+            "referenceRange": "40.0 - 52.0",
+            "unit": "%",
+            "isAbnormal": true,
+            "notes": "Reduced oxygen-carrying capacity"
+          },
+          {
+            "testName": "Mean Corpuscular Volume (MCV)",
+            "result": "74.2",
+            "referenceRange": "80.0 - 100.0",
+            "unit": "fL",
+            "isAbnormal": true
+          },
+          {
+            "testName": "Erythrocyte Sedimentation Rate (ESR)",
+            "result": "14",
+            "referenceRange": "0 - 15",
+            "unit": "mm/1st hr",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Mild nutritional anemia pattern identified with microcytosis. Attending physician recommends dietary iron enrichment (spinach, dates, lean meats) and oral ferrous bisglycinate with Vitamin C. Repeat CBC in 6 weeks.",
+        "doctorComments": "Reviewed and countersigned. Patient advised against taking tea immediately after meals to avoid inhibiting iron absorption."
+      },
+      {
+        "id": "SS-REC-91204",
+        "referenceNumber": "SS-2026-91204",
+        "labCaseNumber": "LB-82915",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "recovery.test",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "medicine",
+        "title": "Panadol Extra (Paracetamol + Caffeine) Clinical Verification",
+        "panelName": "MEDICINE CHECK RESULT",
+        "date": "05-Sep-2026 04:15 PM",
+        "status": "doctor_approved",
+        "reviewedByDoctor": "Dr. Tariq Jameel",
+        "doctorPmdc": "PMDC #31094-S",
+        "urgency": "GREEN",
+        "testResults": [
+          {
+            "testName": "Active Ingredient 1",
+            "result": "Paracetamol 500mg",
+            "referenceRange": "Standard Analgesic / Antipyretic",
+            "unit": "mg",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Active Ingredient 2",
+            "result": "Caffeine 65mg",
+            "referenceRange": "Analgesic Adjuvant (<200mg/dose)",
+            "unit": "mg",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Max Daily Limit Verification",
+            "result": "4,000 mg / 24 Hours",
+            "referenceRange": "Safe Upper Limit (Adults)",
+            "unit": "mg",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Hepatic / Liver Safety Index",
+            "result": "Class A (Safe at stated dose)",
+            "referenceRange": "Normal LFT Required if Chronic",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Pediatric Contraindication Screen",
+            "result": "Not Recommended for Children < 12y",
+            "referenceRange": "Standard DRAP Warning",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Appropriate for acute mild-to-moderate tension headache and fever. Take 1-2 tablets every 6 hours with a full glass of water. Do NOT combine with other over-the-counter paracetamol products (Disprin Extra, Calpol, etc.) to prevent hepatotoxicity.",
+        "doctorComments": "Approved for short-term symptomatic relief (maximum 3 consecutive days)."
+      },
+      {
+        "id": "SS-REC-67120",
+        "referenceNumber": "SS-2026-67120",
+        "labCaseNumber": "LB-55193",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "recovery.test",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "symptom",
+        "title": "Upper Respiratory & Pharyngitis Clinical Triage",
+        "panelName": "SYMPTOM SUMMARY",
+        "date": "03-Sep-2026 09:20 AM",
+        "status": "ai_preliminary",
+        "urgency": "GREEN",
+        "testResults": [
+          {
+            "testName": "Chief Complaint",
+            "result": "Sore Throat & Mild Dry Cough x 2 Days",
+            "referenceRange": "Acute Duration (< 7 days)",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Measured Body Temperature",
+            "result": "99.8 °F (Low-grade pyrexia)",
+            "referenceRange": "97.0 - 99.0 °F",
+            "isAbnormal": true,
+            "notes": "Mild fever spike responding to fluids"
+          },
+          {
+            "testName": "Respiratory Distress / Stridor Screen",
+            "result": "Clear & Unlabored",
+            "referenceRange": "No accessory muscle usage",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Emergency Red Flag Audit",
+            "result": "All 5 Negative (No chest pain/hemoptysis)",
+            "referenceRange": "Zero Critical Indicators",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Clinical presentation consistent with viral pharyngitis / seasonal change irritation. Warm saline gargles (1/2 tsp salt in warm water) 3 times daily. Hydrate with warm broths and honey-lemon tea. Physical clinic visit recommended if high fever (>102°F) develops or symptoms persist past 5 days."
+      },
+      {
+        "id": "SS-REC-44192",
+        "referenceNumber": "SS-2026-44192",
+        "labCaseNumber": "LB-39912",
+        "userId": "default",
+        "patientProfileId": "prof-self",
+        "patientName": "recovery.test",
+        "patientAge": "34 Y",
+        "patientGender": "male",
+        "category": "prescription",
+        "title": "Seasonal Allergy & Bronchial Care Prescription",
+        "panelName": "LICENSED MEDICAL PRESCRIPTION",
+        "date": "01-Sep-2026 02:45 PM",
+        "status": "doctor_approved",
+        "reviewedByDoctor": "Dr. Ayesha Malik",
+        "doctorPmdc": "PMDC #48291-P",
+        "urgency": "GREEN",
+        "prescriptionData": {
+          "diagnosis": "Seasonal Allergic Rhinitis & Mild Tracheitis",
+          "medicines": [
+            {
+              "name": "Tab. Montika (Montelukast) 10mg",
+              "dosage": "10mg",
+              "duration": "14 Days",
+              "instructions": "1 tablet daily at bedtime",
+              "frequency": "Once Daily"
+            },
+            {
+              "name": "Tab. Rigix (Cetirizine) 10mg",
+              "dosage": "10mg",
+              "duration": "5 Days",
+              "instructions": "1 tablet as needed for severe sneezing or itching",
+              "frequency": "As Needed"
+            },
+            {
+              "name": "Syr. Acefyl (Diprophylline) 120ml",
+              "dosage": "2 teaspoons",
+              "duration": "5 Days",
+              "instructions": "Twice daily after meals",
+              "frequency": "Twice Daily"
+            }
+          ],
+          "notes": "Avoid direct ice water, cold air conditioning drafts, and dusty environments."
+        },
+        "testResults": [
+          {
+            "testName": "Primary Clinical Diagnosis",
+            "result": "Seasonal Allergic Rhinitis with Mild Tracheitis",
+            "referenceRange": "ICD-10 J30.1",
+            "isAbnormal": false
+          },
+          {
+            "testName": "Doctor Verification",
+            "result": "Signed & Digitally Verified via PMDC Portal",
+            "referenceRange": "Valid for 30 Days",
+            "isAbnormal": false
+          },
+          {
+            "testName": "DRAP Pharmacy Dispensing Code",
+            "result": "DISP-VERIFIED-9821",
+            "referenceRange": "Official DRAP Barcode QR",
+            "isAbnormal": false
+          }
+        ],
+        "clinicalNotes": "Prescription issued after clinical tele-triage. Patient advised to complete full course of Montelukast to prevent nighttime airway spasms.",
+        "doctorComments": "Patient instructed to report if rash or significant drowsiness occurs."
+      }
+    ],
+    "vitals": {},
+    "passwordHash": "pwd_1792431989086_23",
+    "updatedAt": "2026-10-19T17:46:29.086Z"
+  }
+}
